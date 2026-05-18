@@ -82,7 +82,7 @@ const CartDropdown = ({
       <Popover className="relative h-full">
         <PopoverButton className="h-full">
           <LocalizedClientLink
-            className="hover:text-ui-fg-base"
+            className="inline-flex h-9 items-center rounded-full bg-[#C8D050] px-4 text-xs font-black uppercase tracking-[0.12em] text-black transition hover:bg-white"
             href="/cart"
             data-testid="nav-cart-link"
           >{`Cart (${totalItems})`}</LocalizedClientLink>
@@ -99,15 +99,20 @@ const CartDropdown = ({
         >
           <PopoverPanel
             static
-            className="hidden small:block absolute top-[calc(100%+1px)] right-0 bg-white border-x border-b border-gray-200 w-[420px] text-ui-fg-base"
+            className="hidden small:block absolute top-[calc(100%+14px)] right-0 w-[420px] overflow-hidden rounded-[28px] border border-black/10 bg-[#F4F2ED] text-[#0A0A0A] shadow-[0_24px_70px_rgba(0,0,0,0.22)]"
             data-testid="nav-cart-dropdown"
           >
-            <div className="p-4 flex items-center justify-center">
-              <h3 className="text-large-semi">Cart</h3>
+            <div className="border-b border-black/10 bg-black p-5 text-white">
+              <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#C8D050]">
+                MUSE bag
+              </p>
+              <h3 className="mt-1 text-2xl font-black tracking-[-0.04em]">
+                {totalItems ? `${totalItems} item${totalItems === 1 ? "" : "s"}` : "Your bag"}
+              </h3>
             </div>
             {cartState && cartState.items?.length ? (
               <>
-                <div className="overflow-y-scroll max-h-[402px] px-4 grid grid-cols-1 gap-y-8 no-scrollbar p-px">
+                <div className="grid max-h-[402px] grid-cols-1 gap-y-5 overflow-y-scroll p-5 no-scrollbar">
                   {cartState.items
                     .sort((a, b) => {
                       return (a.created_at ?? "") > (b.created_at ?? "")
@@ -116,13 +121,13 @@ const CartDropdown = ({
                     })
                     .map((item) => (
                       <div
-                        className="grid grid-cols-[122px_1fr] gap-x-4"
+                        className="grid grid-cols-[104px_1fr] gap-x-4 rounded-[20px] bg-white p-3 shadow-sm"
                         key={item.id}
                         data-testid="cart-item"
                       >
                         <LocalizedClientLink
                           href={`/products/${item.product_handle}`}
-                          className="w-24"
+                          className="w-24 overflow-hidden rounded-[16px] bg-[#EEEAE2]"
                         >
                           <Thumbnail
                             thumbnail={item.thumbnail}
@@ -130,11 +135,11 @@ const CartDropdown = ({
                             size="square"
                           />
                         </LocalizedClientLink>
-                        <div className="flex flex-col justify-between flex-1">
+                        <div className="flex flex-1 flex-col justify-between">
                           <div className="flex flex-col flex-1">
                             <div className="flex items-start justify-between">
                               <div className="flex flex-col overflow-ellipsis whitespace-nowrap mr-4 w-[180px]">
-                                <h3 className="text-base-regular overflow-hidden text-ellipsis">
+                                <h3 className="overflow-hidden text-ellipsis text-sm font-black leading-tight tracking-[-0.02em]">
                                   <LocalizedClientLink
                                     href={`/products/${item.product_handle}`}
                                     data-testid="product-link"
@@ -154,7 +159,7 @@ const CartDropdown = ({
                                   Quantity: {item.quantity}
                                 </span>
                               </div>
-                              <div className="flex justify-end">
+                              <div className="flex justify-end text-sm font-black">
                                 <LineItemPrice
                                   item={item}
                                   style="tight"
@@ -165,7 +170,7 @@ const CartDropdown = ({
                           </div>
                           <DeleteButton
                             id={item.id}
-                            className="mt-1"
+                            className="mt-2 text-xs font-bold uppercase tracking-[0.12em] text-[#C1440E]"
                             data-testid="cart-item-remove-button"
                           >
                             Remove
@@ -174,14 +179,14 @@ const CartDropdown = ({
                       </div>
                     ))}
                 </div>
-                <div className="p-4 flex flex-col gap-y-4 text-small-regular">
+                <div className="flex flex-col gap-y-4 border-t border-black/10 bg-white p-5 text-sm">
                   <div className="flex items-center justify-between">
-                    <span className="text-ui-fg-base font-semibold">
+                    <span className="font-bold">
                       Subtotal{" "}
-                      <span className="font-normal">(excl. taxes)</span>
+                      <span className="font-normal text-[#777]">(before delivery)</span>
                     </span>
                     <span
-                      className="text-large-semi"
+                      className="text-xl font-black"
                       data-testid="cart-subtotal"
                       data-value={subtotal}
                     >
@@ -193,27 +198,42 @@ const CartDropdown = ({
                   </div>
                   <LocalizedClientLink href="/cart" passHref>
                     <Button
-                      className="w-full"
+                      className="h-12 w-full rounded-full bg-black text-xs font-black uppercase tracking-[0.16em] text-white hover:bg-[#C1440E]"
                       size="large"
                       data-testid="go-to-cart-button"
                     >
-                      Go to cart
+                      Checkout
                     </Button>
                   </LocalizedClientLink>
+                  <p className="text-center text-xs text-[#777]">
+                    30-day money back. Tracked delivery to NZ.
+                  </p>
                 </div>
               </>
             ) : (
               <div>
-                <div className="flex py-16 flex-col gap-y-4 items-center justify-center">
-                  <div className="bg-gray-900 text-small-regular flex items-center justify-center w-6 h-6 rounded-full text-white">
+                <div className="flex flex-col items-center justify-center gap-y-4 px-8 py-14 text-center">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-black text-sm font-black text-[#C8D050]">
                     <span>0</span>
                   </div>
-                  <span>Your shopping bag is empty.</span>
+                  <div>
+                    <p className="text-lg font-black tracking-[-0.03em]">
+                      Your bag is empty.
+                    </p>
+                    <p className="mt-1 text-sm text-[#666]">
+                      Start with the pieces customers ask about most.
+                    </p>
+                  </div>
                   <div>
                     <LocalizedClientLink href="/store">
                       <>
                         <span className="sr-only">Go to all products page</span>
-                        <Button onClick={close}>Explore products</Button>
+                        <Button
+                          className="rounded-full bg-black px-7 text-xs font-black uppercase tracking-[0.14em] text-white hover:bg-[#C1440E]"
+                          onClick={close}
+                        >
+                          Shop the drop
+                        </Button>
                       </>
                     </LocalizedClientLink>
                   </div>

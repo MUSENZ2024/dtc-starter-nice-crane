@@ -43,35 +43,19 @@ const ProductTabs = ({ product }: ProductTabsProps) => {
 
 const ProductInfoTab = ({ product }: ProductTabsProps) => {
   return (
-    <div className="text-small-regular py-8">
-      <div className="grid grid-cols-2 gap-x-8">
-        <div className="flex flex-col gap-y-4">
-          <div>
-            <span className="font-semibold">Material</span>
-            <p>{product.material ? product.material : "-"}</p>
-          </div>
-          <div>
-            <span className="font-semibold">Country of origin</span>
-            <p>{product.origin_country ? product.origin_country : "-"}</p>
-          </div>
-          <div>
-            <span className="font-semibold">Type</span>
-            <p>{product.type ? product.type.value : "-"}</p>
-          </div>
+    <div className="py-6 text-sm leading-6 text-black/65">
+      <div className="grid gap-4">
+        <div>
+          <span className="font-black text-black">Fit</span>
+          <p>Relaxed boxy fit. Size up if you prefer heavy layering.</p>
         </div>
-        <div className="flex flex-col gap-y-4">
-          <div>
-            <span className="font-semibold">Weight</span>
-            <p>{product.weight ? `${product.weight} g` : "-"}</p>
-          </div>
-          <div>
-            <span className="font-semibold">Dimensions</span>
-            <p>
-              {product.length && product.width && product.height
-                ? `${product.length}L x ${product.width}W x ${product.height}H`
-                : "-"}
-            </p>
-          </div>
+        <div>
+          <span className="font-black text-black">Feel</span>
+          <p>Warm insulated shell with a clean winter streetwear shape.</p>
+        </div>
+        <div>
+          <span className="font-black text-black">Best for</span>
+          <p>Cold mornings, everyday wear, and simple winter fits.</p>
         </div>
       </div>
     </div>
@@ -80,36 +64,35 @@ const ProductInfoTab = ({ product }: ProductTabsProps) => {
 
 const ShippingInfoTab = () => {
   return (
-    <div className="text-small-regular py-8">
-      <div className="grid grid-cols-1 gap-y-8">
-        <div className="flex items-start gap-x-2">
-          <FastDelivery />
+    <div className="py-6 text-sm leading-6 text-black/65">
+      <div className="grid grid-cols-1 gap-y-6">
+        <div className="flex items-start gap-x-3">
+          <FastDelivery className="text-[#C1440E]" />
           <div>
-            <span className="font-semibold">Fast delivery</span>
+            <span className="font-black text-black">Tracked delivery</span>
             <p className="max-w-sm">
-              Your package will arrive in 3-5 business days at your pick up
-              location or in the comfort of your home.
+              Most pre-orders arrive in 13-16 days. Tracking is emailed as
+              soon as the order moves.
             </p>
           </div>
         </div>
-        <div className="flex items-start gap-x-2">
-          <Refresh />
+        <div className="flex items-start gap-x-3">
+          <Refresh className="text-[#C1440E]" />
           <div>
-            <span className="font-semibold">Simple exchanges</span>
+            <span className="font-black text-black">30-day money back</span>
             <p className="max-w-sm">
-              Is the fit not quite right? No worries - we&apos;ll exchange your
-              product for a new one.
+              If the fit is not right, contact support and we will help sort
+              the order.
             </p>
           </div>
         </div>
-        <div className="flex items-start gap-x-2">
-          <Back />
+        <div className="flex items-start gap-x-3">
+          <Back className="text-[#C1440E]" />
           <div>
-            <span className="font-semibold">Easy returns</span>
+            <span className="font-black text-black">NZ Post final mile</span>
             <p className="max-w-sm">
-              Just return your product and we&apos;ll refund your money. No
-              questions asked – we&apos;ll do our best to make sure your return
-              is hassle-free.
+              International Carrier handles the first leg, then NZ Post handles
+              delivery once it lands in New Zealand.
             </p>
           </div>
         </div>

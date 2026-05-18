@@ -1,155 +1,59 @@
-import { listCategories } from "@lib/data/categories";
-import { listCollections } from "@lib/data/collections";
-import { Text, clx } from "@modules/common/components/ui";
-
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
-import MedusaCTA from "@modules/layout/components/medusa-cta";
 
 export default async function Footer() {
-  const { collections } = await listCollections({
-    fields: "*products",
-  });
-  const productCategories = await listCategories();
-
   return (
-    <footer className="border-t border-ui-border-base w-full">
-      <div className="content-container flex flex-col w-full">
-        <div className="flex flex-col gap-y-6 xsmall:flex-row items-start justify-between py-40">
-          <div>
-            <LocalizedClientLink
-              href="/"
-              className="txt-compact-xlarge-plus text-ui-fg-subtle hover:text-ui-fg-base uppercase"
-            >
-              Medusa Store
+    <footer className="w-full bg-[#0A0A0A] text-white">
+      <div className="content-container flex flex-col w-full py-16 small:py-24">
+        <div className="grid gap-12 small:grid-cols-[1.3fr_0.7fr_0.7fr_0.8fr]">
+          <div className="max-w-md">
+            <LocalizedClientLink href="/" className="inline-flex">
+              <img
+                src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
+                alt="MUSE"
+                className="h-10 w-auto"
+              />
             </LocalizedClientLink>
+            <p className="mt-6 text-sm leading-7 text-white/60">
+              Auckland-based curated footwear and outerwear. Built for buyers
+              who want the look, the fit, and the price to make sense.
+            </p>
+            <div className="mt-6 flex gap-3">
+              <a href="https://www.instagram.com/muse.nz/?hl=en" target="_blank" rel="noreferrer">
+                <img src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/ffa7a5bb-412b-4863-8621-280e76f1ffa1.png" alt="Instagram" className="h-7 w-7" />
+              </a>
+              <a href="https://www.facebook.com/muse.nz.2025" target="_blank" rel="noreferrer">
+                <img src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/8d169842-5280-4499-9d29-d46b1a2a6a0f.png" alt="Facebook" className="h-7 w-7" />
+              </a>
+            </div>
           </div>
-          <div className="text-small-regular gap-10 md:gap-x-16 grid grid-cols-2 sm:grid-cols-3">
-            {productCategories && productCategories?.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Categories
-                </span>
-                <ul
-                  className="grid grid-cols-1 gap-2"
-                  data-testid="footer-categories"
-                >
-                  {productCategories?.slice(0, 6).map((c) => {
-                    if (c.parent_category) {
-                      return;
-                    }
-
-                    const children =
-                      c.category_children?.map((child) => ({
-                        name: child.name,
-                        handle: child.handle,
-                        id: child.id,
-                      })) || null;
-
-                    return (
-                      <li
-                        className="flex flex-col gap-2 text-ui-fg-subtle txt-small"
-                        key={c.id}
-                      >
-                        <LocalizedClientLink
-                          className={clx(
-                            "hover:text-ui-fg-base",
-                            children && "txt-small-plus"
-                          )}
-                          href={`/categories/${c.handle}`}
-                          data-testid="category-link"
-                        >
-                          {c.name}
-                        </LocalizedClientLink>
-                        {children && (
-                          <ul className="grid grid-cols-1 ml-3 gap-2">
-                            {children &&
-                              children.map((child) => (
-                                <li key={child.id}>
-                                  <LocalizedClientLink
-                                    className="hover:text-ui-fg-base"
-                                    href={`/categories/${child.handle}`}
-                                    data-testid="category-link"
-                                  >
-                                    {child.name}
-                                  </LocalizedClientLink>
-                                </li>
-                              ))}
-                          </ul>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            )}
-            {collections && collections.length > 0 && (
-              <div className="flex flex-col gap-y-2">
-                <span className="txt-small-plus txt-ui-fg-base">
-                  Collections
-                </span>
-                <ul
-                  className={clx(
-                    "grid grid-cols-1 gap-2 text-ui-fg-subtle txt-small",
-                    {
-                      "grid-cols-2": (collections?.length || 0) > 3,
-                    }
-                  )}
-                >
-                  {collections?.slice(0, 6).map((c) => (
-                    <li key={c.id}>
-                      <LocalizedClientLink
-                        className="hover:text-ui-fg-base"
-                        href={`/collections/${c.handle}`}
-                      >
-                        {c.title}
-                      </LocalizedClientLink>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            <div className="flex flex-col gap-y-2">
-              <span className="txt-small-plus txt-ui-fg-base">Medusa</span>
-              <ul className="grid grid-cols-1 gap-y-2 text-ui-fg-subtle txt-small">
-                <li>
-                  <a
-                    href="https://github.com/medusajs"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    GitHub
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://docs.medusajs.com"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Documentation
-                  </a>
-                </li>
-                <li>
-                  <a
-                    href="https://github.com/medusajs/dtc-starter"
-                    target="_blank"
-                    rel="noreferrer"
-                    className="hover:text-ui-fg-base"
-                  >
-                    Source code
-                  </a>
-                </li>
-              </ul>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#C8D050]">Shop</p>
+            <div className="mt-5 grid gap-3 text-sm text-white/65">
+              <LocalizedClientLink href="/store" className="hover:text-white">Shop all</LocalizedClientLink>
+              <LocalizedClientLink href="/store" className="hover:text-white">On hand</LocalizedClientLink>
+              <LocalizedClientLink href="/store" className="hover:text-white">Outerwear</LocalizedClientLink>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#C8D050]">Support</p>
+            <div className="mt-5 grid gap-3 text-sm text-white/65">
+              <a href="https://www.musenz.com/track" className="hover:text-white">Track order</a>
+              <a href="mailto:support@musenz.com" className="hover:text-white">support@musenz.com</a>
+              <span>Auckland pickup</span>
+            </div>
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#C8D050]">Buyer trust</p>
+            <div className="mt-5 grid gap-3 text-sm text-white/65">
+              <span>30-day money back</span>
+              <span>13-16 day delivery</span>
+              <span>NZ Post final mile</span>
             </div>
           </div>
         </div>
-        <div className="flex w-full mb-16 justify-between text-ui-fg-muted">
-          <Text className="txt-compact-small">
-            © {new Date().getFullYear()} Medusa Store. All rights reserved.
-          </Text>
-          <MedusaCTA />
+        <div className="mt-16 flex flex-col gap-3 border-t border-white/10 pt-8 text-xs text-white/35 small:flex-row small:items-center small:justify-between">
+          <p>© {new Date().getFullYear()} MUSE NZ. All rights reserved.</p>
+          <p>Prices in NZD · Secure checkout · Auckland, New Zealand</p>
         </div>
       </div>
     </footer>

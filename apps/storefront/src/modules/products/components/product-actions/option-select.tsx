@@ -23,9 +23,12 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
 
   return (
     <div className="flex flex-col gap-y-3">
-      <span className="text-sm">Select {title}</span>
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] font-black uppercase tracking-[0.16em] text-black/55">Select {title}</span>
+        <span className="text-xs font-semibold text-[#C1440E]">Size guide</span>
+      </div>
       <div
-        className="flex flex-wrap justify-between gap-2"
+        className="grid grid-cols-4 gap-2"
         data-testid={dataTestId}
       >
         {filteredOptions.map((v) => {
@@ -34,10 +37,10 @@ const OptionSelect: React.FC<OptionSelectProps> = ({
               onClick={() => updateOption(option.id, v)}
               key={v}
               className={clx(
-                "border-ui-border-base bg-ui-bg-subtle border text-small-regular h-10 rounded-rounded p-2 flex-1 ",
+                "h-12 rounded-2xl border border-black/10 bg-[#F8F7F4] p-2 text-sm font-black text-black transition",
                 {
-                  "border-ui-border-interactive": v === current,
-                  "hover:shadow-elevation-card-rest transition-shadow ease-in-out duration-150":
+                  "border-black bg-black text-white": v === current,
+                  "hover:border-black":
                     v !== current,
                 }
               )}
