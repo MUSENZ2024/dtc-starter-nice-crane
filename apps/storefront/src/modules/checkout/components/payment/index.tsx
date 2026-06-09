@@ -10,7 +10,6 @@ import PaymentContainer, {
 import Divider from "@modules/common/components/divider"
 import {
   Button,
-  Container,
   Heading,
   Text,
   clx,
@@ -214,32 +213,32 @@ const Payment = ({
 
         <div className={isOpen ? "hidden" : "block"}>
           {cart && paymentReady && activeSession ? (
-            <div className="flex items-start gap-x-1 w-full">
-              <div className="flex flex-col w-1/3">
-                <Text className="txt-medium-plus text-ui-fg-base mb-1">
+            <div className="grid w-full gap-3 small:grid-cols-2">
+              <div className="rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
+                <Text className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.08em] text-muse-text-muted">
                   Payment method
                 </Text>
                 <Text
-                  className="txt-medium text-ui-fg-subtle"
+                  className="text-[14px] font-bold text-muse-black"
                   data-testid="payment-method-summary"
                 >
                   {paymentInfoMap[activeSession?.provider_id]?.title ||
                     activeSession?.provider_id}
                 </Text>
               </div>
-              <div className="flex flex-col w-1/3">
-                <Text className="txt-medium-plus text-ui-fg-base mb-1">
+              <div className="rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
+                <Text className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.08em] text-muse-text-muted">
                   Payment details
                 </Text>
                 <div
-                  className="flex gap-2 txt-medium text-ui-fg-subtle items-center"
+                  className="flex items-center gap-2 text-[14px] font-bold text-muse-black"
                   data-testid="payment-details-summary"
                 >
-                  <Container className="flex items-center h-7 w-fit p-2 bg-ui-button-neutral-hover">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full border border-muse-input bg-white text-muse-text-muted">
                     {paymentInfoMap[selectedPaymentMethod]?.icon || (
                       <CreditCard />
                     )}
-                  </Container>
+                  </span>
                   <Text>
                     {isStripeLike(selectedPaymentMethod) && cardBrand
                       ? cardBrand
