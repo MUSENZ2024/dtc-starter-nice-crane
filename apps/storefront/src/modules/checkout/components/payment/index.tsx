@@ -43,6 +43,9 @@ const Payment = ({
   const pathname = usePathname()
 
   const isOpen = searchParams.get("step") === "payment"
+  const refreshCart = () => {
+    router.refresh()
+  }
 
   const setPaymentMethod = async (method: string) => {
     setError(null)
@@ -51,6 +54,7 @@ const Payment = ({
       await initiatePaymentSession(cart, {
         provider_id: method,
       })
+      refreshCart()
     }
   }
 
@@ -90,6 +94,7 @@ const Payment = ({
         await initiatePaymentSession(cart, {
           provider_id: selectedPaymentMethod,
         })
+        refreshCart()
       }
 
       if (!shouldInputCard) {
