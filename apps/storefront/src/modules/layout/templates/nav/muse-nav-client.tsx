@@ -150,6 +150,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   const [mounted, setMounted] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
+  const [searchPanelTop, setSearchPanelTop] = useState(96)
   const [query, setQuery] = useState("")
   const searchTouchStartY = useRef<number | null>(null)
   const router = useRouter()
@@ -265,6 +266,27 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
       desktopButton?.removeEventListener("click", onDesktopSearchClick)
     }
   }, [])
+
+  useEffect(() => {
+    if (!searchOpen) {
+      return
+    }
+
+    const measureSearchPanelTop = () => {
+      const nav = document.getElementById("muse-nav")
+      const bottom = nav?.getBoundingClientRect().bottom
+      setSearchPanelTop(Math.max(0, Math.round(bottom || 0)))
+    }
+
+    measureSearchPanelTop()
+    window.addEventListener("resize", measureSearchPanelTop)
+    window.addEventListener("scroll", measureSearchPanelTop, { passive: true })
+
+    return () => {
+      window.removeEventListener("resize", measureSearchPanelTop)
+      window.removeEventListener("scroll", measureSearchPanelTop)
+    }
+  }, [searchOpen])
 
   useEffect(() => {
     if (!searchOpen) {
@@ -487,10 +509,10 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
             style={{
               position: "fixed",
               display: "block",
-              top: "96px",
+              top: `${searchPanelTop}px`,
               left: 0,
               width: "100vw",
-              height: "calc(100vh - 96px)",
+              height: `calc(100dvh - ${searchPanelTop}px)`,
               zIndex: 9998,
               opacity: searchOpen ? 1 : 0,
               pointerEvents: searchOpen ? "auto" : "none",
@@ -507,7 +529,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
             }`}
             style={{
               position: "fixed",
-              top: "96px",
+              top: `${searchPanelTop}px`,
               right: 0,
               left: 0,
               zIndex: 9999,

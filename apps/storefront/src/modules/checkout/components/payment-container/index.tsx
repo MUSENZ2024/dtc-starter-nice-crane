@@ -1,7 +1,7 @@
 import { Radio as RadioGroupOption } from "@headlessui/react"
 import { HttpTypes } from "@medusajs/types"
 import { clx } from "@modules/common/components/ui"
-import React, { useContext, useMemo, type JSX } from "react"
+import React, { useContext, useEffect, useMemo, useState, type JSX } from "react"
 
 import { isManual } from "@lib/constants"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
@@ -9,6 +9,10 @@ import { PaymentElement } from "@stripe/react-stripe-js"
 import { StripePaymentElementOptions } from "@stripe/stripe-js"
 import PaymentTest from "../payment-test"
 import { StripeContext } from "../payment-wrapper/stripe-wrapper"
+
+const stripePublishableKey =
+  process.env.NEXT_PUBLIC_STRIPE_KEY ||
+  process.env.NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY
 
 type PaymentContainerProps = {
   paymentProviderId: string
@@ -88,6 +92,7 @@ export const StripeCardContainer = ({
   setPaymentComplete: (complete: boolean) => void
 }) => {
   const stripeReady = useContext(StripeContext)
+  const [stripeLoadMessage, setStripeLoadMessage] = useState<string | null>(null)
   const billingAddress = cart.billing_address ?? cart.shipping_address
   const billingName = [
     billingAddress?.first_name,
@@ -130,6 +135,39 @@ export const StripeCardContainer = ({
     }
   }, [billingAddress, billingName, cart.email, countryCode])
 
+  const isSelected = selectedPaymentOptionId === paymentProviderId
+
+  useEffect(() => {
+    if (!isSelected) {
+      setStripeLoadMessage(null)
+      return
+    }
+
+    setPaymentComplete(false)
+
+    if (!stripePublishableKey) {
+      const message =
+        "Stripe publishable key is missing on this deployment. Set NEXT_PUBLIC_STRIPE_KEY or NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY."
+      setStripeLoadMessage(message)
+      setError(message)
+      return
+    }
+
+    if (stripeReady) {
+      setStripeLoadMessage(null)
+      return
+    }
+
+    const timeout = window.setTimeout(() => {
+      const message =
+        "Stripe is still loading. Check that the live Stripe publishable key and Medusa payment session are configured for this domain."
+      setStripeLoadMessage(message)
+      setError(message)
+    }, 8000)
+
+    return () => window.clearTimeout(timeout)
+  }, [isSelected, setError, setPaymentComplete, stripeReady])
+
   return (
     <PaymentContainer
       paymentProviderId={paymentProviderId}
@@ -137,11 +175,12 @@ export const StripeCardContainer = ({
       paymentInfoMap={paymentInfoMap}
       disabled={disabled}
     >
-      {selectedPaymentOptionId === paymentProviderId &&
+      {isSelected &&
         (stripeReady ? (
           <PaymentElement
             options={useOptions}
             onChange={(e) => {
+              setStripeLoadMessage(null)
               setError(null)
               setPaymentComplete(e.complete)
             }}
@@ -153,6 +192,10 @@ export const StripeCardContainer = ({
               setPaymentComplete(false)
             }}
           />
+        ) : stripeLoadMessage ? (
+          <div className="rounded-xl border border-muse-orange/25 bg-[#FDF4EF] px-4 py-3 text-[12px] font-semibold leading-relaxed text-muse-orange">
+            {stripeLoadMessage}
+          </div>
         ) : (
           <SkeletonCardDetails />
         ))}

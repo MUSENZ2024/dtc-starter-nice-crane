@@ -130,6 +130,9 @@ export default function StepShipping({
   >([])
   const [isFetchingPredictions, setIsFetchingPredictions] = useState(false)
   const [isAddressFocused, setIsAddressFocused] = useState(false)
+  const [placesStatusMessage, setPlacesStatusMessage] = useState<string | null>(
+    googleMapsApiKey ? null : "Google address autocomplete is not configured on this deployment."
+  )
   const [form, setForm] = useState<AddressForm>({
     first_name: cart.shipping_address?.first_name ?? "",
     last_name: cart.shipping_address?.last_name ?? "",
@@ -265,6 +268,7 @@ export default function StepShipping({
       placesServiceRef.current = new places.PlacesService(
         placesServiceElementRef.current
       )
+      setPlacesStatusMessage(null)
     }
 
     ;(window as GoogleMapsWindow)[GOOGLE_PLACES_CALLBACK] = initAutocomplete
@@ -285,6 +289,15 @@ export default function StepShipping({
         script.async = true
         script.defer = true
         script.addEventListener("load", initAutocomplete, { once: true })
+        script.addEventListener(
+          "error",
+          () => {
+            setPlacesStatusMessage(
+              "Google address autocomplete could not load. Check the live Google Maps API key and domain restrictions."
+            )
+          },
+          { once: true }
+        )
         document.head.appendChild(script)
       }
     }
@@ -344,7 +357,7 @@ export default function StepShipping({
           <div className="grid gap-3 xsmall:grid-cols-2">
             <Field label="First name" placeholder="First name" value={form.first_name} onChange={(value) => updateField("first_name", value)} autoComplete="given-name" required />
             <Field label="Last name" placeholder="Last name" value={form.last_name} onChange={(value) => updateField("last_name", value)} autoComplete="family-name" required />
-            <Field label="Address" placeholder="Start typing your address..." value={form.address_1} onChange={handleAddressChange} autoComplete="new-password" required className="xsmall:col-span-2" inputRef={addressInputRef} name="muse-delivery-address-search" onFocus={() => { setIsAddressFocused(true); fetchAddressPredictions(form.address_1) }} onBlur={() => window.setTimeout(() => setIsAddressFocused(false), 160)} predictions={isAddressFocused ? addressPredictions : []} isFetchingPredictions={isAddressFocused && isFetchingPredictions} onPredictionSelect={handlePredictionSelect} />
+            <Field label="Address" placeholder="Start typing your address..." value={form.address_1} onChange={handleAddressChange} autoComplete="new-password" required className="xsmall:col-span-2" inputRef={addressInputRef} name="muse-delivery-address-search" onFocus={() => { setIsAddressFocused(true); fetchAddressPredictions(form.address_1) }} onBlur={() => window.setTimeout(() => setIsAddressFocused(false), 160)} predictions={isAddressFocused ? addressPredictions : []} isFetchingPredictions={isAddressFocused && isFetchingPredictions} onPredictionSelect={handlePredictionSelect} helperText={placesStatusMessage ?? undefined} />
             <Field label="Apartment, suite, unit (optional)" placeholder="Apt 2B" value={form.address_2} onChange={(value) => updateField("address_2", value)} autoComplete="address-line2" className="xsmall:col-span-2" />
             <Field label="Suburb" placeholder="Ponsonby" value={form.province} onChange={(value) => updateField("province", value)} autoComplete="address-level3" required />
             <Field label="City" placeholder="Auckland" value={form.city} onChange={(value) => updateField("city", value)} autoComplete="address-level2" required />
@@ -424,6 +437,7 @@ function Field({
   predictions = [],
   isFetchingPredictions = false,
   onPredictionSelect,
+  helperText,
 }: {
   label: string
   labelExtra?: string
@@ -442,6 +456,7 @@ function Field({
   predictions?: GoogleAutocompletePrediction[]
   isFetchingPredictions?: boolean
   onPredictionSelect?: (prediction: GoogleAutocompletePrediction) => void
+  helperText?: string
 }) {
   return (
     <label className={`relative flex flex-col gap-1.5 ${className}`}>
@@ -470,6 +485,11 @@ function Field({
         maxLength={maxLength}
         className="w-full rounded-xl border border-muse-input bg-white px-4 py-3.5 text-[14px] text-muse-black outline-none transition placeholder:text-[#c0bdb8] focus:border-muse-black focus:ring-2 focus:ring-black/5"
       />
+      {helperText && (
+        <span className="text-[11px] font-medium leading-relaxed text-muse-text-light">
+          {helperText}
+        </span>
+      )}
       {(isFetchingPredictions || predictions.length > 0) && (
         <div className="absolute left-0 right-0 top-full z-[9999] mt-2 overflow-hidden rounded-2xl border border-muse-border bg-white shadow-[0_14px_36px_rgba(0,0,0,0.14)]">
           <div className="border-b border-muse-border px-4 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-muse-text-light">
