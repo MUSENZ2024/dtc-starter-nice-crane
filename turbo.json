@@ -18,6 +18,9 @@
     "test": {
       "outputs": []
     },
+    "typecheck": {
+      "outputs": []
+    },
     "seed": {
       "outputs": []
     }

@@ -70,26 +70,36 @@ const StripePaymentButton = ({
 
   const stripe = useStripe()
   const elements = useElements()
-  const card = elements?.getElement("card")
 
   const session = cart.payment_collection?.payment_sessions?.find(
     (s) => s.status === "pending"
   )
+  const clientSecret = session?.data.client_secret as string | undefined
 
   const disabled = !stripe || !elements ? true : false
 
   const handlePayment = async () => {
     setSubmitting(true)
+    setErrorMessage(null)
 
-    if (!stripe || !elements || !card || !cart) {
+    if (!stripe || !elements || !cart) {
       setSubmitting(false)
       return
     }
 
-    await stripe
-      .confirmCardPayment(session?.data.client_secret as string, {
-        payment_method: {
-          card: card,
+    const { error: submitError } = await elements.submit()
+
+    if (submitError) {
+      setErrorMessage(submitError.message || "Please check your payment details.")
+      setSubmitting(false)
+      return
+    }
+
+    const { error, paymentIntent } = await stripe.confirmPayment({
+      elements,
+      clientSecret: clientSecret as string,
+      confirmParams: {
+        payment_method_data: {
           billing_details: {
             name:
               cart.billing_address?.first_name +
@@ -107,31 +117,48 @@ const StripePaymentButton = ({
             phone: cart.billing_address?.phone ?? undefined,
           },
         },
-      })
-      .then(({ error, paymentIntent }) => {
-        if (error) {
-          const pi = error.payment_intent
+        return_url: `${window.location.origin}/${
+          cart.shipping_address?.country_code || "nz"
+        }/checkout?step=review&muse_step=payment`,
+      },
+      redirect: "if_required",
+    })
 
-          if (
-            (pi && pi.status === "requires_capture") ||
-            (pi && pi.status === "succeeded")
-          ) {
-            onPaymentCompleted()
-          }
+    if (error) {
+      const pi = error.payment_intent
 
-          setErrorMessage(error.message || null)
-          return
+      if (
+        (pi && pi.status === "requires_capture") ||
+        (pi && pi.status === "succeeded")
+      ) {
+        if (clientSecret) {
+          window.sessionStorage.setItem(
+            "muse:lastStripePaymentClientSecret",
+            clientSecret
+          )
         }
+        return onPaymentCompleted()
+      }
 
-        if (
-          (paymentIntent && paymentIntent.status === "requires_capture") ||
-          paymentIntent.status === "succeeded"
-        ) {
-          return onPaymentCompleted()
-        }
+      setErrorMessage(error.message || null)
+      setSubmitting(false)
+      return
+    }
 
-        return
-      })
+    if (
+      (paymentIntent && paymentIntent.status === "requires_capture") ||
+      paymentIntent?.status === "succeeded"
+    ) {
+      if (clientSecret) {
+        window.sessionStorage.setItem(
+          "muse:lastStripePaymentClientSecret",
+          clientSecret
+        )
+      }
+      return onPaymentCompleted()
+    }
+
+    setSubmitting(false)
   }
 
   return (

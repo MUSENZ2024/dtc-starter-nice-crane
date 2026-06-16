@@ -28,6 +28,15 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
   const [activeIndex, setActiveIndex] = useState(0)
   const activeImage = galleryImages[activeIndex] ?? galleryImages[0]
   const thumbSlots = galleryImages.slice(0, 5)
+  const hasMultipleImages = galleryImages.length > 1
+  const showPrevious = () =>
+    setActiveIndex((index) =>
+      index === 0 ? galleryImages.length - 1 : index - 1
+    )
+  const showNext = () =>
+    setActiveIndex((index) =>
+      index === galleryImages.length - 1 ? 0 : index + 1
+    )
 
   return (
     <div>
@@ -54,8 +63,28 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
         <span className="absolute bottom-4 right-4 rounded-full bg-[#0A0A0A]/70 px-3 py-1.5 text-[11px] font-semibold tracking-[0.05em] text-[#F4F2ED] backdrop-blur">
           {activeIndex + 1} / {galleryImages.length}
         </span>
+        {hasMultipleImages && (
+          <>
+            <button
+              type="button"
+              onClick={showPrevious}
+              className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
+              aria-label="Previous product photo"
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              onClick={showNext}
+              className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
+              aria-label="Next product photo"
+            >
+              ›
+            </button>
+          </>
+        )}
         <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
-          {galleryImages.slice(0, 5).map((image, index) => (
+          {galleryImages.map((image, index) => (
             <button
               key={image.id}
               aria-label={`View image ${index + 1}`}

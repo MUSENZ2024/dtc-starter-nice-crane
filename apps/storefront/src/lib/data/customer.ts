@@ -61,6 +61,7 @@ export const updateCustomer = async (body: HttpTypes.StoreUpdateCustomer) => {
 
 export async function signup(_currentState: unknown, formData: FormData) {
   const password = formData.get("password") as string
+  const countryCode = formData.get("country_code") as string
   const customerForm = {
     email: formData.get("email") as string,
     first_name: formData.get("first_name") as string,
@@ -98,6 +99,10 @@ export async function signup(_currentState: unknown, formData: FormData) {
 
     await transferCart()
 
+    if (countryCode) {
+      redirect(`/${countryCode}/account`)
+    }
+
     return createdCustomer
   } catch (error) {
     return String(error)
@@ -107,6 +112,7 @@ export async function signup(_currentState: unknown, formData: FormData) {
 export async function login(_currentState: unknown, formData: FormData) {
   const email = formData.get("email") as string
   const password = formData.get("password") as string
+  const countryCode = formData.get("country_code") as string
 
   try {
     await sdk.auth
@@ -125,6 +131,68 @@ export async function login(_currentState: unknown, formData: FormData) {
   } catch (error) {
     return String(error)
   }
+
+  if (countryCode) {
+    redirect(`/${countryCode}/account`)
+  }
+}
+
+export async function requestPasswordReset(
+  _currentState: { success: boolean; error: string | null },
+  formData: FormData
+): Promise<{ success: boolean; error: string | null }> {
+  const email = formData.get("email") as string
+
+  if (!email) {
+    return { success: false, error: "Email address is required" }
+  }
+
+  try {
+    await sdk.auth.resetPassword("customer", "emailpass", {
+      identifier: email,
+    })
+  } catch {}
+
+  return { success: true, error: null }
+}
+
+export async function resetPassword(
+  _currentState: { success: boolean; error: string | null },
+  formData: FormData
+): Promise<{ success: boolean; error: string | null }> {
+  const email = formData.get("email") as string
+  const token = formData.get("token") as string
+  const password = formData.get("password") as string
+  const confirmPassword = formData.get("confirm_password") as string
+  const countryCode = (formData.get("country_code") as string) || "nz"
+
+  if (!email || !token) {
+    return { success: false, error: "Open this page from the reset email." }
+  }
+
+  if (!password || password.length < 8) {
+    return { success: false, error: "Password must be at least 8 characters." }
+  }
+
+  if (password !== confirmPassword) {
+    return { success: false, error: "Passwords must match." }
+  }
+
+  try {
+    await sdk.auth.updateProvider(
+      "customer",
+      "emailpass",
+      {
+        email,
+        password,
+      },
+      token
+    )
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+
+  redirect(`/${countryCode}/account`)
 }
 
 export async function signout(countryCode: string) {
@@ -176,8 +244,14 @@ export const addCustomerAddress = async (
     province: formData.get("province") as string,
     country_code: formData.get("country_code") as string,
     phone: formData.get("phone") as string,
-    is_default_billing: isDefaultBilling,
-    is_default_shipping: isDefaultShipping,
+    is_default_billing:
+      formData.get("is_default_billing") !== null
+        ? formData.get("is_default_billing") === "on"
+        : isDefaultBilling,
+    is_default_shipping:
+      formData.get("is_default_shipping") !== null
+        ? formData.get("is_default_shipping") === "on"
+        : isDefaultShipping,
   }
 
   const headers = {
@@ -239,9 +313,19 @@ export const updateCustomerAddress = async (
   } as HttpTypes.StoreUpdateCustomerAddress
 
   const phone = formData.get("phone") as string
+  const isDefaultBilling = formData.get("is_default_billing")
+  const isDefaultShipping = formData.get("is_default_shipping")
 
   if (phone) {
     address.phone = phone
+  }
+
+  if (isDefaultBilling !== null) {
+    address.is_default_billing = isDefaultBilling === "on"
+  }
+
+  if (isDefaultShipping !== null) {
+    address.is_default_shipping = isDefaultShipping === "on"
   }
 
   const headers = {

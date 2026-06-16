@@ -16,15 +16,17 @@ type Props = {
 }
 
 export async function generateStaticParams() {
-  const product_categories = await listCategories()
+  const product_categories = await listCategories().catch(() => [])
 
-  if (!product_categories) {
+  if (!product_categories.length) {
     return []
   }
 
-  const countryCodes = await listRegions().then((regions: StoreRegion[]) =>
-    regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
-  )
+  const countryCodes = await listRegions()
+    .then((regions: StoreRegion[]) =>
+      regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
+    )
+    .catch(() => [])
 
   const categoryHandles = product_categories.map(
     (category: HttpTypes.StoreProductCategory) => category.handle

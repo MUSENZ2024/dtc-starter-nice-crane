@@ -33,6 +33,22 @@ module.exports = {
           80: "#1F2937",
           90: "#111827",
         },
+        muse: {
+          black: "var(--muse-black)",
+          cream: "var(--muse-cream)",
+          "cream-warm": "var(--muse-cream-warm)",
+          "cream-deep": "var(--muse-cream-deep)",
+          yellow: "var(--muse-yellow)",
+          "yellow-deep": "var(--muse-yellow-deep)",
+          orange: "var(--muse-orange)",
+          "orange-soft": "var(--muse-orange-soft)",
+          green: "var(--muse-green)",
+          border: "var(--muse-border)",
+          input: "var(--muse-input)",
+          text: "var(--muse-text)",
+          "text-muted": "var(--muse-text-muted)",
+          "text-light": "var(--muse-text-light)",
+        },
       },
       borderRadius: {
         none: "0px",
@@ -58,6 +74,7 @@ module.exports = {
         "3xl": "2rem",
       },
       fontFamily: {
+        inter: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
         sans: [
           "Inter",
           "-apple-system",
@@ -139,6 +156,10 @@ module.exports = {
           "0%": { transform: "translateY(-100%)" },
           "100%": { transform: "translateY(0)" },
         },
+        "pulse-dot": {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.35" },
+        },
       },
       animation: {
         ring: "ring 2.2s cubic-bezier(0.5, 0, 0.5, 1) infinite",
@@ -154,6 +175,7 @@ module.exports = {
         enter: "enter 200ms ease-out",
         "slide-in": "slide-in 1.2s cubic-bezier(.41,.73,.51,1.02)",
         leave: "leave 150ms ease-in forwards",
+        "pulse-dot": "pulse-dot 2s infinite",
       },
     },
   },

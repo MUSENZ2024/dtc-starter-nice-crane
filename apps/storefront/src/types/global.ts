@@ -18,6 +18,8 @@ export type VariantPrice = {
 }
 
 export type StoreFreeShippingPrice = StorePrice & {
+  current_amount: number
+  target_amount: number
   target_reached: boolean
   target_remaining: number
   remaining_percentage: number

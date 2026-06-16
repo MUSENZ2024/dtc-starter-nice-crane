@@ -101,7 +101,7 @@ pnpm medusa db:migrate
 
 ```bash
 cd apps/backend
-pnpm medusa user -e admin@test.com -p supersecret
+pnpm medusa user -e admin@example.com -p "<generate-a-strong-unique-password>"
 ```
 
 6. Start Medusa backend:

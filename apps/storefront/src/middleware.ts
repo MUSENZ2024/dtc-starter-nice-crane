@@ -4,25 +4,37 @@ import { NextRequest, NextResponse } from "next/server"
 const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
 const PUBLISHABLE_API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
 const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"
+const REGION_FETCH_TIMEOUT_MS = 5000
+
+type RegionMap = Map<string, HttpTypes.StoreRegion | number>
 
 const regionMapCache = {
-  regionMap: new Map<string, HttpTypes.StoreRegion>(),
+  regionMap: new Map<string, HttpTypes.StoreRegion | number>(),
   regionMapUpdated: Date.now(),
 }
 
-async function getRegionMap(cacheId: string) {
+function getFallbackRegionMap() {
+  const fallback = new Map<string, number>()
+  fallback.set(DEFAULT_REGION, 1)
+  fallback.set("nz", 1)
+
+  return fallback
+}
+
+async function getRegionMap(cacheId: string): Promise<RegionMap> {
   const { regionMap, regionMapUpdated } = regionMapCache
 
   if (!BACKEND_URL) {
-    throw new Error(
-      "Middleware.ts: Error fetching regions. Did you set up regions in your Medusa Admin and define a NEXT_PUBLIC_MEDUSA_BACKEND_URL environment variable."
-    )
+    return getFallbackRegionMap()
   }
 
   if (
     !regionMap.keys().next().value ||
     regionMapUpdated < Date.now() - 3600 * 1000
   ) {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), REGION_FETCH_TIMEOUT_MS)
+
     // Fetch regions from Medusa. We can't use the JS client here because middleware is running on Edge and the client needs a Node environment.
     const response = await fetch(`${BACKEND_URL}/store/regions`, {
       method: "GET",
@@ -34,10 +46,13 @@ async function getRegionMap(cacheId: string) {
         tags: [`regions-${cacheId}`],
       },
       cache: "force-cache",
-    })
+      signal: controller.signal,
+    }).catch(() => null)
 
-    if (!response.ok) {
-      throw new Error(`Backend returned ${response.status}`)
+    clearTimeout(timeout)
+
+    if (!response?.ok) {
+      return regionMap.keys().next().value ? regionMap : getFallbackRegionMap()
     }
 
     const json = await response.json()
@@ -45,7 +60,7 @@ async function getRegionMap(cacheId: string) {
     const { regions } = json
 
     if (!regions?.length) {
-      return new Map<string, HttpTypes.StoreRegion>()
+      return regionMap.keys().next().value ? regionMap : getFallbackRegionMap()
     }
 
     // Create a map of country codes to regions.

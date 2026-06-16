@@ -16,14 +16,16 @@ import {
 } from "@modules/common/components/ui"
 import { HttpTypes } from "@medusajs/types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 const Payment = ({
   cart,
   availablePaymentMethods,
+  hideHeading = false,
 }: {
   cart: HttpTypes.StoreCart
   availablePaymentMethods: { id: string }[]
+  hideHeading?: boolean
 }) => {
   const activeSession = cart.payment_collection?.payment_sessions?.find(
     (paymentSession) => paymentSession.status === "pending"
@@ -31,22 +33,26 @@ const Payment = ({
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [cardBrand, setCardBrand] = useState<string | null>(null)
-  const [cardComplete, setCardComplete] = useState(false)
+  const [paymentComplete, setPaymentComplete] = useState(false)
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     activeSession?.provider_id ?? ""
   )
+  const didAutoSelectPayment = useRef(false)
 
   const searchParams = useSearchParams()
   const router = useRouter()
   const pathname = usePathname()
 
   const isOpen = searchParams.get("step") === "payment"
-  const refreshCart = () => {
+  const defaultStripeMethod = useMemo(
+    () => availablePaymentMethods.find((method) => isStripeLike(method.id))?.id,
+    [availablePaymentMethods]
+  )
+  const refreshCart = useCallback(() => {
     router.refresh()
-  }
+  }, [router])
 
-  const setPaymentMethod = async (method: string) => {
+  const setPaymentMethod = useCallback(async (method: string) => {
     setError(null)
     setSelectedPaymentMethod(method)
     if (isStripeLike(method)) {
@@ -55,7 +61,7 @@ const Payment = ({
       })
       refreshCart()
     }
-  }
+  }, [cart, refreshCart])
 
   const paidByGiftcard = !!(
     (cart as unknown as Record<string, unknown>)?.gift_cards && ((cart as unknown as Record<string, unknown>)?.gift_cards as unknown[])?.length > 0 && cart?.total === 0
@@ -105,7 +111,7 @@ const Payment = ({
         )
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(getAdaptivePaymentError(err))
     } finally {
       setIsLoading(false)
     }
@@ -115,34 +121,59 @@ const Payment = ({
     setError(null)
   }, [isOpen])
 
+  useEffect(() => {
+    if (
+      !isOpen ||
+      paidByGiftcard ||
+      selectedPaymentMethod ||
+      !defaultStripeMethod ||
+      didAutoSelectPayment.current
+    ) {
+      return
+    }
+
+    didAutoSelectPayment.current = true
+    setPaymentMethod(defaultStripeMethod).catch((err) => {
+      setError(getAdaptivePaymentError(err))
+    })
+  }, [
+    defaultStripeMethod,
+    isOpen,
+    paidByGiftcard,
+    selectedPaymentMethod,
+    setPaymentMethod,
+  ])
+
   return (
     <div className="bg-white">
-      <div className="flex flex-row items-center justify-between mb-6">
-        <Heading
-          level="h2"
-          className={clx(
-            "flex flex-row text-3xl-regular gap-x-2 items-baseline",
-            {
-              "opacity-50 pointer-events-none select-none":
-                !isOpen && !paymentReady,
-            }
+      {!hideHeading && (
+        <div className="flex flex-row items-center justify-between mb-6">
+          <Heading
+            level="h2"
+            className={clx(
+              "flex flex-row text-3xl-regular gap-x-2 items-baseline",
+              {
+                "opacity-50 pointer-events-none select-none":
+                  !isOpen && !paymentReady,
+              }
+            )}
+          >
+            Payment
+            {!isOpen && paymentReady && <CheckCircleSolid />}
+          </Heading>
+          {!isOpen && paymentReady && (
+            <Text>
+              <button
+                onClick={handleEdit}
+                className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
+                data-testid="edit-payment-button"
+              >
+                Edit
+              </button>
+            </Text>
           )}
-        >
-          Payment
-          {!isOpen && paymentReady && <CheckCircleSolid />}
-        </Heading>
-        {!isOpen && paymentReady && (
-          <Text>
-            <button
-              onClick={handleEdit}
-              className="text-ui-fg-interactive hover:text-ui-fg-interactive-hover"
-              data-testid="edit-payment-button"
-            >
-              Edit
-            </button>
-          </Text>
-        )}
-      </div>
+        </div>
+      )}
       <div>
         <div className={isOpen ? "block" : "hidden"}>
           {!paidByGiftcard && availablePaymentMethods?.length && (
@@ -158,9 +189,9 @@ const Payment = ({
                         paymentProviderId={paymentMethod.id}
                         selectedPaymentOptionId={selectedPaymentMethod}
                         paymentInfoMap={paymentInfoMap}
-                        setCardBrand={setCardBrand}
+                        cart={cart}
                         setError={setError}
-                        setCardComplete={setCardComplete}
+                        setPaymentComplete={setPaymentComplete}
                       />
                     ) : (
                       <PaymentContainer
@@ -200,21 +231,47 @@ const Payment = ({
             onClick={handleSubmit}
             isLoading={isLoading}
             disabled={
-              (isStripeLike(selectedPaymentMethod) && !cardComplete) ||
+              (isStripeLike(selectedPaymentMethod) && !paymentComplete) ||
               (!selectedPaymentMethod && !paidByGiftcard)
             }
             data-testid="submit-payment-button"
           >
             {!activeSession && isStripeLike(selectedPaymentMethod)
-              ? " Enter card details"
-              : "Continue to review"}
+              ? "Enter payment details"
+              : "Review order"}
           </Button>
         </div>
 
         <div className={isOpen ? "hidden" : "block"}>
           {cart && paymentReady && activeSession ? (
-            <div className="grid w-full gap-3 small:grid-cols-2">
-              <div className="rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
+            <div className="rounded-2xl border border-muse-border bg-white p-3">
+              <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                <Text className="text-[11.5px] font-extrabold uppercase tracking-[0.08em] text-muse-text-muted">
+                  Payment saved
+                </Text>
+                <button
+                  type="button"
+                  onClick={handleEdit}
+                  className="text-[11.5px] font-extrabold uppercase tracking-[0.1em] text-muse-orange transition hover:text-muse-black"
+                  data-testid="edit-payment-button"
+                >
+                  Edit
+                </button>
+              </div>
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={handleEdit}
+                className="grid w-full gap-3 text-left small:grid-cols-2"
+                aria-label="Edit payment details"
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault()
+                    handleEdit()
+                  }
+                }}
+              >
+                <div className="rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
                 <Text className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.08em] text-muse-text-muted">
                   Payment method
                 </Text>
@@ -226,7 +283,7 @@ const Payment = ({
                     activeSession?.provider_id}
                 </Text>
               </div>
-              <div className="rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
+                <div className="rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
                 <Text className="mb-1 block text-[11.5px] font-extrabold uppercase tracking-[0.08em] text-muse-text-muted">
                   Payment details
                 </Text>
@@ -240,11 +297,12 @@ const Payment = ({
                     )}
                   </span>
                   <Text>
-                    {isStripeLike(selectedPaymentMethod) && cardBrand
-                      ? cardBrand
+                    {isStripeLike(selectedPaymentMethod)
+                      ? "Entered securely with Stripe"
                       : "Another step will appear"}
                   </Text>
                 </div>
+              </div>
               </div>
             </div>
           ) : paidByGiftcard ? (
@@ -268,3 +326,18 @@ const Payment = ({
 }
 
 export default Payment
+
+function getAdaptivePaymentError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error)
+  const lowerMessage = message.toLowerCase()
+
+  if (lowerMessage.includes("shipping")) {
+    return "Choose a delivery method before continuing to payment."
+  }
+
+  if (lowerMessage.includes("payment") || lowerMessage.includes("stripe")) {
+    return "We could not start the secure payment step. Check your details and try again."
+  }
+
+  return message || "Something went wrong. Please review the highlighted step and try again."
+}

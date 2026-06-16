@@ -1,11 +1,12 @@
 import { Radio as RadioGroupOption } from "@headlessui/react"
+import { HttpTypes } from "@medusajs/types"
 import { clx } from "@modules/common/components/ui"
 import React, { useContext, useMemo, type JSX } from "react"
 
 import { isManual } from "@lib/constants"
 import SkeletonCardDetails from "@modules/skeletons/components/skeleton-card-details"
-import { CardElement } from "@stripe/react-stripe-js"
-import { StripeCardElementOptions } from "@stripe/stripe-js"
+import { PaymentElement } from "@stripe/react-stripe-js"
+import { StripePaymentElementOptions } from "@stripe/stripe-js"
 import PaymentTest from "../payment-test"
 import { StripeContext } from "../payment-wrapper/stripe-wrapper"
 
@@ -78,41 +79,56 @@ export const StripeCardContainer = ({
   selectedPaymentOptionId,
   paymentInfoMap,
   disabled = false,
-  setCardBrand,
+  cart,
   setError,
-  setCardComplete,
+  setPaymentComplete,
 }: Omit<PaymentContainerProps, "children"> & {
-  setCardBrand: (brand: string) => void
+  cart: HttpTypes.StoreCart
   setError: (error: string | null) => void
-  setCardComplete: (complete: boolean) => void
+  setPaymentComplete: (complete: boolean) => void
 }) => {
   const stripeReady = useContext(StripeContext)
+  const billingAddress = cart.billing_address ?? cart.shipping_address
+  const billingName = [
+    billingAddress?.first_name,
+    billingAddress?.last_name,
+  ]
+    .filter(Boolean)
+    .join(" ")
+  const countryCode = (
+    billingAddress?.country_code ??
+    cart.shipping_address?.country_code ??
+    "nz"
+  ).toUpperCase()
 
-  const useOptions: StripeCardElementOptions = useMemo(() => {
+  const useOptions: StripePaymentElementOptions = useMemo(() => {
     return {
-      style: {
-        base: {
-          fontFamily: "Inter, system-ui, sans-serif",
-          fontSize: "14px",
-          fontWeight: "500",
-          color: "#111111",
-          iconColor: "#6f6a64",
-          "::placeholder": {
-            color: "#9b978f",
+      defaultValues: {
+        billingDetails: {
+          name: billingName || undefined,
+          email: cart.email || undefined,
+          phone: billingAddress?.phone || undefined,
+          address: {
+            line1: billingAddress?.address_1 || undefined,
+            line2: billingAddress?.address_2 || undefined,
+            city: billingAddress?.city || undefined,
+            state: billingAddress?.province || undefined,
+            postal_code: billingAddress?.postal_code || undefined,
+            country: countryCode,
           },
         },
-        invalid: {
-          color: "#C1440E",
-          iconColor: "#C1440E",
+      },
+      fields: {
+        billingDetails: {
+          address: "never",
         },
       },
-      classes: {
-        base: "block w-full rounded-xl border border-muse-input bg-white px-4 py-4 transition focus:border-muse-black focus:ring-2 focus:ring-black/5",
-        focus: "border-muse-black ring-2 ring-black/5",
-        invalid: "border-muse-orange bg-muse-orange-soft",
+      layout: {
+        type: "tabs",
       },
+      paymentMethodOrder: ["card", "afterpay_clearpay", "klarna", "link"],
     }
-  }, [])
+  }, [billingAddress, billingName, cart.email, countryCode])
 
   return (
     <PaymentContainer
@@ -123,24 +139,20 @@ export const StripeCardContainer = ({
     >
       {selectedPaymentOptionId === paymentProviderId &&
         (stripeReady ? (
-          <div className="rounded-2xl border border-muse-border bg-muse-cream-warm p-4 transition-all duration-150 ease-in-out">
-            <label className="mb-2 block text-[11.5px] font-extrabold uppercase tracking-[0.08em] text-muse-text-muted">
-              Card details
-            </label>
-            <CardElement
-              options={useOptions as StripeCardElementOptions}
-              onChange={(e) => {
-                setCardBrand(
-                  e.brand && e.brand.charAt(0).toUpperCase() + e.brand.slice(1)
-                )
-                setError(e.error?.message || null)
-                setCardComplete(e.complete)
-              }}
-            />
-            <p className="mt-3 text-[11.5px] leading-relaxed text-muse-text-light">
-              Secure card processing by Stripe.
-            </p>
-          </div>
+          <PaymentElement
+            options={useOptions}
+            onChange={(e) => {
+              setError(null)
+              setPaymentComplete(e.complete)
+            }}
+            onLoadError={(event) => {
+              setError(
+                event.error?.message ||
+                  "Stripe payment methods could not load. Refresh the page or choose another payment method."
+              )
+              setPaymentComplete(false)
+            }}
+          />
         ) : (
           <SkeletonCardDetails />
         ))}

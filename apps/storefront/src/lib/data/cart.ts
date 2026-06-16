@@ -127,34 +127,30 @@ export async function addToCart({
     throw new Error("Missing variant ID when adding to cart")
   }
 
-  const cart = await getOrSetCart(countryCode)
+  let cart = await getOrSetCart(countryCode)
 
   if (!cart) {
     throw new Error("Error retrieving or creating cart")
   }
 
-  const headers = {
-    ...(await getAuthHeaders()),
+  try {
+    await createCartLineItem(cart.id, variantId, quantity)
+    await revalidateCartState()
+  } catch (error) {
+    if (!isRecoverableStaleCartError(error)) {
+      medusaError(error)
+    }
+
+    await resetCartState()
+    cart = await getOrSetCart(countryCode)
+
+    if (!cart) {
+      throw new Error("Error creating a fresh cart")
+    }
+
+    await createCartLineItem(cart.id, variantId, quantity)
+    await revalidateCartState()
   }
-
-  await sdk.store.cart
-    .createLineItem(
-      cart.id,
-      {
-        variant_id: variantId,
-        quantity,
-      },
-      {},
-      headers
-    )
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
-
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag)
-    })
-    .catch(medusaError)
 }
 
 export async function updateLineItem({
@@ -178,16 +174,69 @@ export async function updateLineItem({
     ...(await getAuthHeaders()),
   }
 
-  await sdk.store.cart
-    .updateLineItem(cartId, lineId, { quantity }, {}, headers)
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
+  try {
+    await sdk.store.cart.updateLineItem(cartId, lineId, { quantity }, {}, headers)
+    await revalidateCartState()
+  } catch (error) {
+    if (isRecoverableStaleCartError(error)) {
+      await resetCartState()
+      return
+    }
 
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag)
-    })
-    .catch(medusaError)
+    medusaError(error)
+  }
+}
+
+export async function replaceLineItem({
+  lineId,
+  variantId,
+  quantity,
+  countryCode,
+}: {
+  lineId: string
+  variantId: string
+  quantity: number
+  countryCode: string
+}) {
+  if (!lineId) {
+    throw new Error("Missing lineItem ID when replacing line item")
+  }
+
+  if (!variantId) {
+    throw new Error("Missing variant ID when replacing line item")
+  }
+
+  const cart = await getOrSetCart(countryCode)
+
+  if (!cart) {
+    throw new Error("Error retrieving or creating cart")
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  try {
+    await sdk.store.cart.deleteLineItem(cart.id, lineId, {}, headers)
+    await sdk.store.cart.createLineItem(
+      cart.id,
+      {
+        variant_id: variantId,
+        quantity,
+      },
+      {},
+      headers
+    )
+    await revalidateCartState()
+  } catch (error) {
+    if (isRecoverableStaleCartError(error)) {
+      await resetCartState()
+      await addToCart({ variantId, quantity, countryCode })
+      return
+    }
+
+    medusaError(error)
+  }
 }
 
 export async function deleteLineItem(lineId: string) {
@@ -205,16 +254,80 @@ export async function deleteLineItem(lineId: string) {
     ...(await getAuthHeaders()),
   }
 
-  await sdk.store.cart
-    .deleteLineItem(cartId, lineId, {}, headers)
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
+  try {
+    await sdk.store.cart.deleteLineItem(cartId, lineId, {}, headers)
+    await revalidateCartState()
+  } catch (error) {
+    if (isCompletedCartError(error)) {
+      await resetCartState()
+      return
+    }
 
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag)
-    })
-    .catch(medusaError)
+    if (isPaymentSessionCleanupError(error)) {
+      await resetCartState()
+
+      const cart = await retrieveCart(cartId)
+      const lineStillExists = cart?.items?.some((item) => item.id === lineId)
+
+      if (!lineStillExists) {
+        return
+      }
+    }
+
+    medusaError(error)
+  }
+}
+
+async function revalidateCartState() {
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
+
+  const fulfillmentCacheTag = await getCacheTag("fulfillment")
+  revalidateTag(fulfillmentCacheTag)
+}
+
+async function resetCartState() {
+  await removeCartId()
+  await revalidateCartState()
+}
+
+async function createCartLineItem(
+  cartId: string,
+  variantId: string,
+  quantity: number
+) {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  await sdk.store.cart.createLineItem(
+    cartId,
+    {
+      variant_id: variantId,
+      quantity,
+    },
+    {},
+    headers
+  )
+}
+
+function isPaymentSessionCleanupError(error: unknown) {
+  return getErrorMessage(error).includes("delete all payment sessions")
+}
+
+function isCompletedCartError(error: unknown) {
+  return getErrorMessage(error).includes("already completed")
+}
+
+function isRecoverableStaleCartError(error: unknown) {
+  return isPaymentSessionCleanupError(error) || isCompletedCartError(error)
+}
+
+function getErrorMessage(error: unknown) {
+  const message =
+    error instanceof Error ? error.message : JSON.stringify(error)
+
+  return message.toLowerCase()
 }
 
 export async function setShippingMethod({
@@ -266,16 +379,17 @@ export async function applyPromotions(codes: string[]) {
     ...(await getAuthHeaders()),
   }
 
-  return sdk.store.cart
-    .update(cartId, { promo_codes: codes }, {}, headers)
-    .then(async () => {
-      const cartCacheTag = await getCacheTag("carts")
-      revalidateTag(cartCacheTag)
+  try {
+    await sdk.store.cart.update(cartId, { promo_codes: codes }, {}, headers)
+    await revalidateCartState()
+  } catch (error) {
+    if (isRecoverableStaleCartError(error)) {
+      await resetCartState()
+      return
+    }
 
-      const fulfillmentCacheTag = await getCacheTag("fulfillment")
-      revalidateTag(fulfillmentCacheTag)
-    })
-    .catch(medusaError)
+    medusaError(error)
+  }
 }
 
 export async function applyGiftCard(code: string) {

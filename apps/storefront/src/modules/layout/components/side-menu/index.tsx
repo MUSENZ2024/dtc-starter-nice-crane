@@ -11,23 +11,32 @@ import CountrySelect from "../country-select"
 import LanguageSelect from "../language-select"
 import { Locale } from "@lib/data/locales"
 
-
-const SideMenuItems = {
-  Home: "/",
-  Store: "/store",
-  Account: "/account",
-  Cart: "/cart",
+type NavLink = {
+  label: string
+  href: string
 }
 
 type SideMenuProps = {
   regions: HttpTypes.StoreRegion[] | null
   locales: Locale[] | null
   currentLocale: string | null
+  navLinks: NavLink[]
 }
 
-const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
+const SideMenu = ({
+  regions,
+  locales,
+  currentLocale,
+  navLinks,
+}: SideMenuProps) => {
   const countryToggleState = useToggleState()
   const languageToggleState = useToggleState()
+  const sideMenuItems = [
+    { label: "Home", href: "/" },
+    ...navLinks,
+    { label: "Account", href: "/account" },
+    { label: "Cart", href: "/cart" },
+  ]
 
   return (
     <div className="h-full">
@@ -73,16 +82,18 @@ const SideMenu = ({ regions, locales, currentLocale }: SideMenuProps) => {
                       </button>
                     </div>
                     <ul className="flex flex-col gap-6 items-start justify-start">
-                      {Object.entries(SideMenuItems).map(([name, href]) => {
+                      {sideMenuItems.map(({ label, href }) => {
                         return (
-                          <li key={name}>
+                          <li key={`${label}-${href}`}>
                             <LocalizedClientLink
                               href={href}
                               className="text-3xl leading-10 hover:text-ui-fg-disabled"
                               onClick={close}
-                              data-testid={`${name.toLowerCase()}-link`}
+                              data-testid={`${label
+                                .toLowerCase()
+                                .replace(/\s+/g, "-")}-link`}
                             >
-                              {name}
+                              {label}
                             </LocalizedClientLink>
                           </li>
                         )

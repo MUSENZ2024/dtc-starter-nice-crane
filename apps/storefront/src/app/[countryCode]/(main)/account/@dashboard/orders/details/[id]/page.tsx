@@ -1,5 +1,5 @@
 import { retrieveOrder } from "@lib/data/orders"
-import OrderDetailsTemplate from "@modules/order/templates/order-details-template"
+import MuseOrderDetail from "@modules/account/components/muse-account/order-detail"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
@@ -29,5 +29,5 @@ export default async function OrderDetailPage(props: Props) {
     notFound()
   }
 
-  return <OrderDetailsTemplate order={order} />
+  return <MuseOrderDetail order={order} />
 }

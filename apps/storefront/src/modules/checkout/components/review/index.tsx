@@ -32,20 +32,20 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
             }
           )}
         >
-          Review
+          Checkout
         </Heading>
       </div>
       {isOpen && previousStepsCompleted && (
         <>
-          <div className="flex items-start gap-x-1 w-full mb-6">
-            <div className="w-full">
-              <Text className="txt-medium-plus text-ui-fg-base mb-1">
-                By clicking the Place Order button, you confirm that you have
-                read, understand and accept our Terms of Use, Terms of Sale and
-                Returns Policy and acknowledge that you have read Medusa
-                Store&apos;s Privacy Policy.
-              </Text>
-            </div>
+          <div className="mb-6 rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
+            <Text className="mb-2 text-[14px] font-bold text-muse-black">
+              Review your order before payment is confirmed.
+            </Text>
+            <Text className="text-[12.5px] leading-relaxed text-muse-text-muted">
+              By placing your order, you agree to MUSE NZ&apos;s Terms of
+              Service, Returns Policy, and Privacy Policy. Your payment is
+              processed securely and your confirmation is sent by email.
+            </Text>
           </div>
           <PaymentButton cart={cart} data-testid="submit-order-button" />
         </>

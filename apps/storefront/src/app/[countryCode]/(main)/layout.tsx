@@ -1,5 +1,7 @@
 import { Metadata } from "next"
 
+import { CartDrawerProvider } from "@lib/context/cart-drawer-context"
+import { SavedItemsProvider } from "@lib/context/saved-items-context"
 import { listCartOptions, retrieveCart } from "@lib/data/cart"
 import { retrieveCustomer } from "@lib/data/customer"
 import { getBaseURL } from "@lib/util/env"
@@ -25,21 +27,23 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
   }
 
   return (
-    <>
-      <Nav />
-      {customer && cart && (
-        <CartMismatchBanner customer={customer} cart={cart} />
-      )}
+    <CartDrawerProvider>
+      <SavedItemsProvider>
+        <Nav />
+        {customer && cart && (
+          <CartMismatchBanner customer={customer} cart={cart} />
+        )}
 
-      {cart && (
-        <FreeShippingPriceNudge
-          variant="popup"
-          cart={cart}
-          shippingOptions={shippingOptions}
-        />
-      )}
-      {props.children}
-      <Footer />
-    </>
+        {cart && (
+          <FreeShippingPriceNudge
+            variant="popup"
+            cart={cart}
+            shippingOptions={shippingOptions}
+          />
+        )}
+        {props.children}
+        <Footer />
+      </SavedItemsProvider>
+    </CartDrawerProvider>
   )
 }

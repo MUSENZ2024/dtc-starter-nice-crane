@@ -2,14 +2,13 @@
 
 import { useActionState } from "react"
 import Input from "@modules/common/components/input"
-import { LOGIN_VIEW } from "@modules/account/templates/login-template"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { SubmitButton } from "@modules/checkout/components/submit-button"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { signup } from "@lib/data/customer"
 
 type Props = {
-  setCurrentView: (view: LOGIN_VIEW) => void
+  setCurrentView: (view: "sign-in" | "register") => void
 }
 
 const Register = ({ setCurrentView }: Props) => {
@@ -92,7 +91,7 @@ const Register = ({ setCurrentView }: Props) => {
       <span className="text-center text-ui-fg-base text-small-regular mt-6">
         Already a member?{" "}
         <button
-          onClick={() => setCurrentView(LOGIN_VIEW.SIGN_IN)}
+          onClick={() => setCurrentView("sign-in")}
           className="underline"
         >
           Sign in

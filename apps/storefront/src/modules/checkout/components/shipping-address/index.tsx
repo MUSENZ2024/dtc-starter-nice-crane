@@ -7,6 +7,46 @@ import React, { useEffect, useMemo, useState } from "react"
 import AddressSelect from "../address-select"
 import CountrySelect from "../country-select"
 
+type GooglePlace = {
+  address_components?: GoogleAddressComponent[]
+}
+
+type GoogleAddressComponent = {
+  long_name: string
+  short_name: string
+  types: string[]
+}
+
+type GoogleMapsWindow = Window & {
+  google?: {
+    maps?: {
+      places?: {
+        Autocomplete: new (
+          input: HTMLInputElement,
+          options?: {
+            componentRestrictions?: { country: string | string[] }
+            fields?: string[]
+            types?: string[]
+          }
+        ) => {
+          addListener: (eventName: string, handler: () => void) => void
+          getPlace: () => GooglePlace
+        }
+      }
+    }
+  }
+}
+
+const GOOGLE_PLACES_SCRIPT_ID = "google-maps-places-script"
+const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+
+const getAddressPart = (
+  components: GoogleAddressComponent[],
+  type: string,
+  name: "long_name" | "short_name" = "long_name"
+) =>
+  components.find((component) => component.types.includes(type))?.[name] || ""
+
 const ShippingAddress = ({
   customer,
   cart,
@@ -18,6 +58,8 @@ const ShippingAddress = ({
   checked: boolean
   onChange: () => void
 }) => {
+  const addressInputRef = React.useRef<HTMLInputElement>(null)
+  const hasInitializedPlacesRef = React.useRef(false)
   const [formData, setFormData] = useState<Record<string, string>>({
     "shipping_address.first_name": cart?.shipping_address?.first_name || "",
     "shipping_address.last_name": cart?.shipping_address?.last_name || "",
@@ -43,6 +85,14 @@ const ShippingAddress = ({
         (a) => a.country_code && countriesInRegion?.includes(a.country_code)
       ),
     [customer?.addresses, countriesInRegion]
+  )
+
+  const autocompleteCountryCode = useMemo(
+    () =>
+      cart?.shipping_address?.country_code ||
+      cart?.region?.countries?.[0]?.iso_2 ||
+      "nz",
+    [cart?.region?.countries, cart?.shipping_address?.country_code]
   )
 
   const setFormAddress = (
@@ -81,7 +131,7 @@ const ShippingAddress = ({
     if (cart && !cart.email && customer?.email) {
       setFormAddress(undefined, customer.email)
     }
-  }, [cart]) // Add cart as a dependency
+  }, [cart, customer?.email]) // Add cart as a dependency
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -93,6 +143,93 @@ const ShippingAddress = ({
       [e.target.name]: e.target.value,
     })
   }
+
+  useEffect(() => {
+    if (!googleMapsApiKey || !addressInputRef.current) {
+      return
+    }
+
+    let isMounted = true
+
+    const initAutocomplete = () => {
+      const googleWindow = window as GoogleMapsWindow
+
+      if (
+        !isMounted ||
+        hasInitializedPlacesRef.current ||
+        !addressInputRef.current ||
+        !googleWindow.google?.maps?.places?.Autocomplete
+      ) {
+        return
+      }
+
+      hasInitializedPlacesRef.current = true
+
+      const autocomplete = new googleWindow.google.maps.places.Autocomplete(
+        addressInputRef.current,
+        {
+          componentRestrictions: { country: autocompleteCountryCode },
+          fields: ["address_components"],
+          types: ["address"],
+        }
+      )
+
+      autocomplete.addListener("place_changed", () => {
+        const components = autocomplete.getPlace().address_components || []
+        const streetNumber = getAddressPart(components, "street_number")
+        const route = getAddressPart(components, "route")
+        const suburb =
+          getAddressPart(components, "sublocality_level_1") ||
+          getAddressPart(components, "sublocality")
+        const city =
+          getAddressPart(components, "locality") ||
+          getAddressPart(components, "postal_town") ||
+          getAddressPart(components, "administrative_area_level_2")
+        const province = getAddressPart(
+          components,
+          "administrative_area_level_1"
+        )
+        const postalCode = getAddressPart(components, "postal_code")
+        const country = getAddressPart(components, "country", "short_name")
+
+        setFormData((prevState) => ({
+          ...prevState,
+          "shipping_address.address_1":
+            [streetNumber, route].filter(Boolean).join(" ") ||
+            prevState["shipping_address.address_1"],
+          "shipping_address.company": prevState["shipping_address.company"],
+          "shipping_address.postal_code": postalCode,
+          "shipping_address.city": suburb ? `${suburb}, ${city}` : city,
+          "shipping_address.country_code": country.toLowerCase(),
+          "shipping_address.province": province,
+        }))
+      })
+    }
+
+    if ((window as GoogleMapsWindow).google?.maps?.places?.Autocomplete) {
+      initAutocomplete()
+    } else {
+      const existingScript = document.getElementById(GOOGLE_PLACES_SCRIPT_ID)
+
+      if (existingScript) {
+        existingScript.addEventListener("load", initAutocomplete, {
+          once: true,
+        })
+      } else {
+        const script = document.createElement("script")
+        script.id = GOOGLE_PLACES_SCRIPT_ID
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&loading=async`
+        script.async = true
+        script.defer = true
+        script.addEventListener("load", initAutocomplete, { once: true })
+        document.head.appendChild(script)
+      }
+    }
+
+    return () => {
+      isMounted = false
+    }
+  }, [autocompleteCountryCode])
 
   return (
     <>
@@ -134,6 +271,7 @@ const ShippingAddress = ({
         <Input
           label="Address"
           name="shipping_address.address_1"
+          ref={addressInputRef}
           autoComplete="address-line1"
           value={formData["shipping_address.address_1"]}
           onChange={handleChange}

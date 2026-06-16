@@ -3,6 +3,7 @@ import Medusa, { FetchArgs, FetchInput } from "@medusajs/js-sdk"
 
 // Defaults to standard port for Medusa server
 let MEDUSA_BACKEND_URL = "http://localhost:9000"
+const MEDUSA_FETCH_TIMEOUT_MS = 20000
 
 if (process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL) {
   MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
@@ -20,6 +21,8 @@ sdk.client.fetch = async <T>(
   input: FetchInput,
   init?: FetchArgs
 ): Promise<T> => {
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), MEDUSA_FETCH_TIMEOUT_MS)
   const headers = init?.headers ?? {}
   let localeHeader: Record<string, string | null> | undefined
   try {
@@ -34,6 +37,12 @@ sdk.client.fetch = async <T>(
   init = {
     ...init,
     headers: newHeaders,
+    signal: controller.signal,
   }
-  return originalFetch(input, init)
+
+  try {
+    return await originalFetch(input, init)
+  } finally {
+    clearTimeout(timeout)
+  }
 }

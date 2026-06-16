@@ -11,6 +11,8 @@
     "start": "turbo start",
     "lint": "turbo lint",
     "test": "turbo test",
+    "typecheck": "turbo typecheck",
+    "verify": "pnpm typecheck && pnpm test && pnpm build",
     "backend:seed": "turbo seed --filter=@dtc/backend",
     "backend:dev": "turbo dev --filter=@dtc/backend",
     "storefront:dev": "turbo dev --filter=@dtc/storefront"

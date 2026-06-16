@@ -1,8 +1,10 @@
 import { listProductsWithSort } from "@lib/data/products"
 import { getRegion } from "@lib/data/regions"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import ProductPreview from "@modules/products/components/product-preview"
 import { Pagination } from "@modules/store/components/pagination"
 import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
+import { HttpTypes } from "@medusajs/types"
 
 const PRODUCT_LIMIT = 12
 
@@ -13,6 +15,13 @@ type PaginatedProductsParams = {
   id?: string[]
   order?: string
 }
+
+const FALLBACK_REGION = {
+  id: "",
+  name: "New Zealand",
+  currency_code: "nzd",
+  countries: [{ iso_2: "nz", display_name: "New Zealand" }],
+} as HttpTypes.StoreRegion
 
 export default async function PaginatedProducts({
   sortBy,
@@ -49,21 +58,33 @@ export default async function PaginatedProducts({
     queryParams["order"] = "created_at"
   }
 
-  const region = await getRegion(countryCode)
-
-  if (!region) {
-    return null
-  }
-
-  const {
-    response: { products, count },
-  } = await listProductsWithSort({
+  const { products, count } = await listProductsWithSort({
     page,
     queryParams,
     sortBy,
     countryCode,
   })
+    .then(({ response }) => response)
+    .catch(() => ({ products: [], count: 0 }))
 
+  if (!products.length) {
+    return (
+      <div className="rounded-2xl border border-muse-border bg-muse-cream-warm px-6 py-12 text-center">
+        <h2 className="text-xl font-bold text-muse-black">No products found</h2>
+        <p className="mt-2 text-sm text-muse-text-muted">
+          Try clearing your filters or check back soon for new arrivals.
+        </p>
+        <LocalizedClientLink
+          href="/store"
+          className="mt-6 inline-flex rounded-full bg-muse-black px-6 py-3 text-xs font-bold uppercase tracking-wider text-muse-cream"
+        >
+          Clear filters
+        </LocalizedClientLink>
+      </div>
+    )
+  }
+
+  const region = (await getRegion(countryCode)) ?? FALLBACK_REGION
   const totalPages = Math.ceil(count / PRODUCT_LIMIT)
 
   return (

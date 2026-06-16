@@ -45,7 +45,7 @@ module.exports = defineConfig({
               webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
               capture: process.env.STRIPE_CAPTURE === "true",
               automatic_payment_methods:
-                process.env.STRIPE_AUTOMATIC_PAYMENT_METHODS === "true",
+                process.env.STRIPE_AUTOMATIC_PAYMENT_METHODS !== "false",
             },
           },
         ],

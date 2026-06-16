@@ -1,9 +1,12 @@
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
+import { PRODUCT_DETAIL_FIELDS } from "@lib/data/product-fields"
 import { listProducts } from "@lib/data/products"
 import { getRegion, listRegions } from "@lib/data/regions"
 import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
+import { getBaseURL } from "@lib/util/env"
+import { getProductPrice } from "@lib/util/get-product-price"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -80,7 +83,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
   const product = await listProducts({
     countryCode: params.countryCode,
-    queryParams: { handle },
+    queryParams: { handle, fields: PRODUCT_DETAIL_FIELDS },
   }).then(({ response }) => response.products[0])
 
   if (!product) {
@@ -89,10 +92,17 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 
   return {
     title: `${product.title} | MUSE NZ`,
-    description: `${product.title}`,
+    description:
+      product.description ||
+      `Shop ${product.title} at MUSE NZ with tracked New Zealand delivery.`,
+    alternates: {
+      canonical: `/${params.countryCode}/products/${handle}`,
+    },
     openGraph: {
       title: `${product.title} | MUSE NZ`,
-      description: `${product.title}`,
+      description:
+        product.description ||
+        `Shop ${product.title} at MUSE NZ with tracked New Zealand delivery.`,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
   }
@@ -111,21 +121,64 @@ export default async function ProductPage(props: Props) {
 
   const pricedProduct = await listProducts({
     countryCode: params.countryCode,
-    queryParams: { handle: params.handle },
+    queryParams: { handle: params.handle, fields: PRODUCT_DETAIL_FIELDS },
   }).then(({ response }) => response.products[0])
-
-  const images = getImagesForVariant(pricedProduct, selectedVariantId)
 
   if (!pricedProduct) {
     notFound()
   }
 
+  const images = getImagesForVariant(pricedProduct, selectedVariantId)
+  const galleryImages = images?.length
+    ? images
+    : pricedProduct.thumbnail
+      ? [
+          {
+            id: `${pricedProduct.id}-thumbnail`,
+            url: pricedProduct.thumbnail,
+            rank: 0,
+          },
+        ]
+      : []
+  const { cheapestPrice } = getProductPrice({ product: pricedProduct })
+  const inStock =
+    pricedProduct.variants?.some(
+      (variant) =>
+        !variant.manage_inventory ||
+        variant.allow_backorder ||
+        (variant.inventory_quantity ?? 0) > 0
+    ) ?? false
+  const productJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    name: pricedProduct.title,
+    description: pricedProduct.description || pricedProduct.title,
+    image: pricedProduct.images?.map((image) => image.url).filter(Boolean),
+    sku: pricedProduct.variants?.[0]?.sku || pricedProduct.id,
+    url: `${getBaseURL()}/${params.countryCode}/products/${params.handle}`,
+    offers: cheapestPrice
+      ? {
+          "@type": "Offer",
+          price: cheapestPrice.calculated_price_number,
+          priceCurrency: cheapestPrice.currency_code.toUpperCase(),
+          availability: `https://schema.org/${inStock ? "InStock" : "OutOfStock"}`,
+          url: `${getBaseURL()}/${params.countryCode}/products/${params.handle}`,
+        }
+      : undefined,
+  }
+
   return (
-    <ProductTemplate
-      product={pricedProduct}
-      region={region}
-      countryCode={params.countryCode}
-      images={images ?? []}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
+      <ProductTemplate
+        product={pricedProduct}
+        region={region}
+        countryCode={params.countryCode}
+        images={galleryImages}
+      />
+    </>
   )
 }
