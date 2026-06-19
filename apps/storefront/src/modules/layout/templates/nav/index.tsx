@@ -21,6 +21,10 @@ type SearchProductLink = {
   keywords: string
 }
 
+const SEARCH_PRODUCT_LIMIT = 48
+const SEARCH_PRODUCT_FIELDS =
+  "id,title,handle,subtitle,thumbnail,*collection,*type,*tags,+metadata"
+
 const byRankThenName = (
   a: HttpTypes.StoreProductCategory,
   b: HttpTypes.StoreProductCategory
@@ -44,11 +48,25 @@ const getVisibleCategoryLinks = (
     }))
 }
 
+const searchableMetadataValue = (value: unknown): string | undefined => {
+  if (typeof value === "string") {
+    return value
+  }
+
+  if (Array.isArray(value)) {
+    return value
+      .filter((item): item is string => typeof item === "string")
+      .join(" ")
+  }
+
+  return undefined
+}
+
 function MuseAnnouncementBar() {
   const messages = [
     "Free NZ delivery on orders over $200",
-    "30-day money-back guarantee - no questions asked",
-    "Ships in 2-4 days - Auckland-based",
+    "30-day returns on eligible orders",
+    "Tracked delivery on every order",
   ]
 
   return (
@@ -92,7 +110,10 @@ export default async function Nav() {
   const categories = await listCategories().catch(() => [])
   const { response: productResponse } = await listProducts({
     countryCode: "nz",
-    queryParams: { limit: 48 },
+    queryParams: {
+      fields: SEARCH_PRODUCT_FIELDS,
+      limit: SEARCH_PRODUCT_LIMIT,
+    },
   }).catch(() => ({ response: { products: [], count: 0 } }))
 
   const categoryLinks = getVisibleCategoryLinks(categories)
@@ -110,9 +131,9 @@ export default async function Nav() {
         product.collection?.handle,
         product.type?.value,
         product.tags?.map((tag) => tag.value).join(" "),
-        typeof product.metadata?.brand === "string"
-          ? product.metadata.brand
-          : undefined,
+        searchableMetadataValue(product.metadata?.brand),
+        searchableMetadataValue(product.metadata?.brands),
+        searchableMetadataValue(product.metadata?.search_keywords),
       ]
         .filter(Boolean)
         .join(" "),
@@ -177,27 +198,16 @@ export default async function Nav() {
                   </div>
                 </div>
 
-                <LocalizedClientLink
-                  href="/clearance"
-                  className="text-[11px] font-black uppercase tracking-[0.14em] text-[#C1440E] transition hover:opacity-80"
-                >
-                  Clearance
-                </LocalizedClientLink>
-
                 <LocalizedClientLink href="/track" className="muse-nav-link">
                   Track
-                </LocalizedClientLink>
-
-                <LocalizedClientLink href="/faq" className="muse-nav-link">
-                  FAQ / Help
                 </LocalizedClientLink>
               </div>
             </div>
 
             <LocalizedClientLink
-              href="/"
+              href="/store"
               className="flex items-center justify-center transition hover:opacity-75"
-              aria-label="MUSE home"
+              aria-label="MUSE store"
               data-testid="nav-store-link"
             >
               <img

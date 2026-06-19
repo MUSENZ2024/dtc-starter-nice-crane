@@ -11,6 +11,7 @@ import { getShippingProtectionItem } from "@modules/checkout/components/step-del
 import StepPaymentMuse from "@modules/checkout/components/step-payment-muse"
 import StepShipping from "@modules/checkout/components/step-shipping"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
+import Script from "next/script"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
@@ -22,6 +23,7 @@ type Props = {
 }
 
 const stepOrder: StepKey[] = ["contact", "shipping", "delivery", "payment"]
+const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
 
 export default function CheckoutPageMuse({
   cart,
@@ -79,6 +81,17 @@ export default function CheckoutPageMuse({
 
   return (
     <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
+      {googleMapsApiKey && (
+        <>
+          <link rel="preconnect" href="https://maps.googleapis.com" />
+          <link rel="preconnect" href="https://maps.gstatic.com" />
+          <Script
+            id="google-maps-places-script"
+            src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&loading=async&language=en-NZ&region=NZ`}
+            strategy="afterInteractive"
+          />
+        </>
+      )}
       <CheckoutHeaderMuse />
 
       <div className="border-b border-muse-border bg-muse-cream-warm px-4 py-4 small:hidden">

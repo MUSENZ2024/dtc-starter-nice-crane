@@ -18,10 +18,10 @@ export default async function Footer() {
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-5 px-6 py-10">
           <div>
             <p className="mb-1 text-[15px] font-black text-white">
-              Early access to drops + 10% off your first order
+              New arrivals + 10% off your first order
             </p>
             <p className="text-[12.5px] text-white/40">
-              No spam. Just drops, restocks, and the occasional deal.
+              No spam. Just restocks, new products, and the occasional deal.
             </p>
           </div>
           <form className="flex flex-wrap gap-2">
@@ -43,7 +43,7 @@ export default async function Footer() {
       <div className="mx-auto max-w-[1440px] px-6 pb-12 pt-14 large:px-8">
         <div className="grid gap-10 large:grid-cols-[1.3fr_1fr] large:items-start">
           <div className="max-w-[340px]">
-            <LocalizedClientLink href="/" className="mb-5 inline-flex">
+            <LocalizedClientLink href="/store" className="mb-5 inline-flex">
               <img
                 src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
                 alt="MUSE"
@@ -51,9 +51,9 @@ export default async function Footer() {
               />
             </LocalizedClientLink>
             <p className="mb-4 text-[13.5px] leading-[1.7] text-white/50">
-              Auckland-based curated footwear and outerwear. Built for buyers
-              who want the look, the fit, and the price to make sense. Every
-              order is inspected before it leaves us.
+              An online store for footwear, apparel, and everyday essentials.
+              Shop current products with secure checkout, tracked delivery, and
+              local support.
             </p>
             <p className="mb-5 text-[11px] tracking-[0.03em] text-white/25">
               Auckland, New Zealand
@@ -114,9 +114,6 @@ export default async function Footer() {
                 <LocalizedClientLink href="/categories/outerwear" className="transition hover:text-white">
                   Outerwear
                 </LocalizedClientLink>
-                <LocalizedClientLink href="/store?tag=clearance" className="text-[#C1440E] transition hover:opacity-80">
-                  Clearance
-                </LocalizedClientLink>
               </div>
             </nav>
 
@@ -127,9 +124,6 @@ export default async function Footer() {
               <div className="flex flex-col gap-[11px] text-[13.5px] text-white/55">
                 <LocalizedClientLink href="/track" className="transition hover:text-white">
                   Track order
-                </LocalizedClientLink>
-                <LocalizedClientLink href="/faq" className="transition hover:text-white">
-                  FAQ / Help
                 </LocalizedClientLink>
                 <a href="mailto:support@musenz.com" className="transition hover:text-white">
                   support@musenz.com

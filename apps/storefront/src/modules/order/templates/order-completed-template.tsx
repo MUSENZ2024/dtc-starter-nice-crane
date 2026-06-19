@@ -6,6 +6,7 @@ import {
   getDeliveryDateRange,
   getOrderDeliveryEstimate,
 } from "@lib/util/delivery-estimate"
+import { getCartFulfilmentSummary, getFulfilmentState } from "@lib/util/fulfilment-state"
 import { convertToLocale } from "@lib/util/money"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import OnboardingCta from "@modules/order/components/onboarding-cta"
@@ -60,8 +61,8 @@ function groupItemsByFulfillment(items: OrderLine[]) {
   const standard: OrderLine[] = []
 
   items.forEach((item) => {
-    const type = String(item.metadata?.fulfillment_type ?? "standard")
-    if (type === "nzstock") {
+    const state = getFulfilmentState(item)
+    if (state.kind === "nz-stock") {
       nzstock.push(item)
     } else {
       standard.push(item)
@@ -103,6 +104,8 @@ function OrderItemRow({
   item: OrderLine
   currencyCode: string
 }) {
+  const fulfilment = getFulfilmentState(item)
+
   return (
     <div className="flex gap-4 border-t border-[#E8E6E0] py-4 first:border-t-0 first:pt-0 last:pb-0">
       <div className="flex h-[84px] w-[84px] shrink-0 items-center justify-center overflow-hidden rounded-[16px] bg-[#F4F2ED]">
@@ -127,6 +130,18 @@ function OrderItemRow({
         )}
         <p className="mt-2 text-[12px] font-semibold uppercase tracking-[0.08em] text-[#999]">
           Qty {item.quantity}
+        </p>
+        <p
+          className={`mt-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] ${
+            fulfilment.labelColor === "green" ? "text-[#1F7A3A]" : "text-[#C1440E]"
+          }`}
+        >
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${
+              fulfilment.labelColor === "green" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"
+            }`}
+          />
+          {fulfilment.shortLabel}
         </p>
       </div>
       <div className="text-right">
@@ -181,6 +196,7 @@ export default async function OrderCompletedTemplate({
     (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
   )
   const { nzstock, standard } = groupItemsByFulfillment(items)
+  const fulfilmentSummary = getCartFulfilmentSummary(items)
   const hasMixed = nzstock.length > 0 && standard.length > 0
   const orderDate = new Date(order.created_at ?? Date.now())
   const address = order.shipping_address
@@ -205,7 +221,7 @@ export default async function OrderCompletedTemplate({
       data-testid="order-complete-container"
     >
       <header className="sticky top-0 z-50 flex h-[60px] items-center justify-between bg-[#0A0A0A] px-[18px] small:h-16 small:px-8">
-        <LocalizedClientLink href="/" className="flex items-center">
+        <LocalizedClientLink href="/store" className="flex items-center">
           <img
             src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
             alt="MUSE"
@@ -335,8 +351,8 @@ export default async function OrderCompletedTemplate({
                   {shippingMethod}
                   <br />
                   <span className="text-[#666]">
-                    {hasMixed
-                      ? "1-3 days for NZ Stock + 13-16 days for Standard"
+                    {fulfilmentSummary.hasMixed
+                      ? fulfilmentSummary.fullOrderLabel
                       : standard.length > 0
                       ? "13-16 business days"
                       : "1-3 business days"}

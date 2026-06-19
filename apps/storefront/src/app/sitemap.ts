@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const entries: MetadataRoute.Sitemap = []
 
   for (const countryCode of countryCodes) {
-    const staticPaths = ["", "/store", "/faq", "/privacy", "/terms", "/track"]
+    const staticPaths = ["/store", "/privacy", "/terms", "/track"]
     entries.push(
       ...staticPaths.map((path) => ({
         url: `${baseUrl}/${countryCode}${path}`,

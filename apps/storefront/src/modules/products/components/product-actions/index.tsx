@@ -2,13 +2,18 @@
 
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart, replaceLineItem } from "@lib/data/cart"
-import { getDeliveredByLabel } from "@lib/util/delivery-estimate"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import PaymentBadges from "@modules/common/components/payment-badges"
 import StripePaymentMessaging from "@modules/products/components/stripe-payment-messaging"
 import SavedToggle from "@modules/saved/components/saved-toggle"
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation"
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useRef, useState } from "react"
 
@@ -82,9 +87,65 @@ const getProductColourFromTitle = (title: string) => {
   return parts[parts.length - 1]?.trim()
 }
 
+const getVariantStockQuantity = (variant?: HttpTypes.StoreProductVariant) => {
+  if (!variant) {
+    return 0
+  }
+
+  if (typeof variant.inventory_quantity === "number") {
+    return variant.inventory_quantity
+  }
+
+  const metadataQuantity = variant.metadata?.nz_stock_quantity
+  if (typeof metadataQuantity === "number") {
+    return metadataQuantity
+  }
+
+  if (typeof metadataQuantity === "string") {
+    const parsed = Number.parseInt(metadataQuantity, 10)
+    return Number.isNaN(parsed) ? 0 : parsed
+  }
+
+  return 0
+}
+
+const variantIsPurchasable = (variant?: HttpTypes.StoreProductVariant) => {
+  if (!variant) {
+    return false
+  }
+
+  if (!variant.manage_inventory || variant.allow_backorder) {
+    return true
+  }
+
+  return getVariantStockQuantity(variant) > 0
+}
+
+const findFirstPurchasableOptionValue = (
+  product: HttpTypes.StoreProduct,
+  optionId: string
+) => {
+  const variant = product.variants?.find((candidate) =>
+    variantIsPurchasable(candidate)
+  )
+  const option = variant?.options?.find((candidate) => {
+    const candidateOptionId =
+      candidate.option_id ??
+      ("option" in candidate
+        ? (candidate.option as { id?: string } | undefined)?.id
+        : undefined)
+
+    return candidateOptionId === optionId
+  })
+
+  return option?.value
+}
+
 const makeDefaultOptions = (product: HttpTypes.StoreProduct) => {
   const next: Record<string, string> = {}
-  const titleColour = getProductColourFromTitle(product.title ?? "").toLowerCase()
+  const titleColour = getProductColourFromTitle(
+    product.title ?? ""
+  ).toLowerCase()
 
   for (const option of product.options ?? []) {
     const values = (option.values ?? [])
@@ -105,6 +166,7 @@ const makeDefaultOptions = (product: HttpTypes.StoreProduct) => {
 
     if (isSizeOption(option.title)) {
       next[option.id] =
+        findFirstPurchasableOptionValue(product, option.id) ??
         values.find((value) => value.toLowerCase() === "s") ??
         values.find((value) => value.toLowerCase() === "m") ??
         values[0]
@@ -118,15 +180,29 @@ const makeDefaultOptions = (product: HttpTypes.StoreProduct) => {
 }
 
 const getInStock = (variant?: HttpTypes.StoreProductVariant) => {
-  if (!variant) {
-    return false
-  }
+  return variantIsPurchasable(variant)
+}
 
-  if (!variant.manage_inventory || variant.allow_backorder) {
-    return true
-  }
+const getVariantForOptionValue = (
+  product: HttpTypes.StoreProduct,
+  optionId: string,
+  value: string,
+  options: Record<string, string | undefined>
+) =>
+  product.variants?.find((variant) =>
+    variantMatchesOptions(variant, { ...options, [optionId]: value })
+  )
 
-  return (variant.inventory_quantity ?? 0) > 0
+const optionValueIsInStock = (
+  product: HttpTypes.StoreProduct,
+  optionId: string,
+  value: string,
+  options: Record<string, string | undefined>
+) => getInStock(getVariantForOptionValue(product, optionId, value, options))
+
+const isBirkenstockAdultSize = (value?: string | null) => {
+  const size = Number.parseInt(value ?? "", 10)
+  return Number.isInteger(size) && size >= 35 && size <= 46
 }
 
 const isNorthFacePufferJacket = (product: HttpTypes.StoreProduct) => {
@@ -148,6 +224,74 @@ const isNorthFacePufferJacket = (product: HttpTypes.StoreProduct) => {
   return hasPuffer && hasJacket && !isVest
 }
 
+const isBirkenstockProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return searchable.includes("birkenstock")
+}
+
+const isAsicsProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\basics\b/.test(searchable)
+}
+
+const isNikeOrJordanProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\b(nike|jordan|air jordan)\b/.test(searchable)
+}
+
+const isAdidasProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\badidas\b/.test(searchable)
+}
+
 const northFacePufferSizeRows = [
   ["XXS", "62cm", "109cm", "46cm", "63cm", "155-160cm / 45-52kg"],
   ["XS", "64cm", "113cm", "48cm", "64cm", "160-165cm / 53-58kg"],
@@ -165,6 +309,88 @@ const defaultSizeRows = [
   ["M", "101-106", "68", "87"],
   ["L", "106-112", "70", "89"],
   ["XL", "114-120", "72", "91"],
+]
+
+const birkenstockAdultSizeRows = [
+  ["35", "4 - 4.5", "-"],
+  ["36", "5 - 5.5", "-"],
+  ["37", "6 - 6.5", "-"],
+  ["38", "7 - 7.5", "-"],
+  ["39", "8 - 8.5", "-"],
+  ["40", "9 - 9.5", "7 - 7.5"],
+  ["41", "10 - 10.5", "8 - 8.5"],
+  ["42", "11 - 11.5", "9 - 9.5"],
+  ["43", "12 - 12.5", "10 - 10.5"],
+  ["44", "-", "11 - 11.5"],
+  ["45", "-", "12 - 12.5"],
+  ["46", "-", "13 - 13.5"],
+]
+
+const asicsShoeSizeRows = [
+  ["4", "-", "36", "22.5", "3"],
+  ["4.5", "-", "37", "23", "3.5"],
+  ["5", "4", "37.5", "23.5", "4"],
+  ["5.5", "4.5", "38", "24", "4.5"],
+  ["6", "5", "39", "24.5", "5"],
+  ["6.5", "5.5", "39.5", "25", "5.5"],
+  ["7", "6", "40", "25.25", "6"],
+  ["7.5", "6.5", "40.5", "25.5", "6.5"],
+  ["8", "7", "41.5", "26", "7"],
+  ["8.5", "7.5", "42", "26.5", "7.5"],
+  ["9", "8", "42.5", "27", "8"],
+  ["9.5", "8.5", "43.5", "27.5", "8.5"],
+  ["10", "9", "44", "28", "9"],
+  ["10.5", "9.5", "44.5", "28.25", "9.5"],
+  ["11", "10", "45", "28.5", "10"],
+  ["11.5", "10.5", "46", "29", "10.5"],
+  ["12", "11", "46.5", "29.5", "11"],
+  ["12.5", "11.5", "47", "30", "11.5"],
+  ["13", "12", "48", "30.5", "12"],
+]
+
+const nikeJordanShoeSizeRows = [
+  ["3.5", "5", "35.5", "22.5", "3"],
+  ["4", "5.5", "36", "23", "3.5"],
+  ["4.5", "6", "36.5", "23.5", "4"],
+  ["5", "6.5", "37.5", "23.5", "4.5"],
+  ["5.5", "7", "38", "24", "5"],
+  ["6", "7.5", "38.5", "24", "5.5"],
+  ["6.5", "8", "39", "24.5", "6"],
+  ["7", "8.5", "40", "25", "6"],
+  ["7.5", "9", "40.5", "25.5", "6.5"],
+  ["8", "9.5", "41", "26", "7"],
+  ["8.5", "10", "42", "26.5", "7.5"],
+  ["9", "10.5", "42.5", "27", "8"],
+  ["9.5", "11", "43", "27.5", "8.5"],
+  ["10", "11.5", "44", "28", "9"],
+  ["10.5", "12", "44.5", "28.5", "9.5"],
+  ["11", "12.5", "45", "29", "10"],
+  ["11.5", "13", "45.5", "29.5", "10.5"],
+  ["12", "13.5", "46", "30", "11"],
+  ["12.5", "14", "47", "30.5", "11.5"],
+  ["13", "14.5", "47.5", "31", "12"],
+  ["13.5", "15", "48", "31.5", "12.5"],
+  ["14", "15.5", "48.5", "32", "13"],
+  ["14.5", "16", "49", "32.5", "13.5"],
+]
+
+const adidasShoeSizeRows = [
+  ["4", "5", "35", "21", "2.5"],
+  ["4.5", "5.5", "35.5", "21.5", "3"],
+  ["5", "6", "36", "22", "3.5"],
+  ["5.5", "6.5", "36.5", "22.5", "4"],
+  ["6", "7", "37", "23", "4.5"],
+  ["6.5", "7.5", "38", "23.5", "5"],
+  ["7", "8", "38.5", "24", "5.5"],
+  ["7.5", "8.5", "39", "24.5", "6"],
+  ["8", "9", "40", "25", "6.5"],
+  ["8.5", "9.5", "40.5", "25.5", "7"],
+  ["9", "10", "41", "26", "7.5"],
+  ["9.5", "10.5", "42", "26.5", "8"],
+  ["10", "11", "42.5", "27", "8.5"],
+  ["10.5", "11.5", "43", "27.5", "9"],
+  ["11", "12", "44", "28", "9.5"],
+  ["12", "13", "45", "29", "10.5"],
 ]
 
 const AccordionItem = ({
@@ -214,11 +440,14 @@ export default function ProductActions({
   const countryCode = useParams().countryCode as string
   const { openDrawer } = useCartDrawer()
   const editLineId = searchParams.get("edit_line_id")
-  const editQuantity = Math.max(1, Number(searchParams.get("edit_quantity")) || 1)
+  const editQuantity = Math.max(
+    1,
+    Number(searchParams.get("edit_quantity")) || 1
+  )
   const isEditingLine = Boolean(editLineId)
 
-  const [options, setOptions] = useState<Record<string, string | undefined>>(() =>
-    makeDefaultOptions(product)
+  const [options, setOptions] = useState<Record<string, string | undefined>>(
+    () => makeDefaultOptions(product)
   )
   const [isAdding, setIsAdding] = useState(false)
   const [addedToCart, setAddedToCart] = useState(false)
@@ -235,10 +464,17 @@ export default function ProductActions({
   )
 
   useEffect(() => {
-    const editVariantId = searchParams.get("edit_variant_id") ?? searchParams.get("v_id")
-    const editVariant = product.variants?.find((variant) => variant.id === editVariantId)
+    const editVariantId =
+      searchParams.get("edit_variant_id") ?? searchParams.get("v_id")
+    const editVariant = product.variants?.find(
+      (variant) => variant.id === editVariantId
+    )
 
-    setOptions(editVariant ? getOptionKeymap(editVariant.options) : makeDefaultOptions(product))
+    setOptions(
+      editVariant
+        ? getOptionKeymap(editVariant.options)
+        : makeDefaultOptions(product)
+    )
   }, [product, searchParams])
 
   useEffect(() => {
@@ -254,12 +490,16 @@ export default function ProductActions({
       return undefined
     }
 
-    return product.variants.find((variant) => variantMatchesOptions(variant, options))
+    return product.variants.find((variant) =>
+      variantMatchesOptions(variant, options)
+    )
   }, [product.variants, options])
 
   const isValidVariant = useMemo(
     () =>
-      !!product.variants?.some((variant) => variantMatchesOptions(variant, options)),
+      !!product.variants?.some((variant) =>
+        variantMatchesOptions(variant, options)
+      ),
     [product.variants, options]
   )
 
@@ -275,19 +515,94 @@ export default function ProductActions({
   const currentColour = colourOption?.id ? options[colourOption.id] : undefined
   const currentSize = sizeOption?.id ? options[sizeOption.id] : undefined
   const inStock = getInStock(selectedVariant)
+  const selectedStockQuantity = getVariantStockQuantity(selectedVariant)
   const useNorthFacePufferSizing = isNorthFacePufferJacket(product)
+  const useBirkenstockSizing = isBirkenstockProduct(product)
+  const useAsicsSizing = isAsicsProduct(product)
+  const useNikeJordanSizing = isNikeOrJordanProduct(product)
+  const useAdidasSizing = isAdidasProduct(product)
+  const sizeValues =
+    sizeOption?.values?.filter((value) =>
+      useBirkenstockSizing ? isBirkenstockAdultSize(value.value) : true
+    ) ?? []
   const fitSummary = useNorthFacePufferSizing
     ? "Men's/unisex fit — true to size. Women size down"
+    : useBirkenstockSizing
+    ? "True to size — 92% got their usual Birkenstock/EU size"
+    : useAsicsSizing
+    ? "True to size — 73% got their usual ASICS size"
+    : useNikeJordanSizing
+    ? "True to size — 88% got their usual Nike/Jordan size"
+    : useAdidasSizing
+    ? "True to size — 88% got their usual adidas size"
     : "Fits true to size — get your usual"
-  const fitSizedDown = useNorthFacePufferSizing ? "18%" : "9%"
-  const fitTrueToSize = "73%"
-  const fitSizedUp = useNorthFacePufferSizing ? "9%" : "18%"
+  const betweenSizesAdvice = useNorthFacePufferSizing
+    ? "Women's sizing: size down from the men's/unisex size listed. Men's/unisex: choose your usual unless layering."
+    : useBirkenstockSizing
+    ? "Choose your usual EU size. If you are between sizes or prefer a roomier clog fit, size up."
+    : useAsicsSizing
+    ? "ASICS are listed in EU sizing. Use the chart to compare your usual men's, women's, CM, or UK size."
+    : useNikeJordanSizing
+    ? "Nike and Jordan are listed in U.S. men's sizing on MUSE. Use the chart to compare men's, women's, EU, CM, and UK conversions."
+    : useAdidasSizing
+    ? "adidas sizes are shown as U.S. Men's / U.S. Women's on MUSE. Use the chart to compare men's, women's, EU, CM, and UK conversions."
+    : "Choose your usual size. If you prefer extra room, size up."
+  const fitSizedDown = useNorthFacePufferSizing
+    ? "18%"
+    : useBirkenstockSizing
+    ? "0%"
+    : useAsicsSizing
+    ? "1%"
+    : useNikeJordanSizing
+    ? "1%"
+    : useAdidasSizing
+    ? "1%"
+    : "9%"
+  const fitTrueToSize = useBirkenstockSizing
+    ? "92%"
+    : useNikeJordanSizing || useAdidasSizing
+    ? "88%"
+    : "73%"
+  const fitSizedUp = useNorthFacePufferSizing
+    ? "9%"
+    : useBirkenstockSizing
+    ? "8%"
+    : useAsicsSizing
+    ? "26%"
+    : useNikeJordanSizing
+    ? "11%"
+    : useAdidasSizing
+    ? "11%"
+    : "18%"
   const sizeGuideColumns = useNorthFacePufferSizing
-    ? ["Size", "Length", "Chest", "Shoulder", "Sleeve", "Suggested Height / Weight"]
+    ? [
+        "Size",
+        "Length",
+        "Chest",
+        "Shoulder",
+        "Sleeve",
+        "Suggested Height / Weight",
+      ]
+    : useBirkenstockSizing
+    ? ["Birkenstock EU", "Women U.S.", "Men U.S."]
+    : useAsicsSizing || useNikeJordanSizing || useAdidasSizing
+    ? ["Men's", "Women's", "EU", "CM", "UK"]
     : ["Size", "Chest (cm)", "Length (cm)", "Sleeve (cm)"]
   const sizeGuideRows = useNorthFacePufferSizing
     ? northFacePufferSizeRows
+    : useBirkenstockSizing
+    ? birkenstockAdultSizeRows
+    : useNikeJordanSizing
+    ? nikeJordanShoeSizeRows
+    : useAdidasSizing
+    ? adidasShoeSizeRows
+    : useAsicsSizing
+    ? asicsShoeSizeRows
     : defaultSizeRows
+  const sizeGuideLabel =
+    useBirkenstockSizing || useAsicsSizing
+      ? "EU sizing · Size guide"
+      : "US sizing · Size guide"
 
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString())
@@ -369,16 +684,32 @@ export default function ProductActions({
 
   const priceLabel = selectedPrice?.calculated_price ?? "NZ$180.00"
   const numericPrice = selectedPrice?.calculated_price_number ?? 180
-  const rrp = 500
-  const saveAmount = Math.max(rrp - numericPrice, 0)
-  const disabledCta = !selectedVariant || !inStock || !isValidVariant || !!disabled
-  const deliveryLabel = getDeliveredByLabel()
+  const showSalePrice =
+    selectedPrice?.price_type === "sale" &&
+    selectedPrice.original_price_number > selectedPrice.calculated_price_number
+  const saveAmount = showSalePrice
+    ? selectedPrice.original_price_number -
+      selectedPrice.calculated_price_number
+    : 0
+  const disabledCta =
+    !selectedVariant || !inStock || !isValidVariant || !!disabled
+  const fulfilment = getFulfilmentState(product)
 
   return (
     <div className="pb-4 small:pt-1">
-      <div className="mb-3 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] text-[#C1440E]">
-        <span className="h-[7px] w-[7px] rounded-full bg-[#C1440E]" />
-        Winter Drop · Standard Delivery
+      <div
+        className={`mb-3 inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.14em] ${
+          fulfilment.labelColor === "green"
+            ? "text-[#1F7A3A]"
+            : "text-[#C1440E]"
+        }`}
+      >
+        <span
+          className={`h-[7px] w-[7px] rounded-full ${
+            fulfilment.labelColor === "green" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"
+          }`}
+        />
+        {fulfilment.eyebrow}
       </div>
       <h1 className="mb-3 text-[26px] font-black leading-[1.08] tracking-[-0.03em] text-[#0A0A0A] small:text-[38px]">
         {product.title}
@@ -398,13 +729,15 @@ export default function ProductActions({
         <span className="text-[34px] font-black tracking-[-0.03em] text-[#0A0A0A]">
           {priceLabel}
         </span>
-        <span className="text-lg font-medium text-[#999] line-through">
-          NZ${rrp}
-        </span>
-        {saveAmount > 0 && (
-          <span className="rounded-full bg-[#C1440E] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.04em] text-white">
-            Save NZ${saveAmount}
-          </span>
+        {showSalePrice && (
+          <>
+            <span className="text-lg font-medium text-[#999] line-through">
+              {selectedPrice.original_price}
+            </span>
+            <span className="rounded-full bg-[#C1440E] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.04em] text-white">
+              Save NZ${saveAmount}
+            </span>
+          </>
         )}
       </div>
       <div className="mb-6">
@@ -423,9 +756,9 @@ export default function ProductActions({
           href: product.handle ? `/products/${product.handle}` : "/store",
           image: product.thumbnail || product.images?.[0]?.url,
           price: priceLabel,
-          compareAt: `NZ$${rrp}`,
-          badge: "Standard",
-          eta: deliveryLabel,
+          compareAt: showSalePrice ? selectedPrice.original_price : undefined,
+          badge: fulfilment.shortLabel,
+          eta: fulfilment.deliveryLabel,
         }}
         className="mb-6 inline-flex min-h-11 items-center gap-2 rounded-full border-[1.5px] border-[#D5D2CC] bg-white px-4 py-2.5 text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#0A0A0A] transition hover:border-[#0A0A0A] aria-pressed:border-[#C1440E] aria-pressed:bg-[#FDF4EF] aria-pressed:text-[#C1440E]"
         iconClassName="h-4 w-4"
@@ -433,7 +766,7 @@ export default function ProductActions({
       />
 
       {colourOption && (
-        <div className="mb-5">
+        <div id="size-guide" className="mb-5 scroll-mt-28">
           <div className="mb-3 flex items-baseline justify-between">
             <span className="text-xs font-bold uppercase tracking-[0.12em]">
               Colour
@@ -487,37 +820,61 @@ export default function ProductActions({
               onClick={() => setSizeGuideOpen(true)}
               className="text-[13px] font-semibold text-[#C1440E] hover:underline"
             >
-              US sizing · Size guide
+              {sizeGuideLabel}
             </button>
           </div>
           <div className="grid grid-cols-4 gap-2 xsmall:grid-cols-6">
-            {(sizeOption.values ?? []).map((value) => {
+            {sizeValues.map((value) => {
               if (!value.value || !sizeOption.id) {
                 return null
               }
 
               const selected = currentSize === value.value
+              const valueInStock = optionValueIsInStock(
+                product,
+                sizeOption.id,
+                value.value,
+                options
+              )
+              const isUnavailable = !valueInStock
 
               return (
                 <button
                   key={value.id}
                   type="button"
-                  disabled={disabled || isAdding}
+                  disabled={disabled || isAdding || isUnavailable}
                   onClick={() => setOptionValue(sizeOption.id, value.value!)}
-                  className={`rounded-xl border-[1.5px] px-2 py-3.5 text-[13px] font-bold transition ${
+                  title={
+                    isUnavailable
+                      ? "Out of stock in NZ Stock"
+                      : `Select size ${value.value}`
+                  }
+                  className={`relative rounded-xl border-[1.5px] px-2 py-3.5 text-[13px] font-bold transition ${
                     selected
                       ? "border-[#0A0A0A] bg-[#0A0A0A] text-[#F4F2ED]"
+                      : isUnavailable
+                      ? "cursor-not-allowed border-[#E1DED7] bg-[#F1EFEA] text-[#AAA]"
                       : "border-[#D5D2CC] bg-white text-[#0A0A0A] hover:border-[#0A0A0A]"
                   }`}
                 >
                   {value.value.toUpperCase()}
+                  {isUnavailable && (
+                    <span className="pointer-events-none absolute left-2 right-2 top-1/2 h-px -rotate-12 bg-[#AAA]" />
+                  )}
                 </button>
               )
             })}
           </div>
+          {useNikeJordanSizing && (
+            <p className="mt-2 text-[12.5px] font-semibold text-[#666]">
+              Sizes are shown as US Men's / US Women's.
+            </p>
+          )}
           <div className="mt-3 flex items-center justify-between text-[12.5px] text-[#666]">
             <span>
-              <strong className="font-semibold text-[#0A0A0A]">{fitSummary}</strong>
+              <strong className="font-semibold text-[#0A0A0A]">
+                {fitSummary}
+              </strong>
             </span>
             <button
               type="button"
@@ -527,15 +884,41 @@ export default function ProductActions({
               View chart →
             </button>
           </div>
+          <p className="mt-2 rounded-[12px] bg-white px-3.5 py-2.5 text-[12.5px] font-medium leading-5 text-[#666] ring-1 ring-[#E8E6E0]">
+            {useBirkenstockSizing ? (
+              <>
+                <strong className="font-bold text-[#0A0A0A]">
+                  Size sold out?
+                </strong>{" "}
+                DM @muse.nz for a standard-delivery pair or restock notice.
+              </>
+            ) : (
+              <>
+                <strong className="font-bold text-[#0A0A0A]">
+                  Wrong size?
+                </strong>{" "}
+                30-day exchange or money back. Return label support included.
+              </>
+            )}
+          </p>
 
           <div className="mt-3 rounded-[14px] bg-[#F8F7F4] p-4">
             <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">
               What 47 buyers say about fit
             </div>
             <div className="mb-2 flex h-2 overflow-hidden rounded-full">
-              <span className="h-full bg-[#999]" style={{ width: fitSizedDown }} />
-              <span className="h-full bg-[#1F7A3A]" style={{ width: fitTrueToSize }} />
-              <span className="h-full bg-[#C1440E]" style={{ width: fitSizedUp }} />
+              <span
+                className="h-full bg-[#999]"
+                style={{ width: fitSizedDown }}
+              />
+              <span
+                className="h-full bg-[#1F7A3A]"
+                style={{ width: fitTrueToSize }}
+              />
+              <span
+                className="h-full bg-[#C1440E]"
+                style={{ width: fitSizedUp }}
+              />
             </div>
             <div className="flex flex-wrap gap-3.5 text-[11.5px] text-[#666]">
               <span>{fitSizedDown} sized down</span>
@@ -546,12 +929,15 @@ export default function ProductActions({
         </div>
       )}
 
-      <div className="my-5 rounded-xl border-l-[3px] border-[#C1440E] bg-[#FDF4EF] px-4 py-3.5 text-[13px] leading-6">
-        <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-[#1F7A3A]" />
-        <strong className="font-bold text-[#C1440E]">Only 4 left</strong> in size{" "}
-        {currentSize ?? "S"} · <strong className="font-bold text-[#C1440E]">3 people</strong>{" "}
-        have this in their cart right now
-      </div>
+      {inStock && selectedStockQuantity > 0 && (
+        <div className="my-5 rounded-xl border-l-[3px] border-[#C1440E] bg-[#FDF4EF] px-4 py-3.5 text-[13px] leading-6">
+          <span className="mr-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-[#1F7A3A]" />
+          <strong className="font-bold text-[#C1440E]">
+            Only {selectedStockQuantity} left
+          </strong>{" "}
+          in size {currentSize ?? "-"} · {fulfilment.shortLabel}
+        </div>
+      )}
 
       <div className="mb-4 flex flex-col gap-2">
         <button
@@ -574,7 +960,9 @@ export default function ProductActions({
               : addedToCart
               ? "✓ Added to bag"
               : disabledCta
-              ? "Select options"
+              ? selectedVariant && !inStock
+                ? "Sold out"
+                : "Select options"
               : isEditingLine
               ? "Update bag"
               : "Add to bag"}
@@ -597,26 +985,28 @@ export default function ProductActions({
 
       <div className="mb-5 rounded-2xl bg-[#F8F7F4] px-[18px] py-4 text-[13px] leading-6">
         <span className="font-bold text-[#0A0A0A]">
-          Estimated delivery: {deliveryLabel}
+          Estimated delivery: {fulfilment.deliveryLabel}
         </span>
         <br />
         <span className="text-[#666]">
-          Tracked NZ Post final mile · free delivery over $200 · updates sent by
+          {fulfilment.supportCopy} · free delivery over $200 · updates sent by
           email after dispatch
         </span>
       </div>
 
       <div className="mb-7 grid grid-cols-3 gap-2">
-        {["Inspected before dispatch", "30-day money back", "Auckland pickup"].map(
-          (pill) => (
-            <div
-              key={pill}
-              className="rounded-full border border-[#E8E6E0] bg-white px-2 py-2.5 text-center text-[10.5px] font-bold uppercase tracking-[0.05em]"
-            >
-              {pill}
-            </div>
-          )
-        )}
+        {[
+          "Inspected before dispatch",
+          "30-day money back",
+          "Auckland pickup",
+        ].map((pill) => (
+          <div
+            key={pill}
+            className="rounded-full border border-[#E8E6E0] bg-white px-2 py-2.5 text-center text-[10.5px] font-bold uppercase tracking-[0.05em]"
+          >
+            {pill}
+          </div>
+        ))}
       </div>
 
       <div className="border-t border-[#E8E6E0]">
@@ -639,39 +1029,63 @@ export default function ProductActions({
                 closer to a men's S.
               </p>
               <p className="mt-2">
-                If you already wear men's or unisex sizing, choose your usual size.
-                Size up if you want extra room for layering.
+                If you already wear men's or unisex sizing, choose your usual
+                size. Size up if you want extra room for layering.
               </p>
               <p className="mt-2">
                 Chest measurements in the size guide are full wrap-around
-                measurements, not flat left-to-right measurements. Please allow a
-                1-3cm difference due to manual measurement.
+                measurements, not flat left-to-right measurements. Please allow
+                a 1-3cm difference due to manual measurement.
               </p>
             </>
           ) : (
             <>
               <p>
-                Sizes shown in U.S. Most buyers get their usual size for a regular
-                fit, or size up if they want extra room for layering.
+                {useBirkenstockSizing
+                  ? "Birkenstock footwear is made in European sizes. Use the adult conversion chart in the size guide for U.S. sizing."
+                  : useAsicsSizing
+                  ? "ASICS footwear is listed in EU sizing on our site. Use the size guide to compare men's, women's, CM, and UK conversions."
+                  : useNikeJordanSizing
+                  ? "Nike and Jordan footwear is listed in U.S. men's sizing on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
+                  : useAdidasSizing
+                  ? "adidas sizes are shown as U.S. Men's / U.S. Women's on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
+                  : "Sizes shown in U.S. Most buyers get their usual size for a regular fit, or size up if they want extra room for layering."}
               </p>
               <p className="mt-2">
                 <strong className="font-bold text-[#0A0A0A]">
-                  This style fits true to size.
+                  {useBirkenstockSizing
+                    ? "This Birkenstock style fits true to size."
+                    : useAsicsSizing
+                    ? "This ASICS style fits true to size."
+                    : useNikeJordanSizing
+                    ? "Nike/Jordan footwear fits true to size for most buyers."
+                    : useAdidasSizing
+                    ? "adidas footwear fits true to size for most buyers."
+                    : "This style fits true to size."}
                 </strong>{" "}
-                Based on 47 verified reviews, 73% got their usual size.
+                {useBirkenstockSizing
+                  ? "Based on fit feedback, 92% got their usual size and 8% sized up."
+                  : useAsicsSizing
+                  ? "Based on fit feedback, 1% sized down, 73% got their usual size, and 26% sized up."
+                  : useNikeJordanSizing
+                  ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
+                  : useAdidasSizing
+                  ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
+                  : "Based on 47 verified reviews, 73% got their usual size."}
               </p>
             </>
           )}
         </AccordionItem>
         <AccordionItem title="Shipping & returns">
           <p>
-            <strong className="font-bold text-[#0A0A0A]">Standard Delivery:</strong>{" "}
-            {deliveryLabel}. Tracked end-to-end, with email updates as your
-            order moves between hubs.
+            <strong className="font-bold text-[#0A0A0A]">
+              {fulfilment.label}:
+            </strong>{" "}
+            {fulfilment.deliveryLabel}. {fulfilment.supportCopy}
           </p>
           <p className="mt-2">
-            <strong className="font-bold text-[#0A0A0A]">Returns:</strong> 30-day
-            money-back if it does not fit or is not what you expected.
+            <strong className="font-bold text-[#0A0A0A]">Returns:</strong>{" "}
+            30-day money-back if it does not fit or is not what you expected.
           </p>
         </AccordionItem>
         <AccordionItem title="About this product">
@@ -685,7 +1099,9 @@ export default function ProductActions({
 
       <div className="fixed inset-x-0 bottom-0 z-50 flex items-center gap-3 border-t border-[#E8E6E0] bg-white px-[18px] py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] small:hidden">
         <div className="shrink-0">
-          <div className="text-lg font-black tracking-[-0.02em]">{priceLabel}</div>
+          <div className="text-lg font-black tracking-[-0.02em]">
+            {priceLabel}
+          </div>
           <div className="text-[11px] text-[#666]">
             {currentColour ?? "Colour"} · Size {currentSize ?? "-"}
           </div>
@@ -710,6 +1126,8 @@ export default function ProductActions({
             ? "Update bag"
             : addedToCart
             ? "✓ Added"
+            : selectedVariant && !inStock
+            ? "Sold out"
             : "Add to bag →"}
         </button>
       </div>
@@ -724,7 +1142,9 @@ export default function ProductActions({
           />
           <aside className="fixed bottom-0 right-0 top-0 z-[80] flex w-full max-w-[680px] flex-col bg-[#F4F2ED] shadow-2xl">
             <div className="flex items-center justify-between border-b border-[#E8E6E0] px-7 py-6">
-              <h3 className="text-lg font-black tracking-[-0.02em]">Size guide</h3>
+              <h3 className="text-lg font-black tracking-[-0.02em]">
+                Size guide
+              </h3>
               <button
                 type="button"
                 onClick={() => setSizeGuideOpen(false)}
@@ -738,51 +1158,95 @@ export default function ProductActions({
                 <strong className="font-bold text-[#C1440E]">
                   {useNorthFacePufferSizing
                     ? "Men's/unisex fit — true to size. Women size down."
+                    : useBirkenstockSizing
+                    ? "Birkenstock Boston fits true to size."
+                    : useAsicsSizing
+                    ? "ASICS footwear fits true to size for most buyers."
+                    : useNikeJordanSizing
+                    ? "Nike/Jordan footwear fits true to size for most buyers."
+                    : useAdidasSizing
+                    ? "adidas footwear fits true to size for most buyers."
                     : "This style fits true to size."}
                 </strong>{" "}
-                Based on 47 verified reviews, 73% of buyers got their usual size.
+                {useNikeJordanSizing || useAdidasSizing
+                  ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
+                  : useAsicsSizing
+                  ? "Based on fit feedback, 1% sized down, 73% got their usual size, and 26% sized up."
+                  : useBirkenstockSizing
+                  ? "Based on fit feedback, 92% of buyers got their usual size and 8% sized up."
+                  : "Based on 47 verified reviews, 73% of buyers got their usual size."}
+              </div>
+              <div className="mb-5 grid gap-2 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                <p>
+                  <strong className="font-bold text-[#0A0A0A]">
+                    If between sizes:
+                  </strong>{" "}
+                  {betweenSizesAdvice}
+                </p>
+                <p>
+                  <strong className="font-bold text-[#0A0A0A]">
+                    For oversized fit:
+                  </strong>{" "}
+                  {useBirkenstockSizing
+                    ? "size up for a roomier clog fit"
+                    : useNikeJordanSizing
+                    ? "size up if you prefer extra toe room or have wider feet"
+                    : useAdidasSizing
+                    ? "size up if you prefer extra toe room or have wider feet"
+                    : useAsicsSizing
+                    ? "size up if you prefer extra toe room"
+                    : "size up"}
+                </p>
+                <p>
+                  <strong className="font-bold text-[#0A0A0A]">
+                    For cleaner fit:
+                  </strong>{" "}
+                  true size
+                </p>
               </div>
               <div className="-mx-2 overflow-x-auto px-2">
-              <table className="w-full min-w-[520px] border-collapse text-[12.5px]">
-                <thead>
-                  <tr>
-                    {sizeGuideColumns.map((head) => (
-                      <th
-                        key={head}
-                        className="border-b-2 border-[#0A0A0A] px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#666]"
-                      >
-                        {head}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {sizeGuideRows.map((row) => (
-                    <tr key={row[0]}>
-                      {row.map((cell, index) => (
-                        <td
-                          key={cell}
-                          className="border-b border-[#E8E6E0] px-2 py-3"
+                <table className="w-full min-w-[520px] border-collapse text-[12.5px]">
+                  <thead>
+                    <tr>
+                      {sizeGuideColumns.map((head) => (
+                        <th
+                          key={head}
+                          className="border-b-2 border-[#0A0A0A] px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#666]"
                         >
-                          {index === 0 ? <strong>{cell}</strong> : cell}
-                        </td>
+                          {head}
+                        </th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {sizeGuideRows.map((row) => (
+                      <tr key={row[0]}>
+                        {row.map((cell, index) => (
+                          <td
+                            key={cell}
+                            className="border-b border-[#E8E6E0] px-2 py-3"
+                          >
+                            {index === 0 ? <strong>{cell}</strong> : cell}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
               {useNorthFacePufferSizing && (
                 <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
                   <p>
-                    <strong className="font-bold text-[#0A0A0A]">Size Note:</strong>{" "}
-                    Chest measurements are the full circumference around the chest,
-                    not a flat left-to-right measurement. Please allow a 1-3cm
-                    difference due to manual measurement.
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    Chest measurements are the full circumference around the
+                    chest, not a flat left-to-right measurement. Please allow a
+                    1-3cm difference due to manual measurement.
                   </p>
                   <p>
-                    These jackets are unisex in fit and shape. However, the inside
-                    label may show "Men's US" sizing.
+                    These jackets are unisex in fit and shape. However, the
+                    inside label may show "Men's US" sizing.
                   </p>
                   <p>
                     If you usually wear women's sizing, we recommend sizing down
@@ -790,8 +1254,79 @@ export default function ProductActions({
                     usually fit closer to a men's S.
                   </p>
                   <p>
-                    If you already buy or wear men's/unisex sizing, please choose
-                    your usual size from the chart.
+                    If you already buy or wear men's/unisex sizing, please
+                    choose your usual size from the chart.
+                  </p>
+                </div>
+              )}
+              {useBirkenstockSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    Birkenstock footwear is made in European sizes. The chart
+                    above shows adult conversions only.
+                  </p>
+                  <p>
+                    Boston clogs should feel secure through the instep while
+                    leaving a little room at the toe and heel. The suede upper
+                    relaxes slightly with wear.
+                  </p>
+                  <p>
+                    This product uses the adult Birkenstock chart only; kids
+                    sizing is intentionally not shown.
+                  </p>
+                </div>
+              )}
+              {useAsicsSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    ASICS products on MUSE use EU sizing. The chart above
+                    combines men's, women's, EU, CM, and UK conversions so you
+                    can compare against the size you already wear.
+                  </p>
+                  <p>
+                    If your usual size sits between two EU sizes, choose the
+                    larger size if you prefer more toe room.
+                  </p>
+                </div>
+              )}
+              {useNikeJordanSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    Nike and Jordan products on MUSE use U.S. men's sizing. The
+                    chart above combines men's, women's, EU, CM, and UK
+                    conversions so you can compare against the size you already
+                    wear.
+                  </p>
+                  <p>
+                    Most buyers stay true to size. If your usual size sits
+                    between two sizes or you prefer more toe room, choose the
+                    larger size.
+                  </p>
+                </div>
+              )}
+              {useAdidasSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    adidas products on MUSE show sizes as U.S. Men's / U.S.
+                    Women's. The chart above includes adidas EU, CM, and UK
+                    conversions for comparison.
+                  </p>
+                  <p>
+                    Most buyers stay true to size. If your usual size sits
+                    between two sizes or you prefer more toe room, choose the
+                    larger size.
                   </p>
                 </div>
               )}

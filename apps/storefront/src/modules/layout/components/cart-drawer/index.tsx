@@ -8,7 +8,10 @@ import {
   updateLineItem,
 } from "@lib/data/cart"
 import { SavedItem, useSavedItems } from "@lib/context/saved-items-context"
-import { getDeliveredByLabel } from "@lib/util/delivery-estimate"
+import {
+  getCartFulfilmentSummary,
+  getFulfilmentState,
+} from "@lib/util/fulfilment-state"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -101,7 +104,7 @@ export default function CartDrawer({
   const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)
   const shippingUnlocked = freeShippingGap === 0
   const isEmpty = !cart?.items?.length
-  const deliveryLabel = getDeliveredByLabel()
+  const fulfilmentSummary = getCartFulfilmentSummary(cart?.items)
 
   function getSavedItemFromCartItem(
     item: HttpTypes.StoreCartLineItem
@@ -120,8 +123,8 @@ export default function CartDrawer({
       href,
       image: item.thumbnail,
       price: money(cart, item.unit_price ?? 0),
-      badge: "Standard",
-      eta: deliveryLabel,
+      badge: getFulfilmentState(item).shortLabel,
+      eta: getFulfilmentState(item).deliveryLabel,
     }
   }
 
@@ -292,11 +295,14 @@ export default function CartDrawer({
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {!isEmpty ? (
             <ul className="flex flex-col gap-5 px-6 pt-5">
-              {cart!.items!.map((item) => (
-                <li
-                  key={item.id}
-                  className="flex gap-4 border-b border-muse-border pb-5 last:border-0"
-                >
+              {cart!.items!.map((item) => {
+                const fulfilment = getFulfilmentState(item)
+
+                return (
+                  <li
+                    key={item.id}
+                    className="flex gap-4 border-b border-muse-border pb-5 last:border-0"
+                  >
                   <div className="relative flex h-[84px] w-[84px] flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-muse-cream-deep to-muse-cream-warm">
                     {item.thumbnail && (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -307,8 +313,10 @@ export default function CartDrawer({
                       />
                     )}
                     <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-muse-cream/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
-                      <span className="inline-block h-[5px] w-[5px] rounded-full bg-muse-orange" />
-                      Standard
+                      <span
+                        className={`inline-block h-[5px] w-[5px] rounded-full ${fulfilment.dotClassName}`}
+                      />
+                      {fulfilment.shortLabel}
                     </span>
                   </div>
 
@@ -374,8 +382,9 @@ export default function CartDrawer({
                   >
                     x
                   </button>
-                </li>
-              ))}
+                  </li>
+                )
+              })}
             </ul>
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
@@ -449,8 +458,12 @@ export default function CartDrawer({
                 <p className="mb-1.5 text-[11px] font-bold uppercase tracking-widest text-muse-text-light">
                   Estimated delivery
                 </p>
-                <p className="font-bold text-muse-black">{deliveryLabel}</p>
-                <p className="text-muse-text-muted">Tracked NZ Post final leg · free over $200</p>
+                <p className="font-bold text-muse-black">
+                  {fulfilmentSummary.fullOrderLabel}
+                </p>
+                <p className="text-muse-text-muted">
+                  Tracked NZ Post final leg · free over $200
+                </p>
               </div>
 
               <div className="mx-6 mt-5">

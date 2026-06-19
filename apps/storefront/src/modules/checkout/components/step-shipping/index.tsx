@@ -38,12 +38,14 @@ type GoogleMapsWindow = Window & {
   google?: {
     maps?: {
       places?: {
+        AutocompleteSessionToken: new () => unknown
         AutocompleteService: new () => {
           getPlacePredictions: (
             request: {
               input: string
               componentRestrictions?: { country: string | string[] }
               types?: string[]
+              sessionToken?: unknown
             },
             callback: (
               predictions: GoogleAutocompletePrediction[] | null,
@@ -65,6 +67,7 @@ type GoogleMapsWindow = Window & {
 const GOOGLE_PLACES_SCRIPT_ID = "google-maps-places-script"
 const GOOGLE_PLACES_CALLBACK = "initMuseGooglePlaces"
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+const MIN_ADDRESS_AUTOCOMPLETE_CHARS = 2
 
 const getAddressPart = (
   components: GoogleAddressComponent[],
@@ -112,6 +115,7 @@ export default function StepShipping({
         input: string
         componentRestrictions?: { country: string | string[] }
         types?: string[]
+        sessionToken?: unknown
       },
       callback: (
         predictions: GoogleAutocompletePrediction[] | null,
@@ -125,6 +129,7 @@ export default function StepShipping({
       callback: (place: GooglePlace | null, status: string) => void
     ) => void
   } | null>(null)
+  const autocompleteSessionTokenRef = useRef<unknown>(null)
   const [addressPredictions, setAddressPredictions] = useState<
     GoogleAutocompletePrediction[]
   >([])
@@ -186,19 +191,25 @@ export default function StepShipping({
     const nextInput = value.trim()
     latestPredictionInputRef.current = nextInput
 
-    if (!autocompleteServiceRef.current || value.trim().length < 3) {
+    if (
+      !autocompleteServiceRef.current ||
+      nextInput.length < MIN_ADDRESS_AUTOCOMPLETE_CHARS
+    ) {
       setIsFetchingPredictions(false)
       setAddressPredictions([])
       return
     }
 
     setIsFetchingPredictions(true)
-    setAddressPredictions([])
     autocompleteServiceRef.current.getPlacePredictions(
       {
-        input: nextInput,
+        input:
+          autocompleteCountryCode === "nz"
+            ? `${nextInput}, New Zealand`
+            : nextInput,
         componentRestrictions: { country: autocompleteCountryCode },
         types: ["address"],
+        sessionToken: autocompleteSessionTokenRef.current,
       },
       (predictions) => {
         if (latestPredictionInputRef.current !== nextInput) {
@@ -235,6 +246,10 @@ export default function StepShipping({
       },
       (place) => {
         applyAddressComponents(place?.address_components || [])
+        const places = (window as GoogleMapsWindow).google?.maps?.places
+        autocompleteSessionTokenRef.current = places
+          ? new places.AutocompleteSessionToken()
+          : null
       }
     )
   }
@@ -262,6 +277,7 @@ export default function StepShipping({
 
       const places = googleWindow.google.maps.places
       autocompleteServiceRef.current = new places.AutocompleteService()
+      autocompleteSessionTokenRef.current = new places.AutocompleteSessionToken()
       if (!placesServiceElementRef.current) {
         placesServiceElementRef.current = document.createElement("div")
       }
@@ -269,6 +285,12 @@ export default function StepShipping({
         placesServiceElementRef.current
       )
       setPlacesStatusMessage(null)
+      if (
+        isAddressFocused &&
+        latestPredictionInputRef.current.length >= MIN_ADDRESS_AUTOCOMPLETE_CHARS
+      ) {
+        fetchAddressPredictions(latestPredictionInputRef.current)
+      }
     }
 
     ;(window as GoogleMapsWindow)[GOOGLE_PLACES_CALLBACK] = initAutocomplete
@@ -285,7 +307,7 @@ export default function StepShipping({
       } else {
         const script = document.createElement("script")
         script.id = GOOGLE_PLACES_SCRIPT_ID
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=${GOOGLE_PLACES_CALLBACK}&loading=async`
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=${GOOGLE_PLACES_CALLBACK}&loading=async&language=en-NZ&region=NZ`
         script.async = true
         script.defer = true
         script.addEventListener("load", initAutocomplete, { once: true })

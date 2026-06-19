@@ -1,6 +1,10 @@
 "use client"
 
 import { applyPromotions } from "@lib/data/cart"
+import {
+  getCartFulfilmentSummary,
+  getFulfilmentState,
+} from "@lib/util/fulfilment-state"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { getShippingProtectionItem } from "@modules/checkout/components/step-delivery"
@@ -26,6 +30,7 @@ export default function CheckoutSummaryMuse({
   const subtotal = cart.subtotal ?? cart.item_subtotal ?? 0
   const shippingProtectionItem = getShippingProtectionItem(cart)
   const items = cart.items?.filter((item) => item.id !== shippingProtectionItem?.id)
+  const fulfilmentSummary = getCartFulfilmentSummary(items)
   const protectionAmount = shippingProtectionItem
     ? (shippingProtectionItem.unit_price ?? 0) * shippingProtectionItem.quantity
     : 0
@@ -58,8 +63,11 @@ export default function CheckoutSummaryMuse({
         </p>
 
         <div className="mb-5 flex flex-col gap-4">
-          {items?.map((item) => (
-            <div key={item.id} className="flex items-center gap-3.5">
+          {items?.map((item) => {
+            const fulfilment = getFulfilmentState(item)
+
+            return (
+              <div key={item.id} className="flex items-center gap-3.5">
               <div className="relative flex h-[60px] w-[60px] flex-shrink-0 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-muse-cream-deep to-muse-cream-warm">
                 {item.thumbnail && (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -76,6 +84,12 @@ export default function CheckoutSummaryMuse({
                 <p className="text-[11.5px] text-muse-text-muted">
                   {item.variant?.title}
                 </p>
+                <p className="mt-0.5 flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-muse-text-muted">
+                  <span
+                    className={`inline-block h-[5px] w-[5px] rounded-full ${fulfilment.dotClassName}`}
+                  />
+                  {fulfilment.shortLabel}
+                </p>
                 {item.quantity > 1 && (
                   <p className="text-[11.5px] text-muse-text-light">
                     {money(cart, item.unit_price ?? 0)} each
@@ -85,9 +99,21 @@ export default function CheckoutSummaryMuse({
               <p className="whitespace-nowrap text-[14px] font-extrabold">
                 {money(cart, (item.unit_price ?? 0) * item.quantity)}
               </p>
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
+
+        {!!items?.length && (
+          <div className="mb-4 rounded-2xl border border-muse-border bg-white px-4 py-3.5">
+            <p className="text-[12px] font-bold text-muse-black">
+              {fulfilmentSummary.fullOrderLabel}
+            </p>
+            <p className="mt-1 text-[11.5px] text-muse-text-muted">
+              Each item keeps the same fulfilment state from product page to delivery.
+            </p>
+          </div>
+        )}
 
         <div className="mb-4 rounded-2xl border border-muse-border bg-white px-4 py-3.5">
           {subtotal >= FREE_SHIPPING_THRESHOLD ? (

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 import { addToCart } from "@lib/data/cart"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
 
 type Props = {
@@ -48,7 +49,7 @@ function AddonCard({
   const [isPending, startTransition] = useTransition()
   const [added, setAdded] = useState(false)
   const { cheapestPrice } = getProductPrice({ product })
-  const isNZStock = product.collection?.handle === "nz-stock"
+  const fulfilment = getFulfilmentState(product)
 
   function handleAdd() {
     const variant = product.variants?.find(
@@ -86,11 +87,9 @@ function AddonCard({
         )}
         <span className="absolute bottom-1 left-1 flex items-center gap-[3px] rounded-full bg-muse-cream/95 px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-wider">
           <span
-            className={`h-1 w-1 rounded-full ${
-              isNZStock ? "bg-muse-green" : "bg-muse-orange"
-            }`}
+            className={`h-1 w-1 rounded-full ${fulfilment.dotClassName}`}
           />
-          {isNZStock ? "NZ" : "Std"}
+          {fulfilment.kind === "nz-stock" ? "NZ" : "Std"}
         </span>
       </div>
 

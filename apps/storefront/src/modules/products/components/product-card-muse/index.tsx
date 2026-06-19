@@ -2,7 +2,7 @@
 
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
-import { getDeliveredByLabel } from "@lib/util/delivery-estimate"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -71,9 +71,7 @@ export default function ProductCardMuse({
   const [isPending, startTransition] = useTransition()
   const { openDrawer } = useCartDrawer()
   const { cheapestPrice } = getProductPrice({ product })
-  const isNZStock =
-    product.collection?.handle === "nz-stock" ||
-    product.type?.value?.toLowerCase() === "nz stock"
+  const fulfilment = getFulfilmentState(product)
   const brand =
     typeof product.metadata?.brand === "string" ? product.metadata.brand : undefined
   const rrp =
@@ -82,7 +80,6 @@ export default function ProductCardMuse({
       : undefined
   const sizes = getSizes(product)
   const hasSizes = sizes.length > 0
-  const standardDeliveryLabel = getDeliveredByLabel()
 
   const handleQuickAdd = (size: string) => {
     const variant =
@@ -112,10 +109,10 @@ export default function ProductCardMuse({
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muse-cream/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black backdrop-blur">
             <span
               className={`h-[7px] w-[7px] rounded-full ${
-                isNZStock ? "bg-muse-green" : "bg-muse-orange"
+                fulfilment.dotClassName
               }`}
             />
-            {isNZStock ? "NZ Stock" : "Standard"}
+            {fulfilment.shortLabel}
           </span>
           {position === 1 && (
             <span className="rounded-full bg-muse-yellow px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black">
@@ -154,8 +151,8 @@ export default function ProductCardMuse({
             image: product.thumbnail,
             price: cheapestPrice?.calculated_price,
             compareAt: rrp ? `$${rrp} RRP` : undefined,
-            badge: isNZStock ? "NZ Stock" : "Standard",
-            eta: isNZStock ? "Ships in 1-3 days" : standardDeliveryLabel,
+            badge: fulfilment.shortLabel,
+            eta: fulfilment.deliveryLabel,
           }}
           className="absolute right-3 top-3 z-[3] flex h-9 w-9 items-center justify-center rounded-full bg-muse-cream/95 text-muse-black backdrop-blur transition hover:scale-105 aria-pressed:text-muse-orange"
           label="Save to saved items"
@@ -232,7 +229,7 @@ export default function ProductCardMuse({
           )}
         </div>
         <p className="text-[11px] text-muse-text-muted">
-          {isNZStock ? "Ships in 1-3 days" : standardDeliveryLabel}
+          {fulfilment.deliveryLabel}
         </p>
         <div className="mt-2 flex gap-1">
           {sizes.slice(0, 8).map(({ label, inStock, low }) => (

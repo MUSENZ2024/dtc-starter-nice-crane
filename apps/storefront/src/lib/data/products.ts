@@ -1,12 +1,36 @@
 "use server"
 
 import { sdk } from "@lib/config"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { ProductFilterParams, SortOptions } from "./products.types"
 import { getAuthHeaders, getCacheOptions } from "./cookies"
 import { PRODUCT_LIST_FIELDS } from "./product-fields"
 import { getRegion, retrieveRegion } from "./regions"
+
+const isPublishedProduct = (product: HttpTypes.StoreProduct) => {
+  const status = (product as HttpTypes.StoreProduct & { status?: string }).status
+
+  return status ? status === "published" : true
+}
+
+const withProductStatusField = (fields?: string) => {
+  if (!fields) {
+    return PRODUCT_LIST_FIELDS
+  }
+
+  const requestedFields = fields
+    .split(",")
+    .map((field) => field.trim())
+    .filter(Boolean)
+
+  if (!requestedFields.includes("status")) {
+    requestedFields.splice(3, 0, "status")
+  }
+
+  return requestedFields.join(",")
+}
 
 export const listProducts = async ({
   pageParam = 1,
@@ -47,6 +71,8 @@ export const listProducts = async ({
     ...(await getCacheOptions("products")),
   }
 
+  const fields = withProductStatusField(queryParams?.fields)
+
   return sdk.client
     .fetch<{ products: HttpTypes.StoreProduct[]; count: number }>(
       `/store/products`,
@@ -56,8 +82,8 @@ export const listProducts = async ({
           limit,
           offset,
           ...(region?.id ? { region_id: region.id } : {}),
-          fields: PRODUCT_LIST_FIELDS,
           ...queryParams,
+          fields,
         },
         headers,
         next,
@@ -65,12 +91,17 @@ export const listProducts = async ({
       }
     )
     .then(({ products, count }) => {
-      const nextPage = count > offset + limit ? pageParam + 1 : null
+      const publishedProducts = products.filter(isPublishedProduct)
+      const publishedCount =
+        publishedProducts.length === products.length
+          ? count
+          : publishedProducts.length
+      const nextPage = publishedCount > offset + limit ? pageParam + 1 : null
 
       return {
         response: {
-          products,
-          count,
+          products: publishedProducts,
+          count: publishedCount,
         },
         nextPage: nextPage,
         queryParams,
@@ -349,37 +380,7 @@ const productHasStockState = (
     return true
   }
 
-  const haystack = [
-    product.collection?.handle,
-    product.collection?.title,
-    product.type?.value,
-    product.subtitle,
-    product.description,
-    ...(product.tags?.map((tag) => tag.value) ?? []),
-  ]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-
-  if (stock === "nz-stock") {
-    return (
-      productHasCollectionHandle(product, "nz-stock") ||
-      productHasTagValue(product, "nz-stock") ||
-      haystack.includes("nz-stock") ||
-      haystack.includes("nz stock") ||
-      haystack.includes("ships in 1-3")
-    )
-  }
-
-  const explicitlyStandard =
-    productHasCollectionHandle(product, "standard-delivery") ||
-    productHasTagValue(product, "standard-delivery") ||
-    haystack.includes("standard-delivery") ||
-    haystack.includes("standard delivery") ||
-    haystack.includes("13-16") ||
-    haystack.includes("13–16")
-
-  return explicitlyStandard || !productHasStockState(product, "nz-stock")
+  return getFulfilmentState(product).kind === stock
 }
 
 const mergeProductsById = (productGroups: HttpTypes.StoreProduct[][]) => {
@@ -573,16 +574,8 @@ export async function listProductsFiltered({
 
   if (sortBy === "ships_soonest") {
     filtered.sort((a, b) => {
-      const aRank =
-        productHasCollectionHandle(a, "nz-stock") ||
-        productHasStockState(a, "nz-stock")
-          ? 0
-          : 1
-      const bRank =
-        productHasCollectionHandle(b, "nz-stock") ||
-        productHasStockState(b, "nz-stock")
-          ? 0
-          : 1
+      const aRank = productHasStockState(a, "nz-stock") ? 0 : 1
+      const bRank = productHasStockState(b, "nz-stock") ? 0 : 1
 
       return aRank - bRank
     })

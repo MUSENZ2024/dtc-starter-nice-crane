@@ -7,7 +7,9 @@ import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import RecentlyViewedProducts from "@modules/products/components/recently-viewed-products"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
+import CompleteTheFit from "@modules/products/components/complete-the-fit"
 
 type ProductTemplateProps = {
   product: HttpTypes.StoreProduct
@@ -103,19 +105,18 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   }
 
   const { cheapestPrice } = getProductPrice({ product })
-  const isNZStock =
-    product.collection?.handle === "nz-stock" ||
-    product.type?.value?.toLowerCase() === "nz stock"
-  const rrp =
-    typeof product.metadata?.rrp_nzd === "string"
-      ? `NZ$${product.metadata.rrp_nzd}`
-      : "NZ$500"
+  const fulfilment = getFulfilmentState(product)
+  const saleCompareAt =
+    cheapestPrice?.price_type === "sale" &&
+    cheapestPrice.original_price_number > cheapestPrice.calculated_price_number
+      ? cheapestPrice.original_price
+      : null
 
   return (
     <div className="bg-[#F4F2ED] text-[#1A1A1A]" data-testid="product-container">
       <div className="mx-auto max-w-[1320px] px-[18px] pt-4 text-xs font-medium tracking-[0.03em] text-[#999] small:px-8 small:pt-5">
-        <LocalizedClientLink href="/" className="hover:text-[#C1440E]">
-          Home
+        <LocalizedClientLink href="/store" className="hover:text-[#C1440E]">
+          Shop All
         </LocalizedClientLink>
         <span className="mx-2 opacity-60">&gt;</span>
         <LocalizedClientLink href="/store" className="hover:text-[#C1440E]">
@@ -127,7 +128,7 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
 
       <section className="mx-auto grid max-w-[1320px] gap-7 px-[18px] py-4 pb-20 small:grid-cols-[1.15fr_1fr] small:gap-14 small:px-8 small:py-6 small:pb-[72px]">
         <div className="small:sticky small:top-28 small:self-start">
-          <ImageGallery images={images} />
+          <ImageGallery images={images} fulfilment={fulfilment} />
         </div>
         <ProductActions product={product} region={region} />
       </section>
@@ -224,85 +225,21 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
         </div>
       </section>
 
-      <ProductPlaceholderRails
-        recentlyViewedProduct={{
+      <CompleteTheFit product={product} countryCode={_countryCode} />
+
+      <RecentlyViewedProducts
+        product={{
           id: product.id,
           title: product.title || "MUSE product",
           handle: product.handle,
           image: product.thumbnail || product.images?.[0]?.url,
           price: cheapestPrice?.calculated_price,
-          compareAt: rrp,
-          badge: isNZStock ? "NZ Stock" : "Standard",
+          compareAt: saleCompareAt,
+          badge: fulfilment.shortLabel,
         }}
       />
     </div>
   )
 }
-
-const MiniCard = ({
-  label,
-  badge,
-  price,
-  rrp,
-}: {
-  label: string
-  badge: "Standard" | "NZ Stock"
-  price: string
-  rrp?: string
-}) => (
-  <a
-    href="#"
-    className="group overflow-hidden rounded-[18px] bg-[#F8F7F4] transition hover:-translate-y-1"
-  >
-    <div className="relative flex aspect-square items-center justify-center bg-gradient-to-br from-[#ECE9E2] to-[#F8F7F4] text-[40px] font-black text-black/10">
-      <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#F4F2ED]/90 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.05em] text-[#1A1A1A]">
-        <span
-          className={`h-1.5 w-1.5 rounded-full ${
-            badge === "NZ Stock" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"
-          }`}
-        />
-        {badge}
-      </span>
-      {label}
-    </div>
-    <div className="px-3.5 pb-4 pt-3">
-      <div className="mb-1 text-[12.5px] font-semibold leading-[1.3]">
-        Product Name Placeholder
-      </div>
-      <div className="text-[13px] font-black">
-        {price}
-        {rrp && (
-          <span className="ml-1.5 text-[11px] font-medium text-[#999] line-through">
-            {rrp}
-          </span>
-        )}
-      </div>
-    </div>
-  </a>
-)
-
-const ProductPlaceholderRails = ({
-  recentlyViewedProduct,
-}: {
-  recentlyViewedProduct: React.ComponentProps<
-    typeof RecentlyViewedProducts
-  >["product"]
-}) => (
-  <>
-    <section className="mx-auto max-w-[1320px] px-[18px] pt-6 small:px-8">
-      <h2 className="mb-6 text-[24px] font-black tracking-[-0.03em] small:text-[34px]">
-        Complete the fit
-      </h2>
-      <div className="grid grid-cols-2 gap-2.5 small:grid-cols-4 small:gap-4">
-        <MiniCard label="06" badge="Standard" price="$120" />
-        <MiniCard label="07" badge="NZ Stock" price="$140" />
-        <MiniCard label="08" badge="Standard" price="$150" rrp="$299" />
-        <MiniCard label="09" badge="NZ Stock" price="$100" />
-      </div>
-    </section>
-
-    <RecentlyViewedProducts product={recentlyViewedProduct} />
-  </>
-)
 
 export default ProductTemplate

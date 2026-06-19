@@ -31,6 +31,8 @@ type SearchProductLink = {
   keywords: string
 }
 
+type LiveSearchProductLink = Omit<SearchProductLink, "keywords">
+
 type SuggestionLink = {
   title: string
   subtitle: string
@@ -46,7 +48,7 @@ const synonymMap: Record<string, string[]> = {
   birks: ["birkenstock", "birk", "slide", "sandal"],
   birkenstock: ["birks", "birk", "slide", "sandal"],
   "fast shipping": ["NZ Stock", "Auckland", "ships fast"],
-  sale: ["Clearance", "markdown", "discount"],
+  sale: ["markdown", "discount"],
 }
 
 const curatedCollections: SuggestionLink[] = [
@@ -57,17 +59,16 @@ const curatedCollections: SuggestionLink[] = [
     keywords: "shop all store catalogue products browse all",
   },
   {
-    title: "Clearance",
-    subtitle: "Genuine markdowns, NZ stock first",
-    href: "/clearance",
-    keywords: "sale clearance markdown discount deal",
-    accent: "orange",
-  },
-  {
     title: "New Balance",
     subtitle: "Search 9060 and other NB pairs",
     href: "/store?q=new+balance",
     keywords: "new balance nb 9060 sneaker shoe",
+  },
+  {
+    title: "Nike",
+    subtitle: "Search Nike sneakers and apparel",
+    href: "/store?q=nike",
+    keywords: "nike air jordan dunk shox tn sneaker shoe",
   },
   {
     title: "North Face Puffers",
@@ -84,18 +85,6 @@ const curatedCollections: SuggestionLink[] = [
 ]
 
 const helpSuggestions: SuggestionLink[] = [
-  {
-    title: "Shipping times",
-    subtitle: "NZ Stock vs Standard Delivery",
-    href: "/faq#shipping",
-    keywords: "shipping delivery fast shipping nz stock standard delivery dispatch how long",
-  },
-  {
-    title: "Returns and exchanges",
-    subtitle: "Sizing, returns and money-back guarantee",
-    href: "/faq#returns",
-    keywords: "return exchange size sizing refund money back guarantee",
-  },
   {
     title: "Ask for a shoe",
     subtitle: "Can not find the pair? Contact MUSE",
@@ -152,11 +141,16 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchPanelTop, setSearchPanelTop] = useState(96)
   const [query, setQuery] = useState("")
+  const [liveProductLinks, setLiveProductLinks] = useState<
+    LiveSearchProductLink[]
+  >([])
+  const [isProductSearchLoading, setIsProductSearchLoading] = useState(false)
   const searchTouchStartY = useRef<number | null>(null)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const { countryCode } = useParams()
+  const country = Array.isArray(countryCode) ? countryCode[0] : countryCode ?? "nz"
 
   const collectionSuggestions = useMemo(
     () => [
@@ -182,12 +176,16 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
       }
     }
 
+    const matchedProducts = liveProductLinks.length
+      ? liveProductLinks
+      : productLinks
+          .filter((product) =>
+            matchesTerms(`${product.title} ${product.keywords}`, terms)
+          )
+          .slice(0, 5)
+
     return {
-      products: productLinks
-        .filter((product) =>
-          matchesTerms(`${product.title} ${product.keywords}`, terms)
-        )
-        .slice(0, 5),
+      products: matchedProducts,
       collections: collectionSuggestions
         .filter((item) => matchesTerms(`${item.title} ${item.keywords}`, terms))
         .slice(0, 4),
@@ -195,13 +193,69 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
         .filter((item) => matchesTerms(`${item.title} ${item.keywords}`, terms))
         .slice(0, 3),
     }
-  }, [collectionSuggestions, productLinks, query])
+  }, [collectionSuggestions, liveProductLinks, productLinks, query])
 
   const hasExactResults =
     searchResults.products.length +
       searchResults.collections.length +
       searchResults.help.length >
-    0
+      0 ||
+    isProductSearchLoading
+
+  useEffect(() => {
+    if (!searchOpen) {
+      return
+    }
+
+    const trimmedQuery = query.trim()
+
+    if (trimmedQuery.length < 2) {
+      setLiveProductLinks([])
+      setIsProductSearchLoading(false)
+      return
+    }
+
+    const controller = new AbortController()
+    setIsProductSearchLoading(true)
+
+    const timeout = window.setTimeout(async () => {
+      const params = new URLSearchParams({
+        countryCode: country,
+        q: trimmedQuery,
+      })
+
+      try {
+        const response = await fetch(`/api/search?${params.toString()}`, {
+          cache: "no-store",
+          signal: controller.signal,
+        })
+
+        if (!response.ok) {
+          setLiveProductLinks([])
+          return
+        }
+
+        const payload = (await response.json()) as {
+          products?: LiveSearchProductLink[]
+        }
+
+        setLiveProductLinks(payload.products ?? [])
+      } catch (error) {
+        if (!controller.signal.aborted) {
+          setLiveProductLinks([])
+        }
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsProductSearchLoading(false)
+        }
+      }
+    }, 180)
+
+    return () => {
+      window.clearTimeout(timeout)
+      controller.abort()
+    }
+  }, [country, query, searchOpen])
 
   useEffect(() => {
     setMounted(true)
@@ -367,14 +421,11 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   }
 
   const primaryLinks: DrawerLink[] = [
-    { label: "Home", href: "/" },
     { label: "Shop All", href: "/store" },
     ...categoryLinks,
-    { label: "Clearance", href: "/clearance", accent: "red" as const },
   ]
 
   const secondaryLinks = [
-    { label: "FAQ / Help", href: "/faq" },
     { label: "Track Order", href: "/track" },
     { label: "Account", href: "/account" },
   ]
@@ -624,6 +675,8 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                         </span>
                       </a>
                     ))
+                  ) : isProductSearchLoading ? (
+                    <EmptyGroupText text="Searching products..." />
                   ) : (
                     <EmptyGroupText text="No product title matched yet." />
                   )}
@@ -640,11 +693,11 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                       />
                     ))
                   ) : (
-                    <EmptyGroupText text="Try NZ Stock, Clearance or a brand." />
+                    <EmptyGroupText text="Try NZ Stock or a brand." />
                   )}
                 </SuggestionGroup>
 
-                <SuggestionGroup title="FAQ / Help Answers">
+                <SuggestionGroup title="Support">
                   {searchResults.help.length ? (
                     searchResults.help.map((item) => (
                       <SearchSuggestionLink

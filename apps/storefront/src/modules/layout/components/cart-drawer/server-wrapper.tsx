@@ -1,5 +1,7 @@
 import { retrieveCart } from "@lib/data/cart"
 import { listProducts } from "@lib/data/products"
+import { getRecommendedProducts } from "@lib/util/product-recommendations"
+import { HttpTypes } from "@medusajs/types"
 import CartDrawer from "./index"
 
 export default async function CartDrawerWrapper() {
@@ -14,13 +16,34 @@ export default async function CartDrawerWrapper() {
   const addonProducts = cart?.items?.length
     ? await listProducts({
         countryCode,
-        queryParams: { limit: 6 },
+        queryParams: { limit: 48 },
       })
-        .then(({ response }) =>
-          response.products
-            .filter((product) => !cartProductIds.has(product.id))
-            .slice(0, 2)
-        )
+        .then(({ response }) => {
+          const productsById = new Map(
+            response.products.map((product) => [product.id, product])
+          )
+          const sourceProducts =
+            cart.items
+              ?.map((item) => {
+                if (item.product_id && productsById.has(item.product_id)) {
+                  return productsById.get(item.product_id)
+                }
+
+                return (item.product ??
+                  item.variant?.product) as HttpTypes.StoreProduct | undefined
+              })
+              .filter(
+                (product): product is HttpTypes.StoreProduct => Boolean(product)
+              ) ?? []
+
+          return getRecommendedProducts({
+            sourceProducts,
+            candidates: response.products,
+            excludeProductIds: cartProductIds,
+            cartSubtotal: cart.subtotal ?? cart.item_subtotal ?? 0,
+            limit: 2,
+          })
+        })
         .catch(() => [])
     : []
 

@@ -4,6 +4,7 @@ import { useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { convertToLocale } from "@lib/util/money"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
@@ -46,7 +47,7 @@ export default function CartItemMuse({ item, currencyCode }: Props) {
   const [removing, setRemoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const brand = item.variant?.product?.metadata?.brand as string | undefined
-  const isNZStock = item.variant?.product?.collection?.handle === "nz-stock"
+  const fulfilment = getFulfilmentState(item)
   const variantLabel = getVariantLabel(item)
   const unitPrice = item.unit_price ?? 0
   const lineTotal = unitPrice * item.quantity
@@ -101,11 +102,9 @@ export default function CartItemMuse({ item, currencyCode }: Props) {
           )}
           <span className="absolute bottom-[7px] left-[7px] flex items-center gap-1 rounded-full bg-muse-cream/95 px-[9px] py-[3px] text-[9.5px] font-bold uppercase tracking-[0.06em] backdrop-blur">
             <span
-              className={`h-[5px] w-[5px] rounded-full ${
-                isNZStock ? "bg-muse-green" : "bg-muse-orange"
-              }`}
+              className={`h-[5px] w-[5px] rounded-full ${fulfilment.dotClassName}`}
             />
-            {isNZStock ? "NZ Stock" : "Standard"}
+            {fulfilment.shortLabel}
           </span>
         </div>
       </LocalizedClientLink>
@@ -135,13 +134,9 @@ export default function CartItemMuse({ item, currencyCode }: Props) {
 
         <p className="flex items-start gap-1.5 text-[12px] text-muse-text-muted">
           <span
-            className={`mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-              isNZStock ? "bg-muse-green" : "bg-muse-orange"
-            }`}
+            className={`mt-[5px] h-1.5 w-1.5 flex-shrink-0 rounded-full ${fulfilment.dotClassName}`}
           />
-          {isNZStock
-            ? "NZ Stock · ships in 1–3 days from Auckland"
-            : "Standard Delivery · estimated 13–16 days · tracked NZ Post"}
+          {fulfilment.label} · {fulfilment.deliveryLabel} · {fulfilment.supportCopy}
         </p>
         {error && (
           <p className="text-[12px] font-semibold text-muse-orange">

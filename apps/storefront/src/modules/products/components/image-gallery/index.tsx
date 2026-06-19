@@ -1,14 +1,16 @@
 "use client"
 
 import { HttpTypes } from "@medusajs/types"
+import { FulfilmentState } from "@lib/util/fulfilment-state"
 import Image from "next/image"
 import { useMemo, useState } from "react"
 
 type ImageGalleryProps = {
   images: HttpTypes.StoreProductImage[]
+  fulfilment: FulfilmentState
 }
 
-const ImageGallery = ({ images }: ImageGalleryProps) => {
+const ImageGallery = ({ images, fulfilment }: ImageGalleryProps) => {
   const galleryImages = useMemo(
     () =>
       images.length > 0
@@ -57,8 +59,8 @@ const ImageGallery = ({ images }: ImageGalleryProps) => {
           </span>
         )}
         <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-[#F4F2ED]/95 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#0A0A0A] backdrop-blur">
-          <span className="h-[7px] w-[7px] rounded-full bg-[#C1440E]" />
-          Standard Delivery
+          <span className={`h-[7px] w-[7px] rounded-full ${fulfilment.dotClassName}`} />
+          {fulfilment.label}
         </span>
         <span className="absolute bottom-4 right-4 rounded-full bg-[#0A0A0A]/70 px-3 py-1.5 text-[11px] font-semibold tracking-[0.05em] text-[#F4F2ED] backdrop-blur">
           {activeIndex + 1} / {galleryImages.length}

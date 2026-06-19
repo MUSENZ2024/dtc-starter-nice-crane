@@ -123,7 +123,9 @@ const byCountThenLabel = <T extends { count: number; label: string }>(
 ) => b.count - a.count || a.label.localeCompare(b.label)
 
 export const buildDynamicTagFilters = (tags: StoreProductTag[]) => {
-  const normalized = tags.map(normalizeTag).filter((tag) => tag.value)
+  const normalized = tags
+    .map(normalizeTag)
+    .filter((tag) => tag.value && tag.count > 0)
   const merchTags = normalized.filter(
     (tag) => !isBadgeTag(tag) && !isColourTag(tag)
   )

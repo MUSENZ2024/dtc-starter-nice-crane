@@ -218,7 +218,7 @@ const ShippingAddress = ({
       } else {
         const script = document.createElement("script")
         script.id = GOOGLE_PLACES_SCRIPT_ID
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&loading=async`
+        script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&loading=async&language=en-NZ&region=NZ`
         script.async = true
         script.defer = true
         script.addEventListener("load", initAutocomplete, { once: true })

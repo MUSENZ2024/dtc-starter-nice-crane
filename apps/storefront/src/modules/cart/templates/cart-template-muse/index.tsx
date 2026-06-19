@@ -41,10 +41,10 @@ export default function CartTemplateMuse({
       <div className="mx-auto max-w-[1320px] px-5 py-8 pb-28 small:px-8 lg:pb-12">
         <div className="mb-7 flex items-center gap-[7px] text-[12px] tracking-[0.03em] text-muse-text-light">
           <LocalizedClientLink
-            href="/"
+            href="/store"
             className="transition hover:text-muse-orange"
           >
-            Home
+            Shop All
           </LocalizedClientLink>
           <span className="opacity-50">›</span>
           <strong className="font-semibold text-muse-text">Your Bag</strong>

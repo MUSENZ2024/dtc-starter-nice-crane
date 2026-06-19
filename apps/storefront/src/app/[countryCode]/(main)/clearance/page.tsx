@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { notFound } from "next/navigation"
 
 import { listCategories } from "@lib/data/categories"
 import { listCollections } from "@lib/data/collections"
@@ -35,6 +36,8 @@ type Params = {
 }
 
 export default async function ClearancePage(props: Params) {
+  notFound()
+
   const params = await props.params
   const searchParams = await props.searchParams
 
