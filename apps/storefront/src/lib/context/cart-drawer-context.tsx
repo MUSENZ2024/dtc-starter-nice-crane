@@ -10,21 +10,30 @@ import {
 
 type CartDrawerContextValue = {
   isOpen: boolean
+  isCartMutating: boolean
   openDrawer: () => void
   closeDrawer: () => void
+  beginCartMutation: () => void
+  finishCartMutation: () => void
 }
 
 const CartDrawerContext = createContext<CartDrawerContextValue>({
   isOpen: false,
+  isCartMutating: false,
   openDrawer: () => {},
   closeDrawer: () => {},
+  beginCartMutation: () => {},
+  finishCartMutation: () => {},
 })
 
 export function CartDrawerProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
+  const [isCartMutating, setIsCartMutating] = useState(false)
 
   const openDrawer = useCallback(() => setIsOpen(true), [])
   const closeDrawer = useCallback(() => setIsOpen(false), [])
+  const beginCartMutation = useCallback(() => setIsCartMutating(true), [])
+  const finishCartMutation = useCallback(() => setIsCartMutating(false), [])
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : ""
@@ -46,7 +55,16 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
   }, [closeDrawer])
 
   return (
-    <CartDrawerContext.Provider value={{ isOpen, openDrawer, closeDrawer }}>
+    <CartDrawerContext.Provider
+      value={{
+        isOpen,
+        isCartMutating,
+        openDrawer,
+        closeDrawer,
+        beginCartMutation,
+        finishCartMutation,
+      }}
+    >
       {children}
     </CartDrawerContext.Provider>
   )

@@ -84,7 +84,12 @@ export default function CartDrawer({
   addonProducts,
   countryCode,
 }: CartDrawerProps) {
-  const { isOpen, openDrawer, closeDrawer } = useCartDrawer()
+  const {
+    isOpen,
+    isCartMutating,
+    openDrawer,
+    closeDrawer,
+  } = useCartDrawer()
   const { items: savedItems, hydrated, isSaved, toggleSaved, removeSaved } =
     useSavedItems()
   const [mounted, setMounted] = useState(false)
@@ -269,6 +274,16 @@ export default function CartDrawer({
           </button>
         </header>
 
+        {isCartMutating && (
+          <div
+            className="flex items-center gap-2 border-b border-muse-border bg-muse-cream-warm px-6 py-3 text-[12.5px] font-semibold text-muse-black"
+            role="status"
+          >
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muse-black/20 border-t-muse-black" />
+            Adding to your bag...
+          </div>
+        )}
+
         {!isEmpty && (
           <div className="flex-shrink-0 border-b border-muse-border px-6 py-4">
             <p className="mb-2.5 text-[12.5px] text-muse-black">
@@ -386,6 +401,16 @@ export default function CartDrawer({
                 )
               })}
             </ul>
+          ) : isCartMutating ? (
+            <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
+              <div className="h-10 w-10 animate-spin rounded-full border-[3px] border-muse-border border-t-muse-black" />
+              <p className="text-lg font-black tracking-tight text-muse-black">
+                Adding your item
+              </p>
+              <p className="max-w-[260px] text-sm leading-relaxed text-muse-text-muted">
+                Your bag will update in a moment.
+              </p>
+            </div>
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
               <div className="flex h-[72px] w-[72px] items-center justify-center rounded-full bg-muse-cream-warm">

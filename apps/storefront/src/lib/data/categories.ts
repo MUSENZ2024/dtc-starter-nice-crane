@@ -30,7 +30,8 @@ export const listCategories = async (query?: Record<string, unknown>) => {
           limit,
           ...query,
         },
-        cache: "no-store",
+        next: { revalidate: 300 },
+        cache: "force-cache",
       }
     )
     .then(({ product_categories }) => hideDraftCategoryProducts(product_categories))

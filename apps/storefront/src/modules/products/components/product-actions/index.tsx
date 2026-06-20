@@ -438,7 +438,7 @@ export default function ProductActions({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const countryCode = useParams().countryCode as string
-  const { openDrawer } = useCartDrawer()
+  const { openDrawer, beginCartMutation, finishCartMutation } = useCartDrawer()
   const editLineId = searchParams.get("edit_line_id")
   const editQuantity = Math.max(
     1,
@@ -634,6 +634,8 @@ export default function ProductActions({
     }
 
     setIsAdding(true)
+    beginCartMutation()
+    openDrawer()
     try {
       if (editLineId) {
         await replaceLineItem({
@@ -653,13 +655,13 @@ export default function ProductActions({
       })
       setAddedToCart(true)
       router.refresh()
-      openDrawer()
 
       if (addedTimerRef.current) {
         clearTimeout(addedTimerRef.current)
       }
       addedTimerRef.current = setTimeout(() => setAddedToCart(false), 2000)
     } finally {
+      finishCartMutation()
       setIsAdding(false)
     }
   }

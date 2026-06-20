@@ -69,7 +69,7 @@ export default function ProductCardMuse({
 }: Props) {
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const { openDrawer } = useCartDrawer()
+  const { openDrawer, beginCartMutation, finishCartMutation } = useCartDrawer()
   const { cheapestPrice } = getProductPrice({ product })
   const fulfilment = getFulfilmentState(product)
   const brand =
@@ -92,13 +92,18 @@ export default function ProductCardMuse({
     }
 
     startTransition(async () => {
-      await addToCart({
-        variantId: variant.id,
-        quantity: 1,
-        countryCode,
-      })
-      setQuickAddOpen(false)
+      beginCartMutation()
       openDrawer()
+      try {
+        await addToCart({
+          variantId: variant.id,
+          quantity: 1,
+          countryCode,
+        })
+        setQuickAddOpen(false)
+      } finally {
+        finishCartMutation()
+      }
     })
   }
 

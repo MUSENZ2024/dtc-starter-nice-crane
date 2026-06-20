@@ -90,7 +90,7 @@ export default function CompleteTheFitCard({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [addedVariantId, setAddedVariantId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const { openDrawer } = useCartDrawer()
+  const { openDrawer, beginCartMutation, finishCartMutation } = useCartDrawer()
   const { cheapestPrice } = getProductPrice({ product })
   const choices = getVariantChoices(product)
   const hasQuickAdd = choices.length > 0
@@ -106,11 +106,16 @@ export default function CompleteTheFitCard({
     }
 
     startTransition(async () => {
-      await addToCart({ variantId: variant.id, quantity: 1, countryCode })
-      setAddedVariantId(variant.id)
-      setPickerOpen(false)
+      beginCartMutation()
       openDrawer()
-      window.setTimeout(() => setAddedVariantId(null), 1800)
+      try {
+        await addToCart({ variantId: variant.id, quantity: 1, countryCode })
+        setAddedVariantId(variant.id)
+        setPickerOpen(false)
+        window.setTimeout(() => setAddedVariantId(null), 1800)
+      } finally {
+        finishCartMutation()
+      }
     })
   }
 
