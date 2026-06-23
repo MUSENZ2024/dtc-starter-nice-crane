@@ -3,6 +3,8 @@ import { HttpTypes } from "@medusajs/types"
 export type MuseReview = {
   id: string
   productHandles?: string[]
+  /** Product-name fallback for legacy orders whose current Medusa handle changed. */
+  productTitles?: string[]
   category: "footwear" | "apparel" | "bags" | "general"
   rating: 1 | 2 | 3 | 4 | 5
   image?: string
@@ -19,7 +21,36 @@ export type ProductReviewSet = {
   category: MuseReview["category"]
 }
 
-const PRODUCT_HANDLE_REVIEWS: MuseReview[] = []
+// Text reviews imported from the legacy MUSE review dashboard. These are kept
+// against the ordered product (rather than presented as store-wide feedback).
+export const allWrittenMuseReviews: MuseReview[] = [
+  { id: "legacy-boston-taupe-manaia", productHandles: ["birkenstock-boston-soft-footbed-suede-taupe-nz-stock"], productTitles: ["boston soft footbed suede taupe"], category: "footwear", rating: 1, name: "Manaia Edwards", date: "22 Jun 2026", text: "Bad, I ordered a size 37 and got sent a pair 6 sizes too big.", verified: true },
+  { id: "legacy-9060-jd-roxy", productTitles: ["9060 jd exclusive black pink white", "9060 black pink white"], category: "footwear", rating: 5, name: "Roxy Campbell", date: "22 Jun 2026", text: "Items delivered as expected, customer service is always great, and the shoes are exactly as described. Can't fault the experience with Muse, definitely my go-to for quality shoes!", verified: true },
+  { id: "legacy-nuptse-cream-saini", productTitles: ["1996 retro nuptse jacket cream", "nuptse jacket cream"], category: "apparel", rating: 5, name: "Saini Tuulima", date: "14 Jun 2026", text: "Amazing quality! Obsessed with my jacket I ordered another one for my son in white and black :) will be ordering more!", verified: true },
+  { id: "legacy-boston-taupe-emma", productHandles: ["birkenstock-boston-soft-footbed-suede-taupe-nz-stock"], productTitles: ["boston soft footbed suede taupe"], category: "footwear", rating: 5, name: "Emma Muir", date: "13 May 2026", text: "The shoes are great, good size etc love them! Shipping takes a little bit but worth the wait for the price", verified: true },
+  { id: "legacy-adrian-armani", productHandles: ["dr-martens-adrian-smooth-leather-tassel-loafers-black"], productTitles: ["adrian smooth leather tassel"], category: "footwear", rating: 5, name: "Armani Tufuga-Mason", date: "11 May 2026", text: "Great quality and worth the wait", verified: true },
+  { id: "legacy-concord-brad", productHandles: ["air-jordan-1-low-se-concord"], productTitles: ["jordan 1 low se concord"], category: "footwear", rating: 5, name: "Brad White", date: "27 Apr 2026", text: "My first purchasing experience with Muse was outstanding, the Customer Service that I received was excellent. The answers to my questions were answered quickly and I was very impressed with the service.", verified: true },
+  { id: "legacy-9060-bisque-kristin", productTitles: ["9060 bisque sea salt", "9060 sea salt bisque"], category: "footwear", rating: 5, name: "Kristin Crews", date: "11 Apr 2026", text: "Colourway is sooo nice in person. Way better than the pics tbh. Super comfy as well, defs gonna be wearing these heaps.", verified: true },
+  { id: "legacy-nuptse-vest-kristin", productTitles: ["1996 retro nuptse unisex vest black", "nuptse vest black"], category: "apparel", rating: 5, name: "Kristin Crews", date: "11 Apr 2026", text: "Vest came in yesterday and it's proper warm aye. Fits perfect over hoodies. Been wearing it nonstop already 😂 good stuff.", verified: true },
+  { id: "legacy-myles-melanie", productHandles: ["dr-martens-myles-leather-buckle-slide-sandals-black"], productTitles: ["dr martens myles"], category: "footwear", rating: 4, name: "Melanie Fraser", date: "11 Apr 2026", text: "Honestly stoked with these. Quality feels mint and they're comfy straight away. Love for the quick shipping too.", verified: true },
+  { id: "legacy-boston-brown-mary", productTitles: ["boston leather brown", "boston mocha"], category: "footwear", rating: 5, name: "Mary Huggins", date: "5 Apr 2026", text: "Quality is very good, I did purchase the wrong size and the return process was easy and straight forward, great communication and support. A bit of a wait for your delivery but that is what is expected.", verified: true },
+  { id: "legacy-nuptse-black-ana", productTitles: ["1996 retro nuptse jacket black cropped", "nuptse jacket black cropped"], category: "apparel", rating: 5, name: "Ana Leah", date: "26 Mar 2026", text: "Love the jacket, wish I sized up but overall the jacket is perfect 👌", verified: true },
+  { id: "legacy-boston-taupe-molly", productHandles: ["birkenstock-boston-soft-footbed-suede-taupe-nz-stock"], productTitles: ["boston soft footbed suede taupe"], category: "footwear", rating: 5, name: "Molly Moananu", date: "25 Feb 2026", text: "Love love love. Looks and feels like the real deal. Would suggest going up a size though. Team was absolutely amazing with communication!", verified: true },
+]
+
+// 73 photo reviews plus the 16 verified legacy review records shown in the
+// dashboard (four of those records did not contain written feedback).
+export const MUSE_REVIEW_SUMMARY = {
+  total: 89,
+  average: 4.4,
+  distribution: [
+    { rating: 5, count: 56 },
+    { rating: 4, count: 23 },
+    { rating: 3, count: 3 },
+    { rating: 2, count: 6 },
+    { rating: 1, count: 1 },
+  ],
+} as const
 
 const CATEGORY_REVIEWS: MuseReview[] = [
   { id: "footwear-01", category: "footwear", rating: 5, image: "/review-photos/review-01.jpg", name: "Jayden R", date: "14 Mar 2026", text: "Got these today, quality is actually crazy good. Way nicer in hand than I expected.", fitVote: "True to size", verified: true },
@@ -73,7 +104,7 @@ const CATEGORY_REVIEWS: MuseReview[] = [
 ]
 
 export const allMuseReviews = [
-  ...PRODUCT_HANDLE_REVIEWS,
+  ...allWrittenMuseReviews,
   ...CATEGORY_REVIEWS,
 ]
 
@@ -114,7 +145,7 @@ export function getProductReviewSet(
   const handle = product.handle
   const category = inferReviewCategory(product)
   const productReviews = handle
-    ? PRODUCT_HANDLE_REVIEWS.filter((review) =>
+    ? allWrittenMuseReviews.filter((review) =>
         review.productHandles?.includes(handle)
       )
     : []
@@ -144,6 +175,24 @@ export function getProductReviewSet(
     matchType: "broad",
     category: "general",
   }
+}
+
+export function getProductTextReviews(product: HttpTypes.StoreProduct) {
+  const handle = product.handle?.toLowerCase()
+  const searchableTitle = normalizeReviewProductTitle(
+    [product.title, product.subtitle].filter(Boolean).join(" ")
+  )
+
+  return allWrittenMuseReviews.filter((review) =>
+    review.productHandles?.some((reviewHandle) => reviewHandle === handle) ||
+    review.productTitles?.some((title) =>
+      searchableTitle.includes(normalizeReviewProductTitle(title))
+    )
+  )
+}
+
+function normalizeReviewProductTitle(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
 }
 
 export function getReviewStats(reviews: MuseReview[]) {

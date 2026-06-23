@@ -10,6 +10,13 @@ import RecentlyViewedProducts from "@modules/products/components/recently-viewed
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
 import CompleteTheFit from "@modules/products/components/complete-the-fit"
+import ReviewSubmission from "@modules/products/components/review-submission"
+import { getStoreReviews } from "@lib/data/reviews"
+import {
+  allWrittenMuseReviews,
+  getProductTextReviews,
+  MUSE_REVIEW_SUMMARY,
+} from "@modules/products/data/reviews"
 
 type ProductTemplateProps = {
   product: HttpTypes.StoreProduct
@@ -94,18 +101,26 @@ const photoReviews = [
   { image: "/review-photos/review-57.webp", name: "Chloe B.", date: "12 Feb 2024", text: "Ordered a jacket and it fits really nicely. Warm without being too bulky, and the sizing advice was helpful. Took the stated delivery time, but all good." },
 ]
 
-const ProductTemplate: React.FC<ProductTemplateProps> = ({
+const ProductTemplate = async ({
   product,
   region,
   countryCode: _countryCode,
   images,
-}) => {
+}: ProductTemplateProps) => {
   if (!product || !product.id) {
     return notFound()
   }
 
   const { cheapestPrice } = getProductPrice({ product })
   const fulfilment = getFulfilmentState(product)
+  const textReviews = getProductTextReviews(product)
+  const storedReviews = await getStoreReviews()
+  const reviewSummary = storedReviews ?? {
+    reviews: [],
+    total: MUSE_REVIEW_SUMMARY.total,
+    average: MUSE_REVIEW_SUMMARY.average,
+    distribution: MUSE_REVIEW_SUMMARY.distribution,
+  }
   const saleCompareAt =
     cheapestPrice?.price_type === "sale" &&
     cheapestPrice.original_price_number > cheapestPrice.calculated_price_number
@@ -115,8 +130,8 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
   return (
     <div className="bg-[#F4F2ED] text-[#1A1A1A]" data-testid="product-container">
       <div className="mx-auto max-w-[1320px] px-[18px] pt-4 text-xs font-medium tracking-[0.03em] text-[#999] small:px-8 small:pt-5">
-        <LocalizedClientLink href="/store" className="hover:text-[#C1440E]">
-          Shop All
+        <LocalizedClientLink href="/" className="hover:text-[#C1440E]">
+          Home
         </LocalizedClientLink>
         <span className="mx-2 opacity-60">&gt;</span>
         <LocalizedClientLink href="/store" className="hover:text-[#C1440E]">
@@ -138,20 +153,22 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
           <div className="flex gap-7">
             <div>
               <div className="text-[64px] font-black leading-[0.9] tracking-[-0.04em] text-[#0A0A0A]">
-                4.9
+                {reviewSummary.average.toFixed(1)}
               </div>
               <div className="my-2 text-base tracking-[1px] text-[#C1440E]">
                 ★★★★★
               </div>
-              <div className="text-[12.5px] text-[#666]">47 verified reviews</div>
+              <div className="text-[12.5px] text-[#666]">
+                {reviewSummary.total} verified reviews
+              </div>
             </div>
             <div className="min-w-[260px] pt-1">
               {[
-                ["5★", "91%", "43"],
-                ["4★", "9%", "4"],
-                ["3★", "0%", "0"],
-                ["2★", "0%", "0"],
-                ["1★", "0%", "0"],
+                ...reviewSummary.distribution.map(({ rating, count }) => [
+                  `${rating}★`,
+                  `${reviewSummary.total ? Math.round((count / reviewSummary.total) * 100) : 0}%`,
+                  `${count}`,
+                ]),
               ].map(([label, width, count]) => (
                 <div key={label} className="mb-2 flex items-center gap-3 text-xs">
                   <span className="w-6 font-semibold text-[#666]">{label}</span>
@@ -166,11 +183,103 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
               ))}
             </div>
           </div>
-          <div className="max-w-[320px] text-[13px] leading-6 text-[#666] small:text-right">
-            Real customer photos from MUSE orders, now stored locally on this
-            site so the gallery does not depend on Squarespace.
-          </div>
         </div>
+
+        {storedReviews ? (
+          <div className="mb-10 border-t border-[#E8E6E0] pt-8">
+            <h2 className="text-[24px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[34px]">
+              Customer reviews
+            </h2>
+            <p className="mt-1 text-[13px] text-[#666]">Feedback from MUSE customers.</p>
+            <div className="mt-5 grid gap-3 small:grid-cols-2">
+              {storedReviews.reviews.map((review) => (
+                <article key={review.id} className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-4 small:p-5">
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
+                      {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
+                    </span>
+                    {review.verified_purchase && <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">Verified</span>}
+                  </div>
+                  {review.image_url && <Image src={review.image_url} alt={`Review from ${review.reviewer_name}`} width={640} height={480} className="mt-3 aspect-[4/3] w-full rounded-md object-cover" />}
+                  {review.title && <h3 className="mt-3 text-sm font-bold">{review.title}</h3>}
+                  <p className="mt-3 text-[13px] font-medium leading-5 text-[#333]">{review.content}</p>
+                  <div className="mt-4 text-[12px] text-[#666]"><span className="font-bold text-[#0A0A0A]">{review.reviewer_name}</span></div>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+
+        {textReviews.length > 0 && (
+          <div className="mb-10 border-t border-[#E8E6E0] pt-8">
+            <h2 className="text-[24px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[34px]">
+              Customer reviews
+            </h2>
+            <p className="mt-1 text-[13px] text-[#666]">
+              Verified feedback from customers who ordered this product.
+            </p>
+            <div className="mt-5 grid gap-3 small:grid-cols-2">
+              {textReviews.map((review) => (
+                <article
+                  key={review.id}
+                  className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-4 small:p-5"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
+                      {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">
+                      Verified
+                    </span>
+                  </div>
+                  <p className="mt-3 text-[13px] font-medium leading-5 text-[#333]">
+                    {review.text}
+                  </p>
+                  <div className="mt-4 text-[12px] text-[#666]">
+                    <span className="font-bold text-[#0A0A0A]">{review.name}</span>
+                    <span className="mx-2 text-[#BBB]">•</span>
+                    {review.date}
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <details className="mb-10 border-y border-[#E8E6E0]">
+          <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-4 text-sm font-black uppercase tracking-[0.06em] text-[#0A0A0A] [&::-webkit-details-marker]:hidden">
+            Read all {allWrittenMuseReviews.length} written reviews
+            <span className="text-[22px] font-normal text-[#666]" aria-hidden="true">
+              +
+            </span>
+          </summary>
+          <div className="grid gap-3 border-t border-[#E8E6E0] py-5 small:grid-cols-2">
+            {allWrittenMuseReviews.map((review) => (
+              <article
+                key={`all-${review.id}`}
+                className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-4 small:p-5"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
+                    {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
+                  </span>
+                  <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">
+                    Verified
+                  </span>
+                </div>
+                <p className="mt-3 text-[13px] font-medium leading-5 text-[#333]">
+                  {review.text}
+                </p>
+                <div className="mt-4 text-[12px] text-[#666]">
+                  <span className="font-bold text-[#0A0A0A]">{review.name}</span>
+                  <span className="mx-2 text-[#BBB]">•</span>
+                  {review.date}
+                </div>
+              </article>
+            ))}
+          </div>
+        </details>
 
         <div className="mb-10">
           <div className="mb-4 flex items-end justify-between gap-4">
@@ -223,6 +332,10 @@ const ProductTemplate: React.FC<ProductTemplateProps> = ({
             ))}
           </div>
         </div>
+          </>
+        )}
+
+        <ReviewSubmission productId={product.id} />
       </section>
 
       <CompleteTheFit product={product} countryCode={_countryCode} />
