@@ -34,9 +34,22 @@ export const defaultOrderConfirmationTemplate = {
 export const getOrderConfirmationTemplate = async (service: {
   listEmailTemplates: (filters: { key: string }) => Promise<Array<typeof defaultOrderConfirmationTemplate & { id?: string }>>
 }) => {
-  const templates = await service.listEmailTemplates({
-    key: ORDER_CONFIRMATION_TEMPLATE_KEY,
-  })
+  try {
+    const templates = await service.listEmailTemplates({
+      key: ORDER_CONFIRMATION_TEMPLATE_KEY,
+    })
 
-  return templates[0] || defaultOrderConfirmationTemplate
+    return templates[0] || defaultOrderConfirmationTemplate
+  } catch (error) {
+    // A new Cloud deployment can briefly run before its module migration has
+    // created the editable-template table. The built-in confirmation must
+    // still be usable during that first-run window.
+    const message = error instanceof Error ? error.message : String(error)
+
+    if (message.includes("muse_email_template")) {
+      return defaultOrderConfirmationTemplate
+    }
+
+    throw error
+  }
 }

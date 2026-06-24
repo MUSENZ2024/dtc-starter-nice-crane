@@ -40,7 +40,6 @@ export const ORDER_EMAIL_FIELDS = [
   "items.quantity",
   "items.unit_price",
   "shipping_address.first_name",
-  "payment_collections.payments.provider_id",
 ] as const
 
 const paymentMethodName = (order: OrderEmailRecord) => {
