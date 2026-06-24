@@ -1,9 +1,12 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
+import { Modules } from "@medusajs/framework/utils"
 import { render, pretty } from "@react-email/render"
 import type { EmailItem, OrderConfirmationProps, Shipment } from "../emails/OrderConfirmationTemplate"
 import getOrderPlacedMixedTemplate from "../emails/order-placed-mixed"
 import getOrderPlacedNZStockTemplate from "../emails/order-placed-nzstock"
 import getOrderPlacedStandardTemplate from "../emails/order-placed-standard"
+import getOrderPlacedMusePayTemplate from "../emails/order-placed-musepay"
+import type { MusePayConfirmationProps } from "../emails/order-placed-musepay"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -20,19 +23,24 @@ type OrderLine = {
 const getFulfillmentType = (metadata?: Record<string, unknown> | null): FulfillmentType =>
   metadata?.fulfillment_type === "nzstock" ? "nzstock" : "standard"
 
-const ORDER_EMAIL_FIELDS = [
+// Fields that trigger OrderModuleService.retrieveOrder() to compute totals
+// in-process from the order's own items/tax_lines/adjustments — see note below.
+const ORDER_TOTAL_FIELDS = [
+  "total",
+  "item_total",
+  "shipping_total",
+  "discount_total",
+  "tax_total",
+]
+
+const ORDER_SELECT_FIELDS = [
   "id",
   "email",
   "display_id",
   "created_at",
   "currency_code",
-  "item_total",
-  "shipping_total",
-  "discount_total",
-  "tax_total",
-  "total",
-  "customer.first_name",
-  "customer.email",
+  "metadata",
+  ...ORDER_TOTAL_FIELDS,
   "items.id",
   "items.product_title",
   "items.variant_title",
@@ -48,50 +56,35 @@ const ORDER_EMAIL_FIELDS = [
   "shipping_address.province",
   "shipping_address.postal_code",
   "shipping_address.country_code",
-] as const
+]
 
 /**
+ * Why this resolves the Order module directly instead of using query.graph:
+ *
  * Medusa's completeCartWorkflow emits "order.placed" from a parallelize() block
  * that runs at the same time as createRemoteLinkStep — the step that writes the
- * order/cart/payment module links query.graph relies on to resolve computed
- * fields like item_total/tax_total/total and items.quantity/unit_price.
- * addOrderTransactionStep (which finalizes the order) runs even later. So the
- * very first query.graph read after "order.placed" can race ahead of all of
- * that and come back with $0 totals / undefined item fields — which is exactly
- * what produced $NaN prices and a $0.00 subtotal in testing. Retrying a few
- * times with a short delay until totals/items are actually populated avoids
- * sending a broken confirmation email instead of just a slightly-delayed one.
+ * order/cart/payment *module links* query.graph depends on to resolve
+ * cross-module fields. Reading through query.graph right after that event can
+ * race ahead of those link writes and return incomplete data.
+ *
+ * Order totals and line items aren't cross-module data, though — they're
+ * native to the Order module itself, computed synchronously inside
+ * OrderModuleService.retrieveOrder() from the order's own items/tax_lines/
+ * adjustments the moment any of the total fields (item_total, total, etc.)
+ * are requested in `select`. Resolving Modules.ORDER and calling
+ * retrieveOrder() directly reads that module's own tables and sidesteps the
+ * remote-link race entirely — no retry loop needed. This is also why
+ * order.email / order.shipping_address are used for recipient + name below
+ * instead of order.customer — the customer link IS a cross-module relation,
+ * and the email/shipping address fields cover everything this email needs
+ * without it.
  */
-async function fetchOrderWithRetry(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  query: any,
-  orderId: string,
-  maxAttempts = 6,
-  delayMs = 500
-) {
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const { data: orders } = await query.graph({
-      entity: "order",
-      fields: ORDER_EMAIL_FIELDS as unknown as string[],
-      filters: { id: orderId },
-    })
-    const order = orders[0]
-    const hasItems = Array.isArray(order?.items) && order.items.length > 0
-    const itemsHavePricing = hasItems && order.items.every((item: any) => item.unit_price != null && item.quantity != null)
-    const totalsReady = order?.item_total != null && order?.total != null && order.total > (order.shipping_total ?? 0)
-
-    if (order && hasItems && itemsHavePricing && totalsReady) {
-      return order
-    }
-    if (attempt < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, delayMs))
-    } else if (order) {
-      // Last attempt: send with whatever we have rather than dropping the
-      // email entirely — better a late-but-complete email than a silent failure.
-      return order
-    }
-  }
-  return undefined
+async function fetchOrder(container: any, orderId: string) {
+  const orderModuleService = container.resolve(Modules.ORDER)
+  return orderModuleService.retrieveOrder(orderId, {
+    select: ORDER_SELECT_FIELDS,
+    relations: ["items", "shipping_address"],
+  })
 }
 
 export default async function orderPlacedHandler({
@@ -108,7 +101,7 @@ export default async function orderPlacedHandler({
     })
     const store = stores[0] as { name?: string } | undefined
 
-    const order = (await fetchOrderWithRetry(query, data.id)) as {
+    const order = (await fetchOrder(container, data.id)) as {
       id: string
       email?: string | null
       display_id: number | string
@@ -119,8 +112,8 @@ export default async function orderPlacedHandler({
       discount_total?: number
       tax_total?: number
       total: number
-      customer?: { first_name?: string | null; email?: string | null } | null
       items?: OrderLine[] | null
+      metadata?: Record<string, unknown> | null
       shipping_address?: {
         first_name?: string | null
         last_name?: string | null
@@ -137,9 +130,69 @@ export default async function orderPlacedHandler({
       throw new Error(`Order ${data.id} was not found.`)
     }
 
-    const recipient = order.customer?.email || order.email
+    const recipient = order.email
     if (!recipient) {
       logger.warn(`Skipping order confirmation for ${order.id}: no customer email.`)
+      return
+    }
+
+    const shippingAddress = order.shipping_address
+    const addressLines = [
+      [shippingAddress?.first_name, shippingAddress?.last_name].filter(Boolean).join(" "),
+      shippingAddress?.address_1,
+      shippingAddress?.address_2,
+      [shippingAddress?.city, shippingAddress?.province, shippingAddress?.postal_code].filter(Boolean).join(" "),
+      shippingAddress?.country_code?.toUpperCase() === "NZ" ? "New Zealand" : shippingAddress?.country_code,
+    ].filter(Boolean)
+    const addressText = addressLines.join("\n") || "Your delivery address"
+
+    const notificationModule = container.resolve("notification")
+
+    // ---- MUSE Pay split-payment orders get an entirely different email ----
+    // Stamped by attach-split-pay-metadata-workflow right after the storefront
+    // completes the cart for a split-pay checkout (see
+    // apps/storefront/src/app/api/split-pay/complete/route.ts). These orders
+    // never ship on placement, so none of the nzstock/standard/mixed shipment
+    // logic below applies — branch out before any of it runs.
+    if (order.metadata?.muse_split_pay === "true") {
+      const musePayItems = (order.items || []).map((item) => ({
+        id: item.id,
+        title: item.product_title,
+        variantTitle: item.variant_title,
+        quantity: item.quantity,
+        unitPrice: item.unit_price,
+        thumbnail: item.thumbnail,
+      }))
+
+      const totalCents = Number(order.metadata.split_pay_total_cents ?? 0)
+      const baseCents = Number(order.metadata.split_pay_base_cents ?? 0)
+      const finalCents = Number(order.metadata.split_pay_final_cents ?? 0)
+
+      const musePayProps: MusePayConfirmationProps = {
+        customerName: shippingAddress?.first_name || "there",
+        customerEmail: recipient,
+        displayId: String(order.display_id),
+        createdAt: order.created_at,
+        currencyCode: order.currency_code,
+        items: musePayItems,
+        address: addressText,
+        trackingUrl: `https://store.musenz.com/nz/track`,
+        totalCents,
+        baseCents,
+        finalCents,
+      }
+
+      const musePayHtml = await pretty(await render(getOrderPlacedMusePayTemplate(musePayProps)))
+
+      await notificationModule.createNotifications({
+        to: recipient,
+        from: process.env.MUSE_EMAIL_FROM || "orders@musenz.com",
+        channel: "email",
+        content: {
+          html: musePayHtml,
+          subject: `MUSE Pay Order Confirmation — ${store?.name || "MUSE NZ"} #${order.display_id}`,
+        },
+      })
       return
     }
 
@@ -177,17 +230,8 @@ export default async function orderPlacedHandler({
       shipments.push({ type: "standard", items: [] })
     }
 
-    const address = order.shipping_address
-    const addressLines = [
-      [address?.first_name, address?.last_name].filter(Boolean).join(" "),
-      address?.address_1,
-      address?.address_2,
-      [address?.city, address?.province, address?.postal_code].filter(Boolean).join(" "),
-      address?.country_code?.toUpperCase() === "NZ" ? "New Zealand" : address?.country_code,
-    ].filter(Boolean)
-
     const props: OrderConfirmationProps = {
-      customerName: order.customer?.first_name || address?.first_name || "there",
+      customerName: shippingAddress?.first_name || "there",
       customerEmail: recipient,
       displayId: String(order.display_id),
       createdAt: order.created_at,
@@ -197,7 +241,7 @@ export default async function orderPlacedHandler({
       discountTotal: order.discount_total ?? 0,
       taxTotal: order.tax_total ?? 0,
       total: order.total,
-      address: addressLines.join("\n") || "Your delivery address",
+      address: addressText,
       shipments,
       trackingUrl: `https://store.musenz.com/nz/track`,
     }
@@ -209,7 +253,6 @@ export default async function orderPlacedHandler({
           ? getOrderPlacedNZStockTemplate(props)
           : getOrderPlacedStandardTemplate(props)
     const html = await pretty(await render(template))
-    const notificationModule = container.resolve("notification")
 
     await notificationModule.createNotifications({
       to: recipient,

@@ -48,3 +48,11 @@ export const formatMoney = (amount: number, currencyCode: string) =>
 
 export const logoUrl =
   process.env.MUSE_EMAIL_LOGO_URL || "https://store.musenz.com/muse-logo-long.png"
+
+// Used by the MUSE Pay confirmation email — payment 1 of 4 charges on
+// order.created_at itself (the Stripe subscription schedule's start_date is
+// "now"), then one further charge every 7 days after that.
+export const formatPaymentDate = (createdAt: string, daysFromCreation: number) => {
+  const date = addDays(new Date(createdAt), daysFromCreation)
+  return date.toLocaleDateString("en-NZ", { weekday: "short", day: "numeric", month: "short" })
+}

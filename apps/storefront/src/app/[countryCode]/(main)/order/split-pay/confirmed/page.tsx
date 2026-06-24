@@ -29,11 +29,12 @@ export default async function SplitPayConfirmedPage({ searchParams }: Props) {
   const finalCents = Number(getParam(params, "final_cents") || 0)
   const scheduleId = getParam(params, "schedule_id")
   const subscriptionId = getParam(params, "subscription_id")
+  const displayId = getParam(params, "display_id")
 
   return (
     <main className="min-h-screen bg-muse-cream font-inter text-muse-black">
       <header className="sticky top-0 z-50 flex h-[60px] items-center justify-between bg-muse-black px-[18px] small:h-16 small:px-8">
-        <LocalizedClientLink href="/store" className="flex items-center">
+        <LocalizedClientLink href="/" className="flex items-center">
           <img
             src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
             alt="MUSE"
@@ -65,14 +66,15 @@ export default async function SplitPayConfirmedPage({ searchParams }: Props) {
           </svg>
         </div>
         <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-muse-yellow">
-          Order confirmation
+          {displayId ? `Order #${displayId} · Order confirmation` : "Order confirmation"}
         </p>
         <h1 className="mx-auto mb-3 max-w-[620px] text-[clamp(30px,5vw,46px)] font-black leading-[1.05] text-muse-cream">
           MUSE Split Payment is set up.
         </h1>
         <p className="mx-auto max-w-[560px] text-[14px] leading-6 text-muse-cream/65">
           Your card has been saved securely with Stripe. We will collect the
-          payment plan below and ship once the final payment is complete.
+          payment plan below and ship once the final payment is complete. A
+          confirmation email with your full payment schedule is on its way.
         </p>
       </section>
 

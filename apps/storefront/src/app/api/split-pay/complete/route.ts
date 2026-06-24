@@ -3,11 +3,92 @@ import {
   formatSplitPayMoney,
 } from "@lib/split-pay"
 import { getStripeServer } from "@lib/stripe/server"
+import { sdk } from "@lib/config"
+import { getAuthHeaders } from "@lib/data/cookies"
 import { NextRequest, NextResponse } from "next/server"
 import Stripe from "stripe"
 
 function getStripeId(value: string | { id?: string } | null | undefined) {
   return typeof value === "string" ? value : value?.id
+}
+
+/**
+ * Places the actual Medusa order for a Split Pay checkout, using the
+ * "pp_system_default" manual payment provider (already enabled on every
+ * region — see apps/backend/src/migration-scripts/initial-data-seed.ts).
+ * This deliberately avoids Medusa attempting its own Stripe capture: real
+ * billing happens entirely through the Stripe subscription schedule created
+ * above, not through Medusa's payment module.
+ *
+ * Best-effort: if anything here fails, we log and return null rather than
+ * throwing — the customer's card is already saved and the Stripe schedule
+ * already exists, so we don't want a Medusa-side hiccup to block them from
+ * seeing a confirmation. Worst case, the order needs to be reconciled
+ * manually and the customer gets the generic confirmation page instead of
+ * the MUSE Pay email.
+ */
+async function completeSplitPayOrder({
+  medusaCartId,
+  schedule,
+  totalCents,
+  baseCents,
+  finalCents,
+  currency,
+}: {
+  medusaCartId: string
+  schedule: Stripe.SubscriptionSchedule
+  totalCents: number
+  baseCents: number
+  finalCents: number
+  currency: string
+}): Promise<{ orderId: string; displayId: string | number } | null> {
+  if (!medusaCartId) {
+    console.error("Split Pay: missing medusa_cart_id, cannot place order.")
+    return null
+  }
+
+  try {
+    const headers = { ...(await getAuthHeaders()) }
+
+    const { cart } = await sdk.store.cart.retrieve(medusaCartId, {}, headers)
+
+    await sdk.store.payment.initiatePaymentSession(
+      cart,
+      { provider_id: "pp_system_default" },
+      {},
+      headers
+    )
+
+    const completion = await sdk.store.cart.complete(medusaCartId, {}, headers)
+
+    if (completion.type !== "order") {
+      console.error(
+        `Split Pay: cart ${medusaCartId} did not complete into an order.`,
+        completion
+      )
+      return null
+    }
+
+    const order = completion.order
+
+    await sdk.client.fetch("/store/split-pay/attach-metadata", {
+      method: "POST",
+      body: {
+        order_id: order.id,
+        schedule_id: schedule.id,
+        subscription_id: String(schedule.subscription),
+        total_cents: totalCents,
+        base_cents: baseCents,
+        final_cents: finalCents,
+        currency,
+      },
+    })
+
+    return { orderId: order.id, displayId: order.display_id ?? order.id }
+  } catch (error) {
+    console.error("Split Pay: failed to complete Medusa order.", error)
+    return null
+  }
 }
 
 function getSplitPayConfirmationUrl({
@@ -18,6 +99,7 @@ function getSplitPayConfirmationUrl({
   baseCents,
   finalCents,
   currency,
+  order,
 }: {
   request: NextRequest
   countryCode: string
@@ -26,6 +108,7 @@ function getSplitPayConfirmationUrl({
   baseCents: number
   finalCents: number
   currency: string
+  order: { orderId: string; displayId: string | number } | null
 }) {
   const completeUrl = new URL(
     `/${countryCode}/order/split-pay/confirmed`,
@@ -37,6 +120,10 @@ function getSplitPayConfirmationUrl({
   completeUrl.searchParams.set("base_cents", String(baseCents))
   completeUrl.searchParams.set("final_cents", String(finalCents))
   completeUrl.searchParams.set("currency", currency)
+  if (order) {
+    completeUrl.searchParams.set("order_id", order.orderId)
+    completeUrl.searchParams.set("display_id", String(order.displayId))
+  }
 
   return completeUrl
 }
@@ -189,6 +276,7 @@ async function createSplitPaySchedule({
     totalCents,
     baseCents,
     finalCents,
+    medusaCartId,
     countryCode: setupIntent.metadata?.country_code || "nz",
   }
 }
@@ -223,6 +311,14 @@ export async function POST(request: NextRequest) {
     }
 
     const result = await createSplitPaySchedule({ setupIntent })
+    const order = await completeSplitPayOrder({
+      medusaCartId: result.medusaCartId,
+      schedule: result.schedule,
+      totalCents: result.totalCents,
+      baseCents: result.baseCents,
+      finalCents: result.finalCents,
+      currency: result.currency,
+    })
     const confirmationUrl = getSplitPayConfirmationUrl({
       request,
       countryCode: body.country_code || result.countryCode,
@@ -231,12 +327,14 @@ export async function POST(request: NextRequest) {
       baseCents: result.baseCents,
       finalCents: result.finalCents,
       currency: result.currency,
+      order,
     })
 
     return NextResponse.json({
       url: confirmationUrl.toString(),
       schedule_id: result.schedule.id,
       subscription_id: result.schedule.subscription,
+      order_id: order?.orderId,
     })
   } catch (error) {
     const message =
@@ -278,6 +376,14 @@ export async function GET(request: NextRequest) {
       setupIntent,
       checkoutSessionId: session.id,
     })
+    const order = await completeSplitPayOrder({
+      medusaCartId: result.medusaCartId,
+      schedule: result.schedule,
+      totalCents: result.totalCents,
+      baseCents: result.baseCents,
+      finalCents: result.finalCents,
+      currency: result.currency,
+    })
     const completeUrl = getSplitPayConfirmationUrl({
       request,
       countryCode,
@@ -286,6 +392,7 @@ export async function GET(request: NextRequest) {
       baseCents: result.baseCents,
       finalCents: result.finalCents,
       currency: result.currency,
+      order,
     })
 
     return NextResponse.redirect(completeUrl)
