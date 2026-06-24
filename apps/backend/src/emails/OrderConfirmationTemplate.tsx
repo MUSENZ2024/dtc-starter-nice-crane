@@ -84,20 +84,16 @@ const TIMELINE_STEPS: Record<FulfillmentType, { title: string; desc: string }[]>
   ],
 }
 
-function CheckIcon({ color }: { color: string }) {
-  return (
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M20 6L9 17l-5-5" />
-    </svg>
-  )
-}
-
-function DotIcon({ color }: { color: string }) {
-  return (
-    <svg width="9" height="9" viewBox="0 0 24 24">
-      <circle cx="12" cy="12" r="9" fill={color} />
-    </svg>
-  )
+/**
+ * Gmail (and most webmail clients) strip inline <svg> out of email bodies
+ * entirely during sanitization — that's a hard constraint of email HTML,
+ * not something we can style around. It's the same reason the icons
+ * rendered as empty colored shapes with nothing inside. Unicode characters
+ * and emoji survive that sanitization fine, so every icon below is a glyph
+ * sized up via fontSize rather than a vector path.
+ */
+function IconGlyph({ glyph, size = "14px" }: { glyph: string; size?: string }) {
+  return <span style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: size, lineHeight: 1, color: colors.yellow }}>{glyph}</span>
 }
 
 /** Timeline: a vertical stack of circular step-dots connected by a thin rail, label + description beside each. */
@@ -122,9 +118,14 @@ function Timeline({ type }: { type: FulfillmentType }) {
                       backgroundColor: dotColor,
                       textAlign: "center",
                       verticalAlign: "middle",
+                      fontFamily: "Arial, Helvetica, sans-serif",
+                      fontSize: "13px",
+                      fontWeight: "bold",
+                      color: done ? colors.white : colors.muted,
+                      lineHeight: 1,
                     }}
                   >
-                    {done ? <CheckIcon color={colors.white} /> : <DotIcon color={colors.muted} />}
+                    {done ? "✓" : "•"}
                   </td>
                 </tr>
                 {!isLast && (
@@ -151,34 +152,6 @@ function Timeline({ type }: { type: FulfillmentType }) {
   )
 }
 
-function CalendarIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={colors.yellow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <rect x="3" y="4" width="18" height="18" rx="2" />
-      <line x1="16" y1="2" x2="16" y2="6" />
-      <line x1="8" y1="2" x2="8" y2="6" />
-      <line x1="3" y1="10" x2="21" y2="10" />
-    </svg>
-  )
-}
-
-function TrackIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={colors.yellow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="12" cy="12" r="10" />
-      <polyline points="12 6 12 12 16 14" />
-    </svg>
-  )
-}
-
-function SupportIcon() {
-  return (
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={colors.yellow} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-    </svg>
-  )
-}
-
 function IconSquare({ children }: { children: React.ReactNode }) {
   return (
     <table cellPadding="0" cellSpacing="0" role="presentation">
@@ -191,13 +164,27 @@ function IconSquare({ children }: { children: React.ReactNode }) {
   )
 }
 
-function SocialIcon({ href, children }: { href: string; children: React.ReactNode }) {
+function SocialIcon({ href, label }: { href: string; label: string }) {
   return (
     <a href={href} style={{ textDecoration: "none" }}>
       <table cellPadding="0" cellSpacing="0" role="presentation" style={{ display: "inline-table", marginRight: "10px" }}>
         <tr>
-          <td style={{ width: "36px", height: "36px", borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.08)", textAlign: "center", verticalAlign: "middle" }}>
-            {children}
+          <td
+            style={{
+              width: "36px",
+              height: "36px",
+              borderRadius: "50%",
+              backgroundColor: "rgba(255,255,255,0.08)",
+              textAlign: "center",
+              verticalAlign: "middle",
+              fontFamily: "Arial, Helvetica, sans-serif",
+              fontSize: "10px",
+              fontWeight: "bold",
+              letterSpacing: "0.03em",
+              color: colors.cream,
+            }}
+          >
+            {label}
           </td>
         </tr>
       </table>
@@ -235,10 +222,22 @@ export function OrderConfirmationTemplate({
           <Section style={{ textAlign: "center", padding: "8px 0 22px" }}>
             <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto 14px" }}>
               <tr>
-                <td style={{ width: "56px", height: "56px", borderRadius: "50%", backgroundColor: colors.green, textAlign: "center", verticalAlign: "middle" }}>
-                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke={colors.white} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M20 6L9 17l-5-5" />
-                  </svg>
+                <td
+                  style={{
+                    width: "56px",
+                    height: "56px",
+                    borderRadius: "50%",
+                    backgroundColor: colors.green,
+                    textAlign: "center",
+                    verticalAlign: "middle",
+                    fontFamily: "Arial, Helvetica, sans-serif",
+                    fontSize: "26px",
+                    fontWeight: "bold",
+                    color: colors.white,
+                    lineHeight: 1,
+                  }}
+                >
+                  ✓
                 </td>
               </tr>
             </table>
@@ -316,7 +315,7 @@ export function OrderConfirmationTemplate({
               >
                 <Row>
                   <Column style={{ width: "40px", verticalAlign: "top" }}>
-                    <IconSquare><CalendarIcon /></IconSquare>
+                    <IconSquare><IconGlyph glyph="📅" /></IconSquare>
                   </Column>
                   <Column style={{ verticalAlign: "top", paddingLeft: "10px" }}>
                     {mixed ? <Text style={{ ...textStyle, color: colors.muted, fontSize: "10.5px", fontWeight: "bold", letterSpacing: "0.04em", margin: "0 0 4px" }}>{(shipment.label || `Shipment ${index + 1} of ${shipments.length}`).toUpperCase()}</Text> : null}
@@ -349,7 +348,7 @@ export function OrderConfirmationTemplate({
             <a href={trackingUrl} style={{ textDecoration: "none" }}>
               <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "10px", marginBottom: "9px" }}>
                 <Column style={{ width: "54px", padding: "12px 0 12px 14px", verticalAlign: "middle" }}>
-                  <IconSquare><TrackIcon /></IconSquare>
+                  <IconSquare><IconGlyph glyph="📦" /></IconSquare>
                 </Column>
                 <Column style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                   <Text style={{ ...textStyle, fontSize: "13px", fontWeight: "bold", color: colors.black, margin: 0 }}>Track order →</Text>
@@ -360,7 +359,7 @@ export function OrderConfirmationTemplate({
             <a href="mailto:support@musenz.com" style={{ textDecoration: "none" }}>
               <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "10px", marginBottom: "14px" }}>
                 <Column style={{ width: "54px", padding: "12px 0 12px 14px", verticalAlign: "middle" }}>
-                  <IconSquare><SupportIcon /></IconSquare>
+                  <IconSquare><IconGlyph glyph="💬" /></IconSquare>
                 </Column>
                 <Column style={{ padding: "12px 14px", verticalAlign: "middle" }}>
                   <Text style={{ ...textStyle, fontSize: "13px", fontWeight: "bold", color: colors.black, margin: 0 }}>Contact support →</Text>
@@ -404,23 +403,9 @@ export function OrderConfirmationTemplate({
             </Text>
 
             <Section style={{ textAlign: "center", marginBottom: "20px" }}>
-              <SocialIcon href="https://instagram.com/muse.nz">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={colors.cream} strokeWidth="1.7">
-                  <rect x="2" y="2" width="20" height="20" rx="5" />
-                  <circle cx="12" cy="12" r="5" />
-                  <circle cx="17.5" cy="6.5" r="1.2" fill={colors.cream} stroke="none" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon href="https://facebook.com/muse.nz">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill={colors.cream} stroke="none">
-                  <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" />
-                </svg>
-              </SocialIcon>
-              <SocialIcon href="https://tiktok.com/@muse.nz">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill={colors.cream}>
-                  <path d="M12.5 2h3.1c.2 1.6 1.4 2.9 3 3.1v3.2c-1.4 0-2.7-.4-3.8-1.2v6.4a5.3 5.3 0 11-5.3-5.3c.2 0 .4 0 .6.03v3.2a2.1 2.1 0 102.1 2.1V2z" />
-                </svg>
-              </SocialIcon>
+              <SocialIcon href="https://instagram.com/muse.nz" label="IG" />
+              <SocialIcon href="https://facebook.com/muse.nz" label="FB" />
+              <SocialIcon href="https://tiktok.com/@muse.nz" label="TT" />
             </Section>
 
             <Text style={{ textAlign: "center", fontSize: "11.5px", color: "#999999", margin: "0 0 18px" }}>

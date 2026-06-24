@@ -44,8 +44,14 @@ const ORDER_SELECT_FIELDS = [
   "items.id",
   "items.product_title",
   "items.variant_title",
-  "items.quantity",
-  "items.unit_price",
+  // quantity/unit_price aren't plain columns on OrderLineItem — they're
+  // versioned under a "detail" sub-object (see @medusajs/order's
+  // transform-order.js formatOrder(), which only flattens detail.quantity/
+  // detail.unit_price onto the item once "detail" has actually been
+  // selected). Selecting "items.quantity"/"items.unit_price" directly looks
+  // plausible but isn't a real field path — detail never loads, and the
+  // flattening step has nothing to flatten, producing exactly the $NaN bug.
+  "items.detail",
   "items.thumbnail",
   "items.metadata",
   "shipping_address.first_name",
