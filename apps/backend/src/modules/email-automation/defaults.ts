@@ -4,6 +4,8 @@ export const defaultOrderConfirmationTemplate = {
   key: ORDER_CONFIRMATION_TEMPLATE_KEY,
   name: "Order confirmation",
   subject: "Order #{{order_number}} confirmed — MUSE",
+  enabled: true,
+  delay_minutes: 0,
   html: `<!doctype html>
 <html lang="en">
   <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /></head>
@@ -27,4 +29,14 @@ export const defaultOrderConfirmationTemplate = {
     </main>
   </body>
 </html>`,
+}
+
+export const getOrderConfirmationTemplate = async (service: {
+  listEmailTemplates: (filters: { key: string }) => Promise<Array<typeof defaultOrderConfirmationTemplate & { id?: string }>>
+}) => {
+  const templates = await service.listEmailTemplates({
+    key: ORDER_CONFIRMATION_TEMPLATE_KEY,
+  })
+
+  return templates[0] || defaultOrderConfirmationTemplate
 }

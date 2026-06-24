@@ -1,5 +1,8 @@
 import type { MedusaContainer } from "@medusajs/framework/types"
-import { ORDER_CONFIRMATION_TEMPLATE_KEY } from "../modules/email-automation/defaults"
+import {
+  getOrderConfirmationTemplate,
+  ORDER_CONFIRMATION_TEMPLATE_KEY,
+} from "../modules/email-automation/defaults"
 import { EMAIL_AUTOMATION_MODULE } from "../modules/email-automation"
 import type EmailAutomationModuleService from "../modules/email-automation/service"
 import { sendOrderConfirmationEmailWorkflow } from "../workflows/send-order-confirmation-email"
@@ -15,11 +18,9 @@ export default async function sendScheduledEmails(container: MedusaContainer) {
   const emailAutomation: EmailAutomationModuleService = container.resolve(
     EMAIL_AUTOMATION_MODULE
   )
-  const templates = await emailAutomation.listEmailTemplates({
-    key: ORDER_CONFIRMATION_TEMPLATE_KEY,
-  })
+  const template = await getOrderConfirmationTemplate(emailAutomation)
 
-  if (!templates[0]?.enabled) return
+  if (!template.enabled) return
 
   const scheduledEmails = (await emailAutomation.listScheduledEmails({
     status: "pending",

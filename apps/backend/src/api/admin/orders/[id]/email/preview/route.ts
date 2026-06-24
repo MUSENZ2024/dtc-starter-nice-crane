@@ -5,7 +5,7 @@ import {
   ORDER_EMAIL_FIELDS,
   type OrderEmailRecord,
 } from "../../../../../../lib/order-confirmation-email"
-import { ORDER_CONFIRMATION_TEMPLATE_KEY } from "../../../../../../modules/email-automation/defaults"
+import { getOrderConfirmationTemplate } from "../../../../../../modules/email-automation/defaults"
 import { EMAIL_AUTOMATION_MODULE } from "../../../../../../modules/email-automation"
 import type EmailAutomationModuleService from "../../../../../../modules/email-automation/service"
 import type { OrderEmailInput } from "../validators"
@@ -18,17 +18,7 @@ export async function POST(
   const emailAutomation: EmailAutomationModuleService = req.scope.resolve(
     EMAIL_AUTOMATION_MODULE
   )
-  const templates = await emailAutomation.listEmailTemplates({
-    key: ORDER_CONFIRMATION_TEMPLATE_KEY,
-  })
-  const template = templates[0]
-
-  if (!template) {
-    throw new MedusaError(
-      MedusaError.Types.NOT_FOUND,
-      "The Order confirmation email template is unavailable."
-    )
-  }
+  const template = await getOrderConfirmationTemplate(emailAutomation)
   const { data: orders } = await query.graph({
     entity: "order",
     fields: [...ORDER_EMAIL_FIELDS],

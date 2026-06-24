@@ -1,6 +1,6 @@
-import { MedusaError } from "@medusajs/framework/utils"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import { EMAIL_AUTOMATION_MODULE } from "../../modules/email-automation"
+import { defaultOrderConfirmationTemplate } from "../../modules/email-automation/defaults"
 import type EmailAutomationModuleService from "../../modules/email-automation/service"
 
 export type UpdateEmailTemplateInput = {
@@ -20,20 +20,22 @@ export const updateEmailTemplateStep = createStep(
     const templates = await emailAutomation.listEmailTemplates({ key: input.key })
     const template = templates[0]
 
-    if (!template) {
-      throw new MedusaError(
-        MedusaError.Types.NOT_FOUND,
-        `Email template ${input.key} was not found.`
-      )
-    }
-
-    const updated = await emailAutomation.updateEmailTemplates({
-      id: template.id,
-      subject: input.subject,
-      html: input.html,
-      enabled: input.enabled,
-      delay_minutes: input.delay_minutes,
-    })
+    const updated = template
+      ? await emailAutomation.updateEmailTemplates({
+          id: template.id,
+          subject: input.subject,
+          html: input.html,
+          enabled: input.enabled,
+          delay_minutes: input.delay_minutes,
+        })
+      : await emailAutomation.createEmailTemplates({
+          ...defaultOrderConfirmationTemplate,
+          key: input.key,
+          subject: input.subject,
+          html: input.html,
+          enabled: input.enabled,
+          delay_minutes: input.delay_minutes,
+        })
 
     return new StepResponse(updated)
   }

@@ -1,5 +1,8 @@
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
-import { ORDER_CONFIRMATION_TEMPLATE_KEY } from "../../modules/email-automation/defaults"
+import {
+  getOrderConfirmationTemplate,
+  ORDER_CONFIRMATION_TEMPLATE_KEY,
+} from "../../modules/email-automation/defaults"
 import { EMAIL_AUTOMATION_MODULE } from "../../modules/email-automation"
 import type EmailAutomationModuleService from "../../modules/email-automation/service"
 
@@ -13,10 +16,7 @@ export const queueOrderConfirmationEmailStep = createStep(
     const emailAutomation: EmailAutomationModuleService = container.resolve(
       EMAIL_AUTOMATION_MODULE
     )
-    const templates = await emailAutomation.listEmailTemplates({
-      key: ORDER_CONFIRMATION_TEMPLATE_KEY,
-    })
-    const template = templates[0]
+    const template = await getOrderConfirmationTemplate(emailAutomation)
 
     if (!template?.enabled) {
       return new StepResponse({ queued: false })
