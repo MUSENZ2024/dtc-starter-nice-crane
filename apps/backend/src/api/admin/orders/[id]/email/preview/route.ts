@@ -2,6 +2,7 @@ import { MedusaRequest, MedusaResponse } from "@medusajs/framework/http"
 import { MedusaError } from "@medusajs/framework/utils"
 import {
   createOrderConfirmationEmail,
+  getOrderEmailRecipient,
   ORDER_EMAIL_FIELDS,
   type OrderEmailRecord,
 } from "../../../../../../lib/order-confirmation-email"
@@ -34,7 +35,7 @@ export async function POST(
     )
   }
 
-  if (!order.email) {
+  if (!getOrderEmailRecipient(order)) {
     throw new MedusaError(
       MedusaError.Types.INVALID_DATA,
       `Order ${order.id} has no customer email address.`

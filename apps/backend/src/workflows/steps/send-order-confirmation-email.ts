@@ -2,6 +2,7 @@ import { MedusaError } from "@medusajs/framework/utils"
 import { createStep, StepResponse } from "@medusajs/framework/workflows-sdk"
 import {
   createOrderConfirmationEmail,
+  getOrderEmailRecipient,
   ORDER_EMAIL_FIELDS,
   type OrderEmailRecord,
 } from "../../lib/order-confirmation-email"
@@ -45,7 +46,7 @@ export const sendOrderConfirmationEmailStep = createStep(
       )
     }
 
-    if (!order.email) {
+    if (!getOrderEmailRecipient(order)) {
       throw new MedusaError(
         MedusaError.Types.INVALID_DATA,
         `Order ${order.id} has no customer email address.`

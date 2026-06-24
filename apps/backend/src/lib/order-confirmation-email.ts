@@ -1,7 +1,3 @@
-type PaymentCollection = {
-  payments?: Array<{ provider_id?: string | null }> | null
-}
-
 type OrderItem = {
   id: string
   product_title: string
@@ -17,15 +13,18 @@ type EmailTemplate = {
 
 export type OrderEmailRecord = {
   id: string
-  display_id: string
+  display_id: string | number
   currency_code: string
-  email: string
+  email?: string | null
+  customer?: {
+    first_name?: string | null
+    email?: string | null
+  } | null
   items?: OrderItem[]
   total: number
   shipping_address?: {
     first_name?: string | null
   } | null
-  payment_collections?: PaymentCollection[] | null
 }
 
 export const ORDER_EMAIL_FIELDS = [
@@ -34,6 +33,8 @@ export const ORDER_EMAIL_FIELDS = [
   "display_id",
   "currency_code",
   "total",
+  "customer.first_name",
+  "customer.email",
   "items.id",
   "items.product_title",
   "items.variant_title",
@@ -41,21 +42,6 @@ export const ORDER_EMAIL_FIELDS = [
   "items.unit_price",
   "shipping_address.first_name",
 ] as const
-
-const paymentMethodName = (order: OrderEmailRecord) => {
-  const providerId = order.payment_collections
-    ?.flatMap((collection) => collection.payments || [])
-    .map((payment) => payment.provider_id)
-    .find((id): id is string => Boolean(id))
-
-  if (!providerId) return "your selected payment method"
-  if (providerId.includes("stripe")) return "Stripe"
-  if (providerId.includes("manual")) return "Manual payment"
-
-  return [...new Set(providerId.replace(/^pp_/, "").split("_"))]
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ")
-}
 
 const escapeHtml = (value: string) =>
   value.replace(/[&<>'"]/g, (character) => {
@@ -101,13 +87,16 @@ export const createOrderConfirmationEmail = async (
     process.env.MUSE_STOREFRONT_URL || "https://store.musenz.com"
   ).replace(/\/$/, "")
   const trackUrl = `${storefrontUrl}/nz/track`
-  const firstName = order.shipping_address?.first_name?.trim() || "there"
+  const firstName =
+    order.customer?.first_name?.trim() ||
+    order.shipping_address?.first_name?.trim() ||
+    "there"
   const tokens: Record<string, string> = {
     customer_first_name: escapeHtml(firstName),
-    order_number: escapeHtml(order.display_id),
+    order_number: escapeHtml(String(order.display_id)),
     order_items: createOrderItemsHtml(order),
     order_total: escapeHtml(formatMoney(order.total, order.currency_code)),
-    payment_method: escapeHtml(paymentMethodName(order)),
+    payment_method: "your selected payment method",
     tracking_url: escapeHtml(trackUrl),
     personal_note: createNoteHtml(note),
   }
@@ -122,7 +111,10 @@ export const createOrderConfirmationEmail = async (
 
   return {
     html,
-    recipient: order.email,
+    recipient: getOrderEmailRecipient(order)!,
     subject,
   }
 }
+
+export const getOrderEmailRecipient = (order: OrderEmailRecord) =>
+  order.customer?.email?.trim() || order.email?.trim() || undefined
