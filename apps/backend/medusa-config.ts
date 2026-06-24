@@ -37,6 +37,9 @@ module.exports = defineConfig({
       resolve: "./src/modules/product-review",
     },
     {
+      resolve: "./src/modules/email-automation",
+    },
+    {
       resolve: "@medusajs/medusa/payment",
       options: {
         providers: [
