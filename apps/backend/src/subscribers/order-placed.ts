@@ -20,6 +20,80 @@ type OrderLine = {
 const getFulfillmentType = (metadata?: Record<string, unknown> | null): FulfillmentType =>
   metadata?.fulfillment_type === "nzstock" ? "nzstock" : "standard"
 
+const ORDER_EMAIL_FIELDS = [
+  "id",
+  "email",
+  "display_id",
+  "created_at",
+  "currency_code",
+  "item_total",
+  "shipping_total",
+  "discount_total",
+  "tax_total",
+  "total",
+  "customer.first_name",
+  "customer.email",
+  "items.id",
+  "items.product_title",
+  "items.variant_title",
+  "items.quantity",
+  "items.unit_price",
+  "items.thumbnail",
+  "items.metadata",
+  "shipping_address.first_name",
+  "shipping_address.last_name",
+  "shipping_address.address_1",
+  "shipping_address.address_2",
+  "shipping_address.city",
+  "shipping_address.province",
+  "shipping_address.postal_code",
+  "shipping_address.country_code",
+] as const
+
+/**
+ * Medusa's completeCartWorkflow emits "order.placed" from a parallelize() block
+ * that runs at the same time as createRemoteLinkStep — the step that writes the
+ * order/cart/payment module links query.graph relies on to resolve computed
+ * fields like item_total/tax_total/total and items.quantity/unit_price.
+ * addOrderTransactionStep (which finalizes the order) runs even later. So the
+ * very first query.graph read after "order.placed" can race ahead of all of
+ * that and come back with $0 totals / undefined item fields — which is exactly
+ * what produced $NaN prices and a $0.00 subtotal in testing. Retrying a few
+ * times with a short delay until totals/items are actually populated avoids
+ * sending a broken confirmation email instead of just a slightly-delayed one.
+ */
+async function fetchOrderWithRetry(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  orderId: string,
+  maxAttempts = 6,
+  delayMs = 500
+) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { data: orders } = await query.graph({
+      entity: "order",
+      fields: ORDER_EMAIL_FIELDS as unknown as string[],
+      filters: { id: orderId },
+    })
+    const order = orders[0]
+    const hasItems = Array.isArray(order?.items) && order.items.length > 0
+    const itemsHavePricing = hasItems && order.items.every((item: any) => item.unit_price != null && item.quantity != null)
+    const totalsReady = order?.item_total != null && order?.total != null && order.total > (order.shipping_total ?? 0)
+
+    if (order && hasItems && itemsHavePricing && totalsReady) {
+      return order
+    }
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    } else if (order) {
+      // Last attempt: send with whatever we have rather than dropping the
+      // email entirely — better a late-but-complete email than a silent failure.
+      return order
+    }
+  }
+  return undefined
+}
+
 export default async function orderPlacedHandler({
   event: { data },
   container,
@@ -32,42 +106,9 @@ export default async function orderPlacedHandler({
       entity: "store",
       fields: ["name"],
     })
-    const { data: orders } = await query.graph({
-      entity: "order",
-      fields: [
-        "id",
-        "email",
-        "display_id",
-        "created_at",
-        "currency_code",
-        "item_total",
-        "shipping_total",
-        "discount_total",
-        "tax_total",
-        "total",
-        "customer.first_name",
-        "customer.email",
-        "items.id",
-        "items.product_title",
-        "items.variant_title",
-        "items.quantity",
-        "items.unit_price",
-        "items.thumbnail",
-        "items.metadata",
-        "shipping_address.first_name",
-        "shipping_address.last_name",
-        "shipping_address.address_1",
-        "shipping_address.address_2",
-        "shipping_address.city",
-        "shipping_address.province",
-        "shipping_address.postal_code",
-        "shipping_address.country_code",
-      ],
-      filters: { id: data.id },
-    })
-
     const store = stores[0] as { name?: string } | undefined
-    const order = orders[0] as {
+
+    const order = (await fetchOrderWithRetry(query, data.id)) as {
       id: string
       email?: string | null
       display_id: number | string
