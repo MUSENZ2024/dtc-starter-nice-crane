@@ -32,7 +32,9 @@ export type MusePayConfirmationProps = {
   items: MusePayEmailItem[]
   address: string
   trackingUrl: string
-  // From order.metadata.split_pay_* — stamped by attach-split-pay-metadata-workflow
+  // From order.metadata.split_pay_* — stamped on the cart before checkout
+  // completion (see apps/storefront/src/app/api/split-pay/complete/route.ts),
+  // so it's already present on the order the moment it's created
   totalCents: number
   baseCents: number
   finalCents: number

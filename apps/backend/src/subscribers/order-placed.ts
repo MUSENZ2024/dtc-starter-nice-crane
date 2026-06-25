@@ -161,9 +161,11 @@ export default async function orderPlacedHandler({
     const notificationModule = container.resolve("notification")
 
     // ---- MUSE Pay split-payment orders get an entirely different email ----
-    // Stamped by attach-split-pay-metadata-workflow right after the storefront
-    // completes the cart for a split-pay checkout (see
-    // apps/storefront/src/app/api/split-pay/complete/route.ts). These orders
+    // Stamped on the cart's metadata before checkout completion (see
+    // apps/storefront/src/app/api/split-pay/complete/route.ts) — Medusa's
+    // completeCartWorkflow copies cart.metadata onto the new order at
+    // creation time, so this is already present the moment order.placed
+    // fires, no race against a separate post-completion call. These orders
     // never ship on placement, so none of the nzstock/standard/mixed shipment
     // logic below applies — branch out before any of it runs.
     if (order.metadata?.muse_split_pay === "true") {

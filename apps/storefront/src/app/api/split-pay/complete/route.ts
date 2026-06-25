@@ -20,6 +20,17 @@ function getStripeId(value: string | { id?: string } | null | undefined) {
  * billing happens entirely through the Stripe subscription schedule created
  * above, not through Medusa's payment module.
  *
+ * Split-pay metadata is stamped on the CART before calling complete(), not
+ * via a separate API call afterwards — Medusa's completeCartWorkflow copies
+ * cart.metadata straight onto the new order at creation time
+ * (createOrdersStep input includes `metadata: cart.metadata`, see
+ * @medusajs/core-flows/cart/workflows/complete-cart.js). That means the
+ * order.placed event that fires moments later already has
+ * order.metadata.muse_split_pay === "true" — there's no longer a race
+ * against a follow-up HTTP call landing before the order-placed subscriber
+ * reads the order, which is exactly what was causing split-pay orders to
+ * get no email at all (or the wrong one) before.
+ *
  * Best-effort: if anything here fails, we log and return null rather than
  * throwing — the customer's card is already saved and the Stripe schedule
  * already exists, so we don't want a Medusa-side hiccup to block them from
@@ -50,6 +61,23 @@ async function completeSplitPayOrder({
   try {
     const headers = { ...(await getAuthHeaders()) }
 
+    await sdk.store.cart.update(
+      medusaCartId,
+      {
+        metadata: {
+          muse_split_pay: "true",
+          split_pay_schedule_id: schedule.id,
+          split_pay_subscription_id: String(schedule.subscription),
+          split_pay_total_cents: totalCents,
+          split_pay_base_cents: baseCents,
+          split_pay_final_cents: finalCents,
+          split_pay_currency: currency,
+        },
+      },
+      {},
+      headers
+    )
+
     const { cart } = await sdk.store.cart.retrieve(medusaCartId, {}, headers)
 
     await sdk.store.payment.initiatePaymentSession(
@@ -70,20 +98,6 @@ async function completeSplitPayOrder({
     }
 
     const order = completion.order
-
-    await sdk.client.fetch("/store/split-pay/attach-metadata", {
-      method: "POST",
-      body: {
-        order_id: order.id,
-        schedule_id: schedule.id,
-        subscription_id: String(schedule.subscription),
-        total_cents: totalCents,
-        base_cents: baseCents,
-        final_cents: finalCents,
-        currency,
-      },
-    })
-
     return { orderId: order.id, displayId: order.display_id ?? order.id }
   } catch (error) {
     console.error("Split Pay: failed to complete Medusa order.", error)
