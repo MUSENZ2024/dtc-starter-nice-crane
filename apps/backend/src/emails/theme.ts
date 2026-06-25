@@ -1,3 +1,10 @@
+// Gmail strips <link>/@import web fonts entirely, so "Inter" (used by the
+// approved HTML mockup) never loads in the actual email — it silently falls
+// back to whatever's first in this stack. -apple-system/Segoe UI give a
+// notably more modern look than plain Arial on Mac/Windows while still
+// degrading safely everywhere else.
+export const FONT_STACK = "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif"
+
 export const colors = {
   black: "#0A0A0A",
   cream: "#F4F2ED",

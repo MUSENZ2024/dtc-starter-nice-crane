@@ -1,5 +1,4 @@
 import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
-import { Modules } from "@medusajs/framework/utils"
 import { render, pretty } from "@react-email/render"
 import type { EmailItem, OrderConfirmationProps, Shipment } from "../emails/OrderConfirmationTemplate"
 import getOrderPlacedMixedTemplate from "../emails/order-placed-mixed"
@@ -23,35 +22,31 @@ type OrderLine = {
 const getFulfillmentType = (metadata?: Record<string, unknown> | null): FulfillmentType =>
   metadata?.fulfillment_type === "nzstock" ? "nzstock" : "standard"
 
-// Fields that trigger OrderModuleService.retrieveOrder() to compute totals
-// in-process from the order's own items/tax_lines/adjustments — see note below.
-const ORDER_TOTAL_FIELDS = [
-  "total",
-  "item_total",
-  "shipping_total",
-  "discount_total",
-  "tax_total",
-]
-
-const ORDER_SELECT_FIELDS = [
+// Matches Medusa's own documented React Email subscriber example
+// (docs.medusajs.com/cloud/emails/react-email) verbatim — "items.quantity"/
+// "items.unit_price" is the officially supported query.graph field path.
+// (A prior attempt switched to Modules.ORDER.retrieveOrder() with
+// "items.detail", reasoning from the module service's internal field names —
+// that's the wrong layer; query.graph's remote-query resolution handles the
+// quantity/unit_price flattening itself and this is the path Medusa's own
+// docs use, including for this exact email use case.)
+const ORDER_EMAIL_FIELDS = [
   "id",
   "email",
   "display_id",
   "created_at",
   "currency_code",
+  "item_total",
+  "shipping_total",
+  "discount_total",
+  "tax_total",
+  "total",
   "metadata",
-  ...ORDER_TOTAL_FIELDS,
   "items.id",
   "items.product_title",
   "items.variant_title",
-  // quantity/unit_price aren't plain columns on OrderLineItem — they're
-  // versioned under a "detail" sub-object (see @medusajs/order's
-  // transform-order.js formatOrder(), which only flattens detail.quantity/
-  // detail.unit_price onto the item once "detail" has actually been
-  // selected). Selecting "items.quantity"/"items.unit_price" directly looks
-  // plausible but isn't a real field path — detail never loads, and the
-  // flattening step has nothing to flatten, producing exactly the $NaN bug.
-  "items.detail",
+  "items.quantity",
+  "items.unit_price",
   "items.thumbnail",
   "items.metadata",
   "shipping_address.first_name",
@@ -62,35 +57,46 @@ const ORDER_SELECT_FIELDS = [
   "shipping_address.province",
   "shipping_address.postal_code",
   "shipping_address.country_code",
-]
+] as const
 
 /**
- * Why this resolves the Order module directly instead of using query.graph:
- *
- * Medusa's completeCartWorkflow emits "order.placed" from a parallelize() block
- * that runs at the same time as createRemoteLinkStep — the step that writes the
- * order/cart/payment *module links* query.graph depends on to resolve
- * cross-module fields. Reading through query.graph right after that event can
- * race ahead of those link writes and return incomplete data.
- *
- * Order totals and line items aren't cross-module data, though — they're
- * native to the Order module itself, computed synchronously inside
- * OrderModuleService.retrieveOrder() from the order's own items/tax_lines/
- * adjustments the moment any of the total fields (item_total, total, etc.)
- * are requested in `select`. Resolving Modules.ORDER and calling
- * retrieveOrder() directly reads that module's own tables and sidesteps the
- * remote-link race entirely — no retry loop needed. This is also why
- * order.email / order.shipping_address are used for recipient + name below
- * instead of order.customer — the customer link IS a cross-module relation,
- * and the email/shipping address fields cover everything this email needs
- * without it.
+ * Medusa's completeCartWorkflow emits "order.placed" from a parallelize()
+ * step that runs alongside createRemoteLinkStep — the step that writes the
+ * module links query.graph depends on to resolve totals/items correctly.
+ * The very first read after that event can race ahead of those writes and
+ * come back with $0 totals / undefined item pricing. Retry until the data
+ * actually looks settled (items priced, totals exceed the shipping-only
+ * floor) rather than guessing a fixed delay. If it never settles, log loudly
+ * and skip sending — a missing confirmation email that gets manually
+ * resent is far better than one with a wrong total reaching the customer.
  */
-async function fetchOrder(container: any, orderId: string) {
-  const orderModuleService = container.resolve(Modules.ORDER)
-  return orderModuleService.retrieveOrder(orderId, {
-    select: ORDER_SELECT_FIELDS,
-    relations: ["items", "shipping_address"],
-  })
+async function fetchOrderWithRetry(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any,
+  orderId: string,
+  maxAttempts = 12,
+  delayMs = 1000
+) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const { data: orders } = await query.graph({
+      entity: "order",
+      fields: ORDER_EMAIL_FIELDS as unknown as string[],
+      filters: { id: orderId },
+    })
+    const order = orders[0]
+    const hasItems = Array.isArray(order?.items) && order.items.length > 0
+    const itemsHavePricing =
+      hasItems && order.items.every((item: any) => item.unit_price != null && item.quantity != null && item.unit_price > 0)
+    const totalsReady = order?.item_total != null && order?.total != null && order.total > (order.shipping_total ?? 0)
+
+    if (order && hasItems && itemsHavePricing && totalsReady) {
+      return order
+    }
+    if (attempt < maxAttempts) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+  return undefined
 }
 
 export default async function orderPlacedHandler({
@@ -107,7 +113,7 @@ export default async function orderPlacedHandler({
     })
     const store = stores[0] as { name?: string } | undefined
 
-    const order = (await fetchOrder(container, data.id)) as {
+    const order = (await fetchOrderWithRetry(query, data.id)) as {
       id: string
       email?: string | null
       display_id: number | string
@@ -133,7 +139,7 @@ export default async function orderPlacedHandler({
     } | undefined
 
     if (!order) {
-      throw new Error(`Order ${data.id} was not found.`)
+      throw new Error(`Order ${data.id} never reached fully-priced totals after retrying — skipping confirmation email rather than sending wrong numbers. Needs manual resend.`)
     }
 
     const recipient = order.email

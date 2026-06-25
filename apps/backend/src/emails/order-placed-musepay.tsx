@@ -12,7 +12,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import { colors, formatMoney, formatPaymentDate, logoUrl } from "./theme"
+import { colors, FONT_STACK, formatMoney, formatPaymentDate, logoUrl } from "./theme"
 
 export type MusePayEmailItem = {
   id: string
@@ -39,7 +39,7 @@ export type MusePayConfirmationProps = {
 }
 
 const textStyle = {
-  fontFamily: "Arial, Helvetica, sans-serif",
+  fontFamily: FONT_STACK,
   color: colors.text,
 }
 
@@ -70,7 +70,7 @@ function SocialIcon({ href, label }: { href: string; label: string }) {
               backgroundColor: "rgba(255,255,255,0.08)",
               textAlign: "center",
               verticalAlign: "middle",
-              fontFamily: "Arial, Helvetica, sans-serif",
+              fontFamily: FONT_STACK,
               fontSize: "10px",
               fontWeight: "bold",
               letterSpacing: "0.03em",
@@ -128,7 +128,7 @@ export function MusePayConfirmationTemplate({
                     backgroundColor: colors.green,
                     textAlign: "center",
                     verticalAlign: "middle",
-                    fontFamily: "Arial, Helvetica, sans-serif",
+                    fontFamily: FONT_STACK,
                     fontSize: "26px",
                     fontWeight: "bold",
                     color: colors.white,
@@ -218,7 +218,7 @@ export function MusePayConfirmationTemplate({
           </Section>
 
           <Section style={{ textAlign: "center", padding: "10px 0 4px" }}>
-            <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", fontWeight: "bold", padding: "13px 22px", textDecoration: "none" }}>VIEW YOUR ORDER</Button>
+            <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: FONT_STACK, fontSize: "13px", fontWeight: "bold", padding: "13px 22px", textDecoration: "none" }}>VIEW YOUR ORDER</Button>
           </Section>
 
           {/* ============== NEED HELP ============== */}
@@ -229,7 +229,7 @@ export function MusePayConfirmationTemplate({
               <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "10px", marginBottom: "14px" }}>
                 <Column style={{ width: "54px", padding: "12px 0 12px 14px", verticalAlign: "middle" }}>
                   <IconSquare>
-                    <span style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: "14px", lineHeight: 1, color: colors.yellow }}>💬</span>
+                    <span style={{ fontFamily: FONT_STACK, fontSize: "14px", lineHeight: 1, color: colors.yellow }}>💬</span>
                   </IconSquare>
                 </Column>
                 <Column style={{ padding: "12px 14px", verticalAlign: "middle" }}>

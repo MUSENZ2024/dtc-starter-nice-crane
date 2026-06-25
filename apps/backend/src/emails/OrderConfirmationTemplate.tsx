@@ -12,7 +12,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import { colors, formatEta, formatMoney, FulfillmentType, logoUrl } from "./theme"
+import { colors, FONT_STACK, formatEta, formatMoney, FulfillmentType, logoUrl } from "./theme"
 
 export type EmailItem = {
   id: string
@@ -47,7 +47,7 @@ export type OrderConfirmationProps = {
 }
 
 const textStyle = {
-  fontFamily: "Arial, Helvetica, sans-serif",
+  fontFamily: FONT_STACK,
   color: colors.text,
 }
 
@@ -93,7 +93,7 @@ const TIMELINE_STEPS: Record<FulfillmentType, { title: string; desc: string }[]>
  * sized up via fontSize rather than a vector path.
  */
 function IconGlyph({ glyph, size = "14px" }: { glyph: string; size?: string }) {
-  return <span style={{ fontFamily: "Arial, Helvetica, sans-serif", fontSize: size, lineHeight: 1, color: colors.yellow }}>{glyph}</span>
+  return <span style={{ fontFamily: FONT_STACK, fontSize: size, lineHeight: 1, color: colors.yellow }}>{glyph}</span>
 }
 
 /** Timeline: a vertical stack of circular step-dots connected by a thin rail, label + description beside each. */
@@ -118,7 +118,7 @@ function Timeline({ type }: { type: FulfillmentType }) {
                       backgroundColor: dotColor,
                       textAlign: "center",
                       verticalAlign: "middle",
-                      fontFamily: "Arial, Helvetica, sans-serif",
+                      fontFamily: FONT_STACK,
                       fontSize: "13px",
                       fontWeight: "bold",
                       color: done ? colors.white : colors.muted,
@@ -177,7 +177,7 @@ function SocialIcon({ href, label }: { href: string; label: string }) {
               backgroundColor: "rgba(255,255,255,0.08)",
               textAlign: "center",
               verticalAlign: "middle",
-              fontFamily: "Arial, Helvetica, sans-serif",
+              fontFamily: FONT_STACK,
               fontSize: "10px",
               fontWeight: "bold",
               letterSpacing: "0.03em",
@@ -230,7 +230,7 @@ export function OrderConfirmationTemplate({
                     backgroundColor: colors.green,
                     textAlign: "center",
                     verticalAlign: "middle",
-                    fontFamily: "Arial, Helvetica, sans-serif",
+                    fontFamily: FONT_STACK,
                     fontSize: "26px",
                     fontWeight: "bold",
                     color: colors.white,
@@ -270,7 +270,7 @@ export function OrderConfirmationTemplate({
                     <tr>
                       <td
                         style={{
-                          fontFamily: "Arial, Helvetica, sans-serif",
+                          fontFamily: FONT_STACK,
                           fontSize: "10px",
                           fontWeight: "bold",
                           letterSpacing: "0.03em",
@@ -338,7 +338,7 @@ export function OrderConfirmationTemplate({
           ))}
 
           <Section style={{ textAlign: "center", padding: "10px 0 4px" }}>
-            <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: "Arial, Helvetica, sans-serif", fontSize: "13px", fontWeight: "bold", padding: "13px 22px", textDecoration: "none" }}>TRACK YOUR ORDER</Button>
+            <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: FONT_STACK, fontSize: "13px", fontWeight: "bold", padding: "13px 22px", textDecoration: "none" }}>TRACK YOUR ORDER</Button>
           </Section>
 
           {/* ============== NEED HELP ============== */}
