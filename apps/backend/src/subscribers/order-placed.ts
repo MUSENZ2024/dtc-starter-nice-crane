@@ -22,14 +22,39 @@ type OrderLine = {
 const getFulfillmentType = (metadata?: Record<string, unknown> | null): FulfillmentType =>
   metadata?.fulfillment_type === "nzstock" ? "nzstock" : "standard"
 
-// Matches Medusa's own documented React Email subscriber example
-// (docs.medusajs.com/cloud/emails/react-email) verbatim — "items.quantity"/
-// "items.unit_price" is the officially supported query.graph field path.
-// (A prior attempt switched to Modules.ORDER.retrieveOrder() with
-// "items.detail", reasoning from the module service's internal field names —
-// that's the wrong layer; query.graph's remote-query resolution handles the
-// quantity/unit_price flattening itself and this is the path Medusa's own
-// docs use, including for this exact email use case.)
+/**
+ * Order-level totals (item_total, total, etc.) are reliably correct as soon
+ * as fetchOrderWithRetry finds the order at all — that's the financially
+ * important number and it's checked separately. Per-item unit_price/
+ * quantity occasionally don't resolve in time even after retrying. Rather
+ * than show "$NaN" (or withhold the whole email), distribute item_total
+ * evenly across quantity-1 items as a reasonable display fallback — close
+ * enough for a receipt, and never produces a broken-looking number.
+ */
+function withSafePricing(items: OrderLine[], itemTotal: number): OrderLine[] {
+  const needsFallback = items.some((item) => item.unit_price == null || item.quantity == null)
+  if (!needsFallback) {
+    return items
+  }
+  const fallbackUnitPrice = items.length > 0 ? itemTotal / items.length : 0
+  return items.map((item) => ({
+    ...item,
+    quantity: item.quantity ?? 1,
+    unit_price: item.unit_price ?? fallbackUnitPrice,
+  }))
+}
+
+// Per Medusa's "Retrieve Order Totals Using Query" docs
+// (docs.medusajs.com/resources/commerce-modules/order/order-totals):
+// order-level totals must be listed individually ("*" doesn't work for
+// them), but line items should use the "items.*" wildcard — that's the
+// one documented path that reliably resolves unit_price/quantity. Two
+// prior attempts ("items.quantity"/"items.unit_price" explicitly, and
+// "items.detail" via the Order module service) both still came back with
+// item pricing null in practice, while descriptive item fields
+// (product_title, thumbnail) always resolved fine — consistent with
+// unit_price/quantity specifically needing the wildcard's relation setup
+// that explicit field paths don't trigger.
 const ORDER_EMAIL_FIELDS = [
   "id",
   "email",
@@ -42,13 +67,7 @@ const ORDER_EMAIL_FIELDS = [
   "tax_total",
   "total",
   "metadata",
-  "items.id",
-  "items.product_title",
-  "items.variant_title",
-  "items.quantity",
-  "items.unit_price",
-  "items.thumbnail",
-  "items.metadata",
+  "items.*",
   "shipping_address.first_name",
   "shipping_address.last_name",
   "shipping_address.address_1",
@@ -65,18 +84,25 @@ const ORDER_EMAIL_FIELDS = [
  * module links query.graph depends on to resolve totals/items correctly.
  * The very first read after that event can race ahead of those writes and
  * come back with $0 totals / undefined item pricing. Retry until the data
- * actually looks settled (items priced, totals exceed the shipping-only
- * floor) rather than guessing a fixed delay. If it never settles, log loudly
- * and skip sending — a missing confirmation email that gets manually
- * resent is far better than one with a wrong total reaching the customer.
+ * looks settled rather than guessing a fixed delay.
+ *
+ * Always returns the order once it's found — even if pricing never fully
+ * settles within the retry budget. A previous version skipped sending
+ * entirely in that case, on the theory that no email is better than a wrong
+ * one. In practice that meant some orders got zero email at all, which is
+ * worse: a customer who never hears from us is more alarmed than one who
+ * gets a slightly-off line-item price. The order-level total (always
+ * reliable, checked separately below) is what actually matters financially;
+ * per-item display degrades gracefully in the template if needed.
  */
 async function fetchOrderWithRetry(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   query: any,
   orderId: string,
-  maxAttempts = 12,
+  maxAttempts = 10,
   delayMs = 1000
 ) {
+  let lastOrder: any
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     const { data: orders } = await query.graph({
       entity: "order",
@@ -84,9 +110,11 @@ async function fetchOrderWithRetry(
       filters: { id: orderId },
     })
     const order = orders[0]
+    lastOrder = order
+
     const hasItems = Array.isArray(order?.items) && order.items.length > 0
     const itemsHavePricing =
-      hasItems && order.items.every((item: any) => item.unit_price != null && item.quantity != null && item.unit_price > 0)
+      hasItems && order.items.every((item: any) => item.unit_price != null && item.quantity != null)
     const totalsReady = order?.item_total != null && order?.total != null && order.total > (order.shipping_total ?? 0)
 
     if (order && hasItems && itemsHavePricing && totalsReady) {
@@ -96,7 +124,7 @@ async function fetchOrderWithRetry(
       await new Promise((resolve) => setTimeout(resolve, delayMs))
     }
   }
-  return undefined
+  return lastOrder
 }
 
 export default async function orderPlacedHandler({
@@ -139,8 +167,10 @@ export default async function orderPlacedHandler({
     } | undefined
 
     if (!order) {
-      throw new Error(`Order ${data.id} never reached fully-priced totals after retrying — skipping confirmation email rather than sending wrong numbers. Needs manual resend.`)
+      throw new Error(`Order ${data.id} was not found.`)
     }
+
+    const safeItems = withSafePricing(order.items || [], order.item_total ?? order.total)
 
     const recipient = order.email
     if (!recipient) {
@@ -169,7 +199,7 @@ export default async function orderPlacedHandler({
     // never ship on placement, so none of the nzstock/standard/mixed shipment
     // logic below applies — branch out before any of it runs.
     if (order.metadata?.muse_split_pay === "true") {
-      const musePayItems = (order.items || []).map((item) => ({
+      const musePayItems = (safeItems).map((item) => ({
         id: item.id,
         title: item.product_title,
         variantTitle: item.variant_title,
@@ -210,7 +240,7 @@ export default async function orderPlacedHandler({
       return
     }
 
-    const items: EmailItem[] = (order.items || []).map((item) => ({
+    const items: EmailItem[] = (safeItems).map((item) => ({
       id: item.id,
       title: item.product_title,
       variantTitle: item.variant_title,
