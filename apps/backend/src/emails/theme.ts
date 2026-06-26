@@ -56,6 +56,24 @@ export const formatMoney = (amount: number, currencyCode: string) =>
 export const logoUrl =
   process.env.MUSE_EMAIL_LOGO_URL || "https://store.musenz.com/muse-logo-long.png"
 
+// Real hosted PNG icons — Gmail strips inline <svg> from email bodies and
+// doesn't reliably render .svg <img> sources either, so every icon (social
+// or functional) needs to be a raster image. Generated locally via Pillow
+// (see apps/storefront/public/email-icons/generate_icons.py) rather than
+// guessed at a third-party icon CDN URL.
+const EMAIL_ICON_BASE_URL =
+  process.env.MUSE_EMAIL_ICON_BASE_URL || "https://store.musenz.com/email-icons"
+
+export const icons = {
+  instagram: `${EMAIL_ICON_BASE_URL}/social-instagram.png`,
+  facebook: `${EMAIL_ICON_BASE_URL}/social-facebook.png`,
+  tiktok: `${EMAIL_ICON_BASE_URL}/social-tiktok.png`,
+  calendar: `${EMAIL_ICON_BASE_URL}/icon-calendar.png`,
+  track: `${EMAIL_ICON_BASE_URL}/icon-track.png`,
+  chat: `${EMAIL_ICON_BASE_URL}/icon-chat.png`,
+  card: `${EMAIL_ICON_BASE_URL}/icon-card.png`,
+}
+
 // Used by the MUSE Pay confirmation email — payment 1 of 4 charges on
 // order.created_at itself (the Stripe subscription schedule's start_date is
 // "now"), then one further charge every 7 days after that.
