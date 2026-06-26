@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import { colors, FONT_STACK, formatEta, formatMoney, FulfillmentType, icons, logoUrl } from "./theme"
+import { bgcolor, colors, FONT_STACK, formatEta, formatMoney, FulfillmentType, icons, logoUrl } from "./theme"
 
 export type EmailItem = {
   id: string
@@ -42,6 +42,7 @@ export type OrderConfirmationProps = {
   taxTotal: number
   total: number
   address: string
+  billingAddress?: string | null
   shipments: Shipment[]
   trackingUrl: string
   shippingMethodLabel: string
@@ -150,9 +151,9 @@ function Timeline({ type }: { type: FulfillmentType }) {
 
 function IconSquare({ src, alt }: { src: string; alt: string }) {
   return (
-    <table cellPadding="0" cellSpacing="0" role="presentation">
+    <table cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.black}>
       <tr>
-        <td style={{ width: "40px", height: "40px", borderRadius: "11px", backgroundColor: colors.black, textAlign: "center", verticalAlign: "middle" }}>
+        <td {...bgcolor(colors.black)} style={{ width: "40px", height: "40px", borderRadius: "11px", backgroundColor: colors.black, textAlign: "center", verticalAlign: "middle" }}>
           <Img src={src} alt={alt} width="18" height="18" style={{ margin: "0 auto" }} />
         </td>
       </tr>
@@ -187,6 +188,7 @@ export function OrderConfirmationTemplate({
   taxTotal,
   total,
   address,
+  billingAddress,
   shipments,
   trackingUrl,
   shippingMethodLabel,
@@ -203,7 +205,10 @@ export function OrderConfirmationTemplate({
       </Head>
       <Preview>Your MUSE NZ order #{displayId} is locked in.</Preview>
       <Body style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
-        <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }}>
+        <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} style={{ backgroundColor: colors.creamDeep }}>
+          <tr>
+            <td>
+        <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }} bgcolor={colors.black}>
           <Img src={logoUrl} width="150" alt="MUSE NZ" style={{ margin: "0 auto" }} />
         </Section>
         <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
@@ -217,6 +222,7 @@ export function OrderConfirmationTemplate({
             <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto 18px" }}>
               <tr>
                 <td
+                  {...bgcolor(colors.black)}
                   style={{
                     backgroundColor: colors.black,
                     borderRadius: "999px",
@@ -238,17 +244,17 @@ export function OrderConfirmationTemplate({
           </Section>
 
           {/* ============== ORDER SUMMARY ============== */}
-          <Section style={cardStyle}>
+          <Section style={cardStyle} bgcolor={colors.white}>
             <Text style={cardTitleStyle}>ORDER SUMMARY</Text>
             {items.map((item, index) => (
-              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }}>
+              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep}>
                 <Row>
                   <Column style={{ width: "80px", verticalAlign: "middle" }}>
                     {item.thumbnail ? (
                       <Img src={item.thumbnail} alt={item.title} width="72" height="72" style={{ borderRadius: "12px", objectFit: "cover" }} />
                     ) : (
                       <table cellPadding="0" cellSpacing="0" role="presentation">
-                        <tr><td style={{ width: "72px", height: "72px", borderRadius: "12px", backgroundColor: colors.white }} /></tr>
+                        <tr><td {...bgcolor(colors.white)} style={{ width: "72px", height: "72px", borderRadius: "12px", backgroundColor: colors.white }} /></tr>
                       </table>
                     )}
                   </Column>
@@ -260,6 +266,7 @@ export function OrderConfirmationTemplate({
                     <table cellPadding="0" cellSpacing="0" role="presentation">
                       <tr>
                         <td
+                          {...bgcolor(colors.blueSoft)}
                           style={{
                             fontFamily: FONT_STACK,
                             fontSize: "10px",
@@ -293,7 +300,7 @@ export function OrderConfirmationTemplate({
               <Row style={{ borderTop: `2px solid ${colors.black}` }}><Column><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>Total paid</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>{formatMoney(total, currencyCode)}</Text></Column></Row>
             </Section>
 
-            <Row style={{ ...softCardStyle, marginTop: "18px" }}>
+            <Row style={{ ...softCardStyle, marginTop: "18px" }} bgcolor={colors.creamDeep}>
               <Column style={{ width: "58px", verticalAlign: "middle" }}>
                 <IconSquare src={icons.card} alt="Payment method" />
               </Column>
@@ -305,7 +312,7 @@ export function OrderConfirmationTemplate({
           </Section>
 
           {/* ============== DELIVERY DETAILS ============== */}
-          <Section style={cardStyle}>
+          <Section style={cardStyle} bgcolor={colors.white}>
             <Text style={cardTitleStyle}>DELIVERING TO</Text>
             <Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", lineHeight: "1.65", margin: "0 0 20px", whiteSpace: "pre-line" }}>{address}</Text>
             {shipments.map((shipment, index) => (
@@ -317,6 +324,7 @@ export function OrderConfirmationTemplate({
                   padding: "16px",
                   marginTop: index ? "10px" : 0,
                 }}
+                bgcolor={colors.creamDeep}
               >
                 <Row>
                   <Column style={{ width: "56px", verticalAlign: "top" }}>
@@ -330,6 +338,12 @@ export function OrderConfirmationTemplate({
                 </Row>
               </Section>
             ))}
+            {billingAddress ? (
+              <Section style={{ ...softCardStyle, marginTop: "10px" }} bgcolor={colors.creamDeep}>
+                <Text style={{ ...textStyle, color: colors.muted, fontSize: "10.5px", fontWeight: "bold", letterSpacing: "0.05em", margin: "0 0 8px" }}>BILLING ADDRESS</Text>
+                <Text style={{ ...textStyle, fontSize: "13.5px", lineHeight: "1.65", margin: 0, whiteSpace: "pre-line" }}>{billingAddress}</Text>
+              </Section>
+            ) : null}
           </Section>
 
           {/* ============== WHAT HAPPENS NEXT ============== */}
@@ -347,7 +361,7 @@ export function OrderConfirmationTemplate({
             <Text style={cardTitleStyle}>NEED HELP WITH YOUR ORDER?</Text>
 
             <a href={trackingUrl} style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "10px" }}>
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "10px" }} bgcolor={colors.creamDeep}>
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.track} alt="Track order" />
                 </Column>
@@ -358,7 +372,7 @@ export function OrderConfirmationTemplate({
               </Row>
             </a>
             <a href="mailto:support@musenz.com" style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }}>
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep}>
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.chat} alt="Contact support" />
                 </Column>
@@ -369,7 +383,7 @@ export function OrderConfirmationTemplate({
               </Row>
             </a>
 
-            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }}>
+            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep}>
               <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", lineHeight: "1.65", margin: 0 }}>
                 <strong style={{ color: colors.black }}>30-day returns.</strong> Unworn, tags intact, full refund.{" "}
                 <a href="https://store.musenz.com/returns" style={{ color: colors.text, fontWeight: "bold" }}>Start a return</a>
@@ -394,7 +408,7 @@ export function OrderConfirmationTemplate({
         </Container>
 
         {/* ============== FOOTER ============== */}
-        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }}>
+        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }} bgcolor={colors.black}>
           <Container style={{ maxWidth: "480px", margin: "0 auto" }}>
             <Section style={{ textAlign: "center", marginBottom: "20px" }}>
               <Img src={logoUrl} width="120" alt="MUSE NZ" style={{ margin: "0 auto" }} />
@@ -419,6 +433,9 @@ export function OrderConfirmationTemplate({
             </Text>
           </Container>
         </Section>
+            </td>
+          </tr>
+        </table>
       </Body>
     </Html>
   )

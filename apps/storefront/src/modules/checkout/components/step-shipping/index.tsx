@@ -34,7 +34,7 @@ type GoogleAutocompletePrediction = {
 }
 
 type GoogleMapsWindow = Window & {
-  initMuseGooglePlaces?: () => void
+  gm_authFailure?: () => void
   google?: {
     maps?: {
       places?: {
@@ -64,10 +64,9 @@ type GoogleMapsWindow = Window & {
   }
 }
 
-const GOOGLE_PLACES_SCRIPT_ID = "google-maps-places-script"
-const GOOGLE_PLACES_CALLBACK = "initMuseGooglePlaces"
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-const MIN_ADDRESS_AUTOCOMPLETE_CHARS = 2
+const MIN_ADDRESS_AUTOCOMPLETE_CHARS = 1
+const GOOGLE_PLACES_READY_TIMEOUT_MS = 10_000
 
 const getAddressPart = (
   components: GoogleAddressComponent[],
@@ -150,6 +149,17 @@ export default function StepShipping({
     phone: cart.shipping_address?.phone ?? "",
   })
   const [sameAsBilling, setSameAsBilling] = useState(true)
+  const [billingForm, setBillingForm] = useState<AddressForm>({
+    first_name: cart.billing_address?.first_name ?? "",
+    last_name: cart.billing_address?.last_name ?? "",
+    address_1: cart.billing_address?.address_1 ?? "",
+    address_2: cart.billing_address?.address_2 ?? "",
+    postal_code: cart.billing_address?.postal_code ?? "",
+    city: cart.billing_address?.city ?? "",
+    country_code: cart.billing_address?.country_code ?? "nz",
+    province: cart.billing_address?.province ?? "",
+    phone: cart.billing_address?.phone ?? "",
+  })
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -161,6 +171,10 @@ export default function StepShipping({
 
   function updateField(name: keyof AddressForm, value: string) {
     setForm((current) => ({ ...current, [name]: value }))
+  }
+
+  function updateBillingField(name: keyof AddressForm, value: string) {
+    setBillingForm((current) => ({ ...current, [name]: value }))
   }
 
   function applyAddressComponents(components: GoogleAddressComponent[]) {
@@ -211,13 +225,18 @@ export default function StepShipping({
         types: ["address"],
         sessionToken: autocompleteSessionTokenRef.current,
       },
-      (predictions) => {
+      (predictions, status) => {
         if (latestPredictionInputRef.current !== nextInput) {
           return
         }
 
         setIsFetchingPredictions(false)
         setAddressPredictions(predictions?.slice(0, 5) ?? [])
+        if (status !== "OK" && status !== "ZERO_RESULTS") {
+          setPlacesStatusMessage(
+            "Google address autocomplete is unavailable. Enable Maps JavaScript API and Places API (Legacy) for this key, then allow this site in its referrer restrictions."
+          )
+        }
       }
     )
   }
@@ -293,39 +312,47 @@ export default function StepShipping({
       }
     }
 
-    ;(window as GoogleMapsWindow)[GOOGLE_PLACES_CALLBACK] = initAutocomplete
-
-    if ((window as GoogleMapsWindow).google?.maps?.places?.AutocompleteService) {
-      initAutocomplete()
-    } else {
-      const existingScript = document.getElementById(GOOGLE_PLACES_SCRIPT_ID)
-
-      if (existingScript) {
-        existingScript.addEventListener("load", initAutocomplete, {
-          once: true,
-        })
-      } else {
-        const script = document.createElement("script")
-        script.id = GOOGLE_PLACES_SCRIPT_ID
-        script.src = `https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&callback=${GOOGLE_PLACES_CALLBACK}&loading=async&language=en-NZ&region=NZ`
-        script.async = true
-        script.defer = true
-        script.addEventListener("load", initAutocomplete, { once: true })
-        script.addEventListener(
-          "error",
-          () => {
-            setPlacesStatusMessage(
-              "Google address autocomplete could not load. Check the live Google Maps API key and domain restrictions."
-            )
-          },
-          { once: true }
-        )
-        document.head.appendChild(script)
-      }
+    const googleWindow = window as GoogleMapsWindow
+    const previousAuthFailureHandler = googleWindow.gm_authFailure
+    googleWindow.gm_authFailure = () => {
+      previousAuthFailureHandler?.()
+      setPlacesStatusMessage(
+        "Google rejected the address-lookup key. Enable Maps JavaScript API and Places API (Legacy), billing, and an allowed referrer for this checkout domain."
+      )
     }
+
+    // The Google Maps script itself is loaded once, page-level, via
+    // next/script in checkout-page-muse (id="google-maps-places-script").
+    // Don't create a second <script> tag here — Google Maps does not
+    // support being loaded twice on the same page, and that previously
+    // risked the `places` library silently failing to attach. Just poll
+    // for it to become ready.
+    let readyTimer: number | undefined
+    const waitForPlaces = () => {
+      if (googleWindow.google?.maps?.places?.AutocompleteService) {
+        initAutocomplete()
+        return
+      }
+
+      readyTimer = window.setTimeout(waitForPlaces, 100)
+    }
+
+    waitForPlaces()
+
+    const deadlineTimer = window.setTimeout(() => {
+      if (!hasInitializedPlacesRef.current) {
+        window.clearTimeout(readyTimer)
+        setPlacesStatusMessage(
+          "Google address autocomplete did not become ready. Check the Maps JavaScript API, Places API (Legacy), billing, and key restrictions."
+        )
+      }
+    }, GOOGLE_PLACES_READY_TIMEOUT_MS)
 
     return () => {
       isMounted = false
+      window.clearTimeout(readyTimer)
+      window.clearTimeout(deadlineTimer)
+      googleWindow.gm_authFailure = previousAuthFailureHandler
     }
   }, [autocompleteCountryCode])
 
@@ -343,11 +370,25 @@ export default function StepShipping({
       province: form.province,
       phone: form.phone,
     }
+    const billingAddress = sameAsBilling
+      ? shippingAddress
+      : {
+          first_name: billingForm.first_name,
+          last_name: billingForm.last_name,
+          address_1: billingForm.address_1,
+          address_2: billingForm.address_2,
+          company: "",
+          postal_code: billingForm.postal_code,
+          city: billingForm.city,
+          country_code: billingForm.country_code.toLowerCase(),
+          province: billingForm.province,
+          phone: billingForm.phone,
+        }
 
     startTransition(async () => {
       await updateCart({
         shipping_address: shippingAddress,
-        billing_address: sameAsBilling ? shippingAddress : undefined,
+        billing_address: billingAddress,
         email: cart.email,
       })
       router.refresh()
@@ -427,6 +468,51 @@ export default function StepShipping({
             />
             Billing address same as shipping
           </label>
+
+          {!sameAsBilling && (
+            <div className="space-y-3 rounded-2xl border border-muse-border bg-muse-cream-warm/50 p-4">
+              <p className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-muse-text-muted">
+                Billing address
+              </p>
+              <div className="grid gap-3 xsmall:grid-cols-2">
+                <Field label="First name" placeholder="First name" value={billingForm.first_name} onChange={(value) => updateBillingField("first_name", value)} autoComplete="given-name" required />
+                <Field label="Last name" placeholder="Last name" value={billingForm.last_name} onChange={(value) => updateBillingField("last_name", value)} autoComplete="family-name" required />
+                <Field label="Address" placeholder="Street address" value={billingForm.address_1} onChange={(value) => updateBillingField("address_1", value)} autoComplete="address-line1" required className="xsmall:col-span-2" />
+                <Field label="Apartment, suite, unit (optional)" placeholder="Apt 2B" value={billingForm.address_2} onChange={(value) => updateBillingField("address_2", value)} autoComplete="address-line2" className="xsmall:col-span-2" />
+                <Field label="Suburb" placeholder="Ponsonby" value={billingForm.province} onChange={(value) => updateBillingField("province", value)} autoComplete="address-level3" required />
+                <Field label="City" placeholder="Auckland" value={billingForm.city} onChange={(value) => updateBillingField("city", value)} autoComplete="address-level2" required />
+                <Field label="Postcode" placeholder="1011" value={billingForm.postal_code} onChange={(value) => updateBillingField("postal_code", value)} autoComplete="postal-code" required maxLength={4} />
+                <label className="flex flex-col gap-1.5 xsmall:col-span-2">
+                  <span className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-muse-text-muted">
+                    Country
+                  </span>
+                  <select
+                    value={billingForm.country_code}
+                    onChange={(event) => updateBillingField("country_code", event.target.value)}
+                    className="w-full rounded-xl border border-muse-input bg-white px-4 py-3.5 text-[14px] text-muse-black outline-none transition focus:border-muse-black focus:ring-2 focus:ring-black/5"
+                    required
+                  >
+                    {(cart.region?.countries ?? []).map((country) => (
+                      <option key={country.iso_2} value={country.iso_2 ?? ""}>
+                        {country.display_name ?? country.iso_2?.toUpperCase()}
+                      </option>
+                    ))}
+                    {!cart.region?.countries?.length && <option value="nz">New Zealand</option>}
+                  </select>
+                </label>
+                <Field
+                  label="Phone"
+                  labelExtra="(optional)"
+                  placeholder="+64 21 000 0000"
+                  type="tel"
+                  value={billingForm.phone}
+                  onChange={(value) => updateBillingField("phone", value)}
+                  autoComplete="tel"
+                  className="xsmall:col-span-2"
+                />
+              </div>
+            </div>
+          )}
 
           <button
             type="submit"

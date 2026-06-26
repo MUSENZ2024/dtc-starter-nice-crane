@@ -12,7 +12,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import { colors, FONT_STACK, formatMoney, formatPaymentDate, icons, logoUrl } from "./theme"
+import { bgcolor, colors, FONT_STACK, formatMoney, formatPaymentDate, icons, logoUrl } from "./theme"
 
 export type MusePayEmailItem = {
   id: string
@@ -71,7 +71,7 @@ function IconSquare({ src, alt }: { src: string; alt: string }) {
   return (
     <table cellPadding="0" cellSpacing="0" role="presentation">
       <tr>
-        <td style={{ width: "40px", height: "40px", borderRadius: "11px", backgroundColor: colors.black, textAlign: "center", verticalAlign: "middle" }}>
+        <td {...bgcolor(colors.black)} style={{ width: "40px", height: "40px", borderRadius: "11px", backgroundColor: colors.black, textAlign: "center", verticalAlign: "middle" }}>
           <Img src={src} alt={alt} width="18" height="18" style={{ margin: "0 auto" }} />
         </td>
       </tr>
@@ -124,7 +124,10 @@ export function MusePayConfirmationTemplate({
       </Head>
       <Preview>Your MUSE Pay order #{displayId} is confirmed — 4 weekly payments, ships after the final one.</Preview>
       <Body style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
-        <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }}>
+        <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} style={{ backgroundColor: colors.creamDeep }}>
+          <tr>
+            <td>
+        <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }} bgcolor={colors.black}>
           <Img src={logoUrl} width="150" alt="MUSE NZ" style={{ margin: "0 auto" }} />
         </Section>
         <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
@@ -144,17 +147,17 @@ export function MusePayConfirmationTemplate({
           </Section>
 
           {/* ============== ORDER SUMMARY — no stock badges, this order isn't shipping yet ============== */}
-          <Section style={cardStyle}>
+          <Section style={cardStyle} bgcolor={colors.white}>
             <Text style={cardTitleStyle}>ORDER SUMMARY</Text>
             {items.map((item, index) => (
-              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }}>
+              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep}>
                 <Row>
                   <Column style={{ width: "80px", verticalAlign: "middle" }}>
                     {item.thumbnail ? (
                       <Img src={item.thumbnail} alt={item.title} width="72" height="72" style={{ borderRadius: "12px", objectFit: "cover" }} />
                     ) : (
                       <table cellPadding="0" cellSpacing="0" role="presentation">
-                        <tr><td style={{ width: "72px", height: "72px", borderRadius: "12px", backgroundColor: colors.white }} /></tr>
+                        <tr><td {...bgcolor(colors.white)} style={{ width: "72px", height: "72px", borderRadius: "12px", backgroundColor: colors.white }} /></tr>
                       </table>
                     )}
                   </Column>
@@ -178,11 +181,12 @@ export function MusePayConfirmationTemplate({
           </Section>
 
           {/* ============== PAYMENT SCHEDULE — the core of this email ============== */}
-          <Section style={cardStyle}>
+          <Section style={cardStyle} bgcolor={colors.white}>
             <Text style={cardTitleStyle}>YOUR PAYMENT SCHEDULE</Text>
             {installments.map((installment, index) => (
               <Row
                 key={installment.label}
+                bgcolor={index === 3 ? colors.greenSoft : undefined}
                 style={{
                   borderTop: index ? `1px solid ${colors.border}` : "none",
                   padding: "14px 0",
@@ -205,7 +209,7 @@ export function MusePayConfirmationTemplate({
                 </Column>
               </Row>
             ))}
-            <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginTop: "16px" }}>
+            <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginTop: "16px" }} bgcolor={colors.creamDeep}>
               <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                 <IconSquare src={icons.card} alt="Card" />
               </Column>
@@ -218,14 +222,14 @@ export function MusePayConfirmationTemplate({
           </Section>
 
           {/* ============== EXPLICIT SHIPPING NOTE — softened, no cancellation claim ============== */}
-          <Section style={{ backgroundColor: colors.blueSoft, borderRadius: "16px", padding: "22px 24px", marginBottom: "16px" }}>
+          <Section style={{ backgroundColor: colors.blueSoft, borderRadius: "16px", padding: "22px 24px", marginBottom: "16px" }} bgcolor={colors.blueSoft}>
             <Text style={{ ...textStyle, fontSize: "14px", fontWeight: "bold", color: colors.blue, margin: "0 0 7px" }}>When does this ship?</Text>
             <Text style={{ ...textStyle, color: colors.text, fontSize: "13.5px", lineHeight: "1.65", margin: 0 }}>
               Your order ships once your final payment (Payment 4 of 4) is received — we'll send a separate shipping confirmation at that point. Nothing ships before then.
             </Text>
           </Section>
 
-          <Section style={cardStyle}>
+          <Section style={cardStyle} bgcolor={colors.white}>
             <Text style={cardTitleStyle}>DELIVERING TO (ONCE PAID OFF)</Text>
             <Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", lineHeight: "1.65", margin: 0 }}>{address}</Text>
           </Section>
@@ -235,7 +239,7 @@ export function MusePayConfirmationTemplate({
             <Text style={cardTitleStyle}>NEED HELP WITH YOUR ORDER?</Text>
 
             <a href="mailto:support@musenz.com" style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }}>
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep}>
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.chat} alt="Contact support" />
                 </Column>
@@ -246,7 +250,7 @@ export function MusePayConfirmationTemplate({
               </Row>
             </a>
 
-            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }}>
+            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep}>
               <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", lineHeight: "1.65", margin: 0 }}>
                 <strong style={{ color: colors.black }}>30-day returns</strong> apply from the date your order ships — not from today.
               </Text>
@@ -262,7 +266,7 @@ export function MusePayConfirmationTemplate({
         </Container>
 
         {/* ============== FOOTER ============== */}
-        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }}>
+        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }} bgcolor={colors.black}>
           <Container style={{ maxWidth: "480px", margin: "0 auto" }}>
             <Section style={{ textAlign: "center", marginBottom: "20px" }}>
               <Img src={logoUrl} width="120" alt="MUSE NZ" style={{ margin: "0 auto" }} />
@@ -285,6 +289,9 @@ export function MusePayConfirmationTemplate({
             </Text>
           </Container>
         </Section>
+            </td>
+          </tr>
+        </table>
       </Body>
     </Html>
   )

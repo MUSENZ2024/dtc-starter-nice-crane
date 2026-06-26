@@ -53,6 +53,19 @@ export const formatMoney = (amount: number, currencyCode: string) =>
     currencyDisplay: "narrowSymbol",
   }).format(amount)
 
+/**
+ * Gmail's mobile apps run their own "smart" dark-mode pass that recolors
+ * (effectively inverts) any background it doesn't trust — it doesn't honor
+ * the color-scheme meta tags Apple Mail/Outlook respect. The documented
+ * workaround (Litmus/Email on Acid) is the legacy HTML `bgcolor` attribute:
+ * Gmail treats it as an explicit, intentional color and leaves it alone.
+ * `td` isn't typed with `bgcolor` in React's DOM types even though every
+ * browser supports it on table cells, hence the cast.
+ */
+export function bgcolor(color: string) {
+  return { bgcolor: color } as { bgcolor: string }
+}
+
 export const logoUrl =
   process.env.MUSE_EMAIL_LOGO_URL || "https://store.musenz.com/muse-logo-long.png"
 

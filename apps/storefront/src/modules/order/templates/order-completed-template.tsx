@@ -227,6 +227,17 @@ export default async function OrderCompletedTemplate({
   const hasMixed = nzstock.length > 0 && standard.length > 0
   const orderDate = new Date(order.created_at ?? Date.now())
   const address = order.shipping_address
+  // Only show a separate billing address card when it's actually different —
+  // most orders have "same as shipping" ticked, and re-showing identical
+  // details twice is just noise.
+  const ADDRESS_COMPARE_KEYS = ["first_name", "last_name", "address_1", "address_2", "city", "province", "postal_code", "country_code"] as const
+  const billingAddress =
+    order.billing_address &&
+    !ADDRESS_COMPARE_KEYS.every(
+      (key) => (order.shipping_address?.[key] || "") === (order.billing_address?.[key] || "")
+    )
+      ? order.billing_address
+      : null
   const payment = order.payment_collections?.[0]?.payments?.[0]
   const paymentTitle = payment
     ? paymentInfoMap[payment.provider_id]?.title ?? payment.provider_id
@@ -238,9 +249,13 @@ export default async function OrderCompletedTemplate({
   const discountCode =
     (order as HttpTypes.StoreOrder & { discounts?: { code?: string }[] })
       .discounts?.[0]?.code ?? "Discount"
-  const shippingMethod =
-    (order.shipping_methods?.[0] as { name?: string } | undefined)?.name ??
-    "NZ Post Standard"
+  // Shipping options are configured in admin with names like "NZ Stock
+  // Standard" / "International Express" that describe the fulfillment lane,
+  // not what the customer actually picked at checkout — the only two
+  // choices there are Standard or Express delivery (see getDeliveryLabel in
+  // step-delivery), so that's what should show here, not the raw option name.
+  const shippingMethodName = (order.shipping_methods?.[0] as { name?: string } | undefined)?.name
+  const shippingMethod = shippingMethodName?.toLowerCase().includes("express") ? "Express Delivery" : "Standard Delivery"
 
   return (
     <div
@@ -365,6 +380,12 @@ export default async function OrderCompletedTemplate({
                   {address?.postal_code}
                   <br />
                   {(address?.country_code ?? "nz").toUpperCase()}
+                  {address?.phone && (
+                    <>
+                      <br />
+                      {address.phone}
+                    </>
+                  )}
                 </div>
               </div>
               <div>
@@ -395,6 +416,33 @@ export default async function OrderCompletedTemplate({
                 </div>
               </div>
             </div>
+            {billingAddress && (
+              <div className="mt-4 border-t border-[#E8E6E0] pt-4">
+                <p className="mb-1.5 text-[10.5px] font-bold uppercase tracking-[0.1em] text-[#999]">
+                  Billing address
+                </p>
+                <div className="text-[13.5px] leading-[1.7] text-[#1A1A1A]" data-testid="billing-address-summary">
+                  <strong className="font-bold">
+                    {billingAddress.first_name} {billingAddress.last_name}
+                  </strong>
+                  <br />
+                  {billingAddress.address_1}
+                  {billingAddress.address_2 && <>, {billingAddress.address_2}</>}
+                  <br />
+                  {billingAddress.city}
+                  {billingAddress.province && `, ${billingAddress.province}`}{" "}
+                  {billingAddress.postal_code}
+                  <br />
+                  {(billingAddress.country_code ?? "nz").toUpperCase()}
+                  {billingAddress.phone && (
+                    <>
+                      <br />
+                      {billingAddress.phone}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {payment && (

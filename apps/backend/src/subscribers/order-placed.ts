@@ -22,6 +22,41 @@ type OrderLine = {
   metadata?: Record<string, unknown> | null
 }
 
+type AddressFields = {
+  first_name?: string | null
+  last_name?: string | null
+  address_1?: string | null
+  address_2?: string | null
+  city?: string | null
+  province?: string | null
+  postal_code?: string | null
+  country_code?: string | null
+  phone?: string | null
+}
+
+function formatAddress(address?: AddressFields | null, fallback = "Your delivery address"): string {
+  const lines = [
+    [address?.first_name, address?.last_name].filter(Boolean).join(" "),
+    address?.address_1,
+    address?.address_2,
+    [address?.city, address?.province, address?.postal_code].filter(Boolean).join(" "),
+    address?.country_code?.toUpperCase() === "NZ" ? "New Zealand" : address?.country_code,
+    address?.phone ? `Phone: ${address.phone}` : null,
+  ].filter(Boolean)
+  return lines.join("\n") || fallback
+}
+
+// Compares the fields that actually matter for "is billing the same address
+// as shipping" — not object identity, since these come back as separate
+// query results even when the customer ticked "same as shipping".
+function addressesMatch(a?: AddressFields | null, b?: AddressFields | null): boolean {
+  if (!a || !b) {
+    return !a && !b
+  }
+  const keys: (keyof AddressFields)[] = ["first_name", "last_name", "address_1", "address_2", "city", "province", "postal_code", "country_code"]
+  return keys.every((key) => (a[key] || "") === (b[key] || ""))
+}
+
 // Matches the variant the storefront's checkout adds as a real cart line
 // item when "Shipping protection" is checked (see getShippingProtectionItem
 // in apps/storefront/src/modules/checkout/components/step-delivery) — it's
@@ -189,6 +224,16 @@ const ORDER_EMAIL_FIELDS = [
   "shipping_address.province",
   "shipping_address.postal_code",
   "shipping_address.country_code",
+  "shipping_address.phone",
+  "billing_address.first_name",
+  "billing_address.last_name",
+  "billing_address.address_1",
+  "billing_address.address_2",
+  "billing_address.city",
+  "billing_address.province",
+  "billing_address.postal_code",
+  "billing_address.country_code",
+  "billing_address.phone",
   "shipping_methods.name",
   "payment_collections.payments.provider_id",
   "payment_collections.payments.data",
@@ -293,16 +338,8 @@ export default async function orderPlacedHandler({
       metadata?: Record<string, unknown> | null
       shipping_methods?: { name?: string | null }[] | null
       payment_collections?: { payments?: { provider_id?: string | null; data?: Record<string, unknown> }[] }[] | null
-      shipping_address?: {
-        first_name?: string | null
-        last_name?: string | null
-        address_1?: string | null
-        address_2?: string | null
-        city?: string | null
-        province?: string | null
-        postal_code?: string | null
-        country_code?: string | null
-      } | null
+      shipping_address?: AddressFields | null
+      billing_address?: AddressFields | null
     } | undefined
 
     if (!order) {
@@ -334,14 +371,9 @@ export default async function orderPlacedHandler({
     }
 
     const shippingAddress = order.shipping_address
-    const addressLines = [
-      [shippingAddress?.first_name, shippingAddress?.last_name].filter(Boolean).join(" "),
-      shippingAddress?.address_1,
-      shippingAddress?.address_2,
-      [shippingAddress?.city, shippingAddress?.province, shippingAddress?.postal_code].filter(Boolean).join(" "),
-      shippingAddress?.country_code?.toUpperCase() === "NZ" ? "New Zealand" : shippingAddress?.country_code,
-    ].filter(Boolean)
-    const addressText = addressLines.join("\n") || "Your delivery address"
+    const billingAddress = order.billing_address
+    const addressText = formatAddress(shippingAddress)
+    const billingAddressText = addressesMatch(shippingAddress, billingAddress) ? null : formatAddress(billingAddress)
 
     const notificationModule = container.resolve("notification")
 
@@ -444,6 +476,7 @@ export default async function orderPlacedHandler({
       taxTotal: toNumber(order.tax_total),
       total: toNumber(order.total),
       address: addressText,
+      billingAddress: billingAddressText,
       shipments,
       trackingUrl: `https://store.musenz.com/nz/track`,
       shippingMethodLabel: getShippingMethodLabel(order.shipping_methods?.[0]?.name),
