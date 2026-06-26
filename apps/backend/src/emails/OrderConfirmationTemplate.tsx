@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import { bgcolor, colors, DARK_MODE_OVERRIDE_STYLE, FONT_STACK, formatEta, formatMoney, FulfillmentType, icons, logoUrl } from "./theme"
+import { bgcolor, colors, DARK_MODE_OVERRIDE_STYLE, FONT_STACK, formatEta, formatMoney, formatPaymentDate, FulfillmentType, icons, logoUrl } from "./theme"
 
 export type EmailItem = {
   id: string
@@ -49,6 +49,14 @@ export type OrderConfirmationProps = {
   trackingUrl: string
   shippingMethodLabel: string
   paymentMethodLabel: string
+  // Present only for MUSE Pay (split-payment) orders — see order-placed.ts.
+  // Orders paid this way don't ship until the final instalment clears, so
+  // their presence here swaps out the shipping timeline for a payment
+  // schedule and adjusts copy that otherwise assumes the order is shipping.
+  musePay?: {
+    baseCents: number
+    finalCents: number
+  }
 }
 
 const textStyle = {
@@ -233,9 +241,22 @@ export function OrderConfirmationTemplate({
   trackingUrl,
   shippingMethodLabel,
   paymentMethodLabel,
+  musePay,
 }: OrderConfirmationProps) {
   const mixed = shipments.length > 1
   const items = shipments.flatMap((shipment) => shipment.items)
+
+  // Stripe schedule: 3 weekly base-price phases starting today, then 1 final
+  // phase a week after the third — matches getSplitPayInstallments() in
+  // apps/storefront/src/lib/split-pay.ts.
+  const installments = musePay
+    ? [
+        { label: "Payment 1 of 4", sub: "today", days: 0, cents: musePay.baseCents },
+        { label: "Payment 2 of 4", sub: "", days: 7, cents: musePay.baseCents },
+        { label: "Payment 3 of 4", sub: "", days: 14, cents: musePay.baseCents },
+        { label: "Payment 4 of 4 — final", sub: "", days: 21, cents: musePay.finalCents },
+      ]
+    : []
 
   return (
     <Html lang="en">
@@ -244,7 +265,7 @@ export function OrderConfirmationTemplate({
         <meta name="supported-color-schemes" content="light" />
         <style>{DARK_MODE_OVERRIDE_STYLE}</style>
       </Head>
-      <Preview>Your MUSE NZ order #{displayId} is locked in.</Preview>
+      <Preview>{musePay ? `Your MUSE Pay order #${displayId} is confirmed — 4 weekly payments, ships after the final one.` : `Your MUSE NZ order #${displayId} is locked in.`}</Preview>
       <Body className="em-bg-page" style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0, colorScheme: "light" }}>
         <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} className="em-bg-page" style={{ backgroundColor: colors.creamDeep }}>
           <tr>
@@ -258,7 +279,7 @@ export function OrderConfirmationTemplate({
               ORDER CONFIRMED
             </Text>
             <Heading style={{ ...textStyle, fontSize: "36px", lineHeight: "1.15", letterSpacing: "-0.02em", margin: "0 0 18px" }}>
-              Your order is locked in.
+              {musePay ? "Your MUSE Pay order is confirmed." : "Your order is locked in."}
             </Heading>
             <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto 18px" }}>
               <tr>
@@ -280,7 +301,9 @@ export function OrderConfirmationTemplate({
               </tr>
             </table>
             <Text style={{ ...textStyle, color: colors.muted, fontSize: "15px", lineHeight: "1.6", margin: "0 auto", maxWidth: "400px" }}>
-              Thanks {customerName} — we're prepping your order now and will email the moment it ships.
+              {musePay
+                ? `Thanks ${customerName} — paid via MUSE Pay across 4 weekly payments. Your order ships once the final payment clears.`
+                : `Thanks ${customerName} — we're prepping your order now and will email the moment it ships.`}
             </Text>
           </Section>
 
@@ -347,41 +370,125 @@ export function OrderConfirmationTemplate({
               </Column>
               <Column style={{ paddingLeft: "14px", verticalAlign: "middle" }}>
                 <Text style={{ ...textStyle, fontSize: "13px", fontWeight: "bold", margin: 0 }}>Paid with {paymentMethodLabel}</Text>
-                <Text style={{ ...textStyle, color: colors.muted, fontSize: "11.5px", margin: "2px 0 0" }}>Order #{displayId}</Text>
+                <Text style={{ ...textStyle, color: colors.muted, fontSize: "11.5px", margin: "2px 0 0" }}>
+                  {musePay ? "4 weekly payments — not charged in full today" : `Order #${displayId}`}
+                </Text>
               </Column>
             </Row>
           </Section>
 
+          {/* ============== MUSE PAY: PAYMENT SCHEDULE ============== */}
+          {musePay ? (
+            <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
+              <Text style={cardTitleStyle}>YOUR PAYMENT SCHEDULE</Text>
+              {installments.map((installment, index) => (
+                <Row
+                  key={installment.label}
+                  style={{
+                    borderTop: index ? `1px solid ${colors.border}` : "none",
+                    padding: "14px 0",
+                    backgroundColor: index === 3 ? colors.greenSoft : "transparent",
+                    borderRadius: index === 3 ? "10px" : 0,
+                    paddingLeft: index === 3 ? "12px" : 0,
+                    paddingRight: index === 3 ? "12px" : 0,
+                  }}
+                  bgcolor={index === 3 ? colors.greenSoft : undefined}
+                >
+                  <Column>
+                    <Text style={{ ...textStyle, fontSize: "14px", fontWeight: "bold", color: index === 3 ? colors.green : colors.black, margin: 0 }}>
+                      {installment.label}
+                    </Text>
+                    <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", margin: "3px 0 0" }}>
+                      {installment.sub || formatPaymentDate(createdAt, installment.days)}
+                    </Text>
+                  </Column>
+                  <Column style={{ textAlign: "right" }}>
+                    <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", color: colors.black, margin: 0 }}>{formatMoney(installment.cents / 100, currencyCode)}</Text>
+                  </Column>
+                </Row>
+              ))}
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginTop: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
+                <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
+                  <IconSquare src={icons.card} alt="Card" />
+                </Column>
+                <Column style={{ padding: "13px 14px", verticalAlign: "middle" }}>
+                  <Text style={{ ...textStyle, fontSize: "12.5px", lineHeight: "1.55", margin: 0 }}>
+                    Charged automatically to the card you saved at checkout. No action needed unless your card details change.
+                  </Text>
+                </Column>
+              </Row>
+            </Section>
+          ) : null}
+
+          {/* ============== MUSE PAY: WHEN DOES THIS SHIP + HOW IT WORKS ============== */}
+          {musePay ? (
+            <Section style={{ backgroundColor: colors.blueSoft, borderRadius: "16px", padding: "22px 24px", marginBottom: "16px" }} bgcolor={colors.blueSoft}>
+              <Text style={{ ...textStyle, fontSize: "14px", fontWeight: "bold", color: colors.blue, margin: "0 0 7px" }}>When does this ship?</Text>
+              <Text style={{ ...textStyle, color: colors.text, fontSize: "13.5px", lineHeight: "1.65", margin: 0 }}>
+                Your order ships once your final payment (Payment 4 of 4) is received — we'll send a separate shipping confirmation at that point. Nothing ships before then.
+              </Text>
+            </Section>
+          ) : null}
+
+          {musePay ? (
+            <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
+              <Text style={cardTitleStyle}>HOW MUSE PAY WORKS</Text>
+              <Text style={{ ...textStyle, color: colors.text, fontSize: "13.5px", lineHeight: "1.7", margin: "0 0 14px" }}>
+                MUSE Pay is our own instalment option — separate from Afterpay and Klarna. It splits your order into <strong>4 weekly payments</strong> charged automatically to the card you saved at checkout.
+              </Text>
+              <Section style={{ ...softCardStyle, marginBottom: "14px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
+                {[
+                  "Your first payment was taken today to confirm the order.",
+                  "The remaining 3 payments are charged automatically, one per week.",
+                  "Your order ships once the 4th and final payment clears.",
+                  "No credit checks, no interest, no extra fees.",
+                ].map((line, index) => (
+                  <Text
+                    key={line}
+                    style={{ ...textStyle, color: colors.text, fontSize: "13px", lineHeight: "1.6", margin: index ? "8px 0 0" : 0 }}
+                  >
+                    {index + 1}. {line}
+                  </Text>
+                ))}
+              </Section>
+              <Text style={{ ...textStyle, fontSize: "13.5px", margin: 0 }}>
+                <a href="https://store.musenz.com/faq#split-pay" style={{ color: colors.text, fontWeight: "bold" }}>Read more about MUSE Pay in our FAQ →</a>
+              </Text>
+            </Section>
+          ) : null}
+
           {/* ============== DELIVERY DETAILS ============== */}
           <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
-            <Text style={cardTitleStyle}>DELIVERING TO</Text>
+            <Text style={cardTitleStyle}>{musePay ? "DELIVERING TO (ONCE PAID OFF)" : "DELIVERING TO"}</Text>
             <Section style={{ marginBottom: "20px" }}>
               <AddressLines lines={addressLines} phone={phone} />
             </Section>
-            {shipments.map((shipment, index) => (
-              <Section
-                key={`${shipment.type}-${index}`}
-                style={{
-                  backgroundColor: colors.creamDeep,
-                  borderRadius: "12px",
-                  padding: "16px",
-                  marginTop: index ? "10px" : 0,
-                }}
-                bgcolor={colors.creamDeep}
-                className="em-bg-soft"
-              >
-                <Row>
-                  <Column style={{ width: "56px", verticalAlign: "top" }}>
-                    <IconSquare src={icons.calendar} alt="Estimated delivery" />
-                  </Column>
-                  <Column style={{ verticalAlign: "top", paddingLeft: "12px" }}>
-                    {mixed ? <Text style={{ ...textStyle, color: colors.muted, fontSize: "10.5px", fontWeight: "bold", letterSpacing: "0.05em", margin: "0 0 5px" }}>{(shipment.label || `Shipment ${index + 1} of ${shipments.length}`).toUpperCase()}</Text> : null}
-                    <Text style={{ ...textStyle, fontSize: "13.5px", fontWeight: "bold", margin: 0 }}>{shipment.type === "nzstock" ? "NZ Stock" : "International Stock"}</Text>
-                    <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", color: colors.black, margin: "5px 0 0" }}>{formatEta(createdAt, shipment.type)}</Text>
-                  </Column>
-                </Row>
-              </Section>
-            ))}
+            {/* ETA cards assume the SLA clock starts at order placement — not true for MUSE Pay, which doesn't ship until paid off. */}
+            {!musePay &&
+              shipments.map((shipment, index) => (
+                <Section
+                  key={`${shipment.type}-${index}`}
+                  style={{
+                    backgroundColor: colors.creamDeep,
+                    borderRadius: "12px",
+                    padding: "16px",
+                    marginTop: index ? "10px" : 0,
+                  }}
+                  bgcolor={colors.creamDeep}
+                  className="em-bg-soft"
+                >
+                  <Row>
+                    <Column style={{ width: "56px", verticalAlign: "top" }}>
+                      <IconSquare src={icons.calendar} alt="Estimated delivery" />
+                    </Column>
+                    <Column style={{ verticalAlign: "top", paddingLeft: "12px" }}>
+                      {mixed ? <Text style={{ ...textStyle, color: colors.muted, fontSize: "10.5px", fontWeight: "bold", letterSpacing: "0.05em", margin: "0 0 5px" }}>{(shipment.label || `Shipment ${index + 1} of ${shipments.length}`).toUpperCase()}</Text> : null}
+                      <Text style={{ ...textStyle, fontSize: "13.5px", fontWeight: "bold", margin: 0 }}>{shipment.type === "nzstock" ? "NZ Stock" : "International Stock"}</Text>
+                      <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", color: colors.black, margin: "5px 0 0" }}>{formatEta(createdAt, shipment.type)}</Text>
+                    </Column>
+                  </Row>
+                </Section>
+              ))}
             {billingAddressLines ? (
               <Section style={{ ...softCardStyle, marginTop: "10px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Text style={{ ...textStyle, color: colors.muted, fontSize: "10.5px", fontWeight: "bold", letterSpacing: "0.05em", margin: "0 0 8px" }}>BILLING ADDRESS</Text>
@@ -390,31 +497,34 @@ export function OrderConfirmationTemplate({
             ) : null}
           </Section>
 
-          {/* ============== WHAT HAPPENS NEXT ============== */}
-          {shipments.map((shipment, index) => (
-            <Section key={`timeline-${shipment.type}-${index}`} style={cardStyle}>
-              <Text style={cardTitleStyle}>
-                WHAT HAPPENS NEXT{mixed ? ` — ${(shipment.label || `Shipment ${index + 1}`).toUpperCase()}` : ""}
-              </Text>
-              <Timeline type={shipment.type} />
-            </Section>
-          ))}
+          {/* ============== WHAT HAPPENS NEXT — skipped for MUSE Pay; nothing ships until the order is paid off, so this timeline would be misleading ============== */}
+          {!musePay &&
+            shipments.map((shipment, index) => (
+              <Section key={`timeline-${shipment.type}-${index}`} style={cardStyle}>
+                <Text style={cardTitleStyle}>
+                  WHAT HAPPENS NEXT{mixed ? ` — ${(shipment.label || `Shipment ${index + 1}`).toUpperCase()}` : ""}
+                </Text>
+                <Timeline type={shipment.type} />
+              </Section>
+            ))}
 
           {/* ============== NEED HELP ============== */}
           <Section style={{ ...cardStyle, marginTop: "22px" }}>
             <Text style={cardTitleStyle}>NEED HELP WITH YOUR ORDER?</Text>
 
-            <a href={trackingUrl} style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "10px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
-                <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
-                  <IconSquare src={icons.track} alt="Track order" />
-                </Column>
-                <Column style={{ padding: "13px 14px", verticalAlign: "middle" }}>
-                  <Text style={{ ...textStyle, fontSize: "13.5px", fontWeight: "bold", color: colors.black, margin: 0 }}>Track order →</Text>
-                  <Text style={{ ...textStyle, color: colors.muted, fontSize: "11.5px", margin: "2px 0 0" }}>View shipping status</Text>
-                </Column>
-              </Row>
-            </a>
+            {!musePay ? (
+              <a href={trackingUrl} style={{ textDecoration: "none" }}>
+                <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "10px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
+                  <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
+                    <IconSquare src={icons.track} alt="Track order" />
+                  </Column>
+                  <Column style={{ padding: "13px 14px", verticalAlign: "middle" }}>
+                    <Text style={{ ...textStyle, fontSize: "13.5px", fontWeight: "bold", color: colors.black, margin: 0 }}>Track order →</Text>
+                    <Text style={{ ...textStyle, color: colors.muted, fontSize: "11.5px", margin: "2px 0 0" }}>View shipping status</Text>
+                  </Column>
+                </Row>
+              </a>
+            ) : null}
             <a href="mailto:support@musenz.com" style={{ textDecoration: "none" }}>
               <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
@@ -429,13 +539,30 @@ export function OrderConfirmationTemplate({
 
             <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
               <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", lineHeight: "1.65", margin: 0 }}>
-                <strong style={{ color: colors.black }}>30-day returns.</strong> Unworn, tags intact, full refund.{" "}
-                <a href="https://store.musenz.com/returns" style={{ color: colors.text, fontWeight: "bold" }}>Start a return</a>
+                <strong style={{ color: colors.black }}>30-day returns.</strong>{" "}
+                {musePay
+                  ? "Apply from the date your order ships — not from today."
+                  : (
+                    <>
+                      Unworn, tags intact, full refund.{" "}
+                      <a href="https://store.musenz.com/returns" style={{ color: colors.text, fontWeight: "bold" }}>Start a return</a>
+                    </>
+                  )}
               </Text>
               <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", lineHeight: "1.65", margin: "13px 0 0", paddingTop: "13px", borderTop: `1px solid ${colors.border}` }}>
-                <strong style={{ color: colors.black }}>Need to cancel or change your order?</strong> Email{" "}
-                <a href="mailto:support@musenz.com" style={{ color: colors.text, fontWeight: "bold" }}>support@musenz.com</a>{" "}
-                as soon as possible — we can usually amend or cancel orders that haven't been packed yet.
+                {musePay ? (
+                  <>
+                    <strong style={{ color: colors.black }}>Need to change your payment method or cancel?</strong> Email{" "}
+                    <a href="mailto:support@musenz.com" style={{ color: colors.text, fontWeight: "bold" }}>support@musenz.com</a>{" "}
+                    with order #{displayId} and we'll sort it out before your next payment date.
+                  </>
+                ) : (
+                  <>
+                    <strong style={{ color: colors.black }}>Need to cancel or change your order?</strong> Email{" "}
+                    <a href="mailto:support@musenz.com" style={{ color: colors.text, fontWeight: "bold" }}>support@musenz.com</a>{" "}
+                    as soon as possible — we can usually amend or cancel orders that haven't been packed yet.
+                  </>
+                )}
               </Text>
             </Section>
           </Section>

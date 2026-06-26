@@ -6,8 +6,6 @@ import type { EmailItem, OrderConfirmationProps, Shipment } from "../emails/Orde
 import getOrderPlacedMixedTemplate from "../emails/order-placed-mixed"
 import getOrderPlacedNZStockTemplate from "../emails/order-placed-nzstock"
 import getOrderPlacedStandardTemplate from "../emails/order-placed-standard"
-import getOrderPlacedMusePayTemplate from "../emails/order-placed-musepay"
-import type { MusePayConfirmationProps } from "../emails/order-placed-musepay"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -379,55 +377,16 @@ export default async function orderPlacedHandler({
 
     const notificationModule = container.resolve("notification")
 
-    // ---- MUSE Pay split-payment orders get an entirely different email ----
     // Stamped on the cart's metadata before checkout completion (see
     // apps/storefront/src/app/api/split-pay/complete/route.ts) — Medusa's
     // completeCartWorkflow copies cart.metadata onto the new order at
     // creation time, so this is already present the moment order.placed
-    // fires, no race against a separate post-completion call. These orders
-    // never ship on placement, so none of the nzstock/standard/mixed shipment
-    // logic below applies — branch out before any of it runs.
-    if (order.metadata?.muse_split_pay === "true") {
-      const musePayItems = (safeItems).map((item) => ({
-        id: item.id,
-        title: item.product_title,
-        variantTitle: item.variant_title,
-        quantity: item.quantity,
-        unitPrice: item.unit_price,
-        thumbnail: item.thumbnail,
-      }))
-
-      const totalCents = Number(order.metadata.split_pay_total_cents ?? 0)
-      const baseCents = Number(order.metadata.split_pay_base_cents ?? 0)
-      const finalCents = Number(order.metadata.split_pay_final_cents ?? 0)
-
-      const musePayProps: MusePayConfirmationProps = {
-        customerName: shippingAddress?.first_name || "there",
-        customerEmail: recipient,
-        displayId: String(order.display_id),
-        createdAt: order.created_at,
-        currencyCode: order.currency_code,
-        items: musePayItems,
-        address: [...addressDetail.lines, addressDetail.phone ? `Phone: ${addressDetail.phone}` : null].filter(Boolean).join(", "),
-        trackingUrl: `https://store.musenz.com/nz/track`,
-        totalCents,
-        baseCents,
-        finalCents,
-      }
-
-      const musePayHtml = await pretty(await render(getOrderPlacedMusePayTemplate(musePayProps)))
-
-      await notificationModule.createNotifications({
-        to: recipient,
-        from: process.env.MUSE_EMAIL_FROM || "orders@musenz.com",
-        channel: "email",
-        content: {
-          html: musePayHtml,
-          subject: `MUSE Pay Order Confirmation — ${store?.name || "MUSE NZ"} #${order.display_id}`,
-        },
-      })
-      return
-    }
+    // fires, no race against a separate post-completion call. MUSE Pay
+    // orders use the same base confirmation template as every other order —
+    // see the `musePay` prop on OrderConfirmationTemplate — with extra
+    // sections (payment schedule, how-it-works) swapped in instead of the
+    // shipping timeline, since these orders don't ship until paid off.
+    const isMusePay = order.metadata?.muse_split_pay === "true"
 
     const items: EmailItem[] = (safeItems).map((item) => ({
       id: item.id,
@@ -463,7 +422,11 @@ export default async function orderPlacedHandler({
       shipments.push({ type: "standard", items: [] })
     }
 
-    const paymentMethodLabel = await derivePaymentMethodLabel(order)
+    // MUSE Pay's payment method is always "MUSE Pay" itself — no need for the
+    // Stripe PaymentMethod lookup derivePaymentMethodLabel does for everyone
+    // else, since the customer didn't choose a card brand at checkout, they
+    // chose the instalment plan.
+    const paymentMethodLabel = isMusePay ? "MUSE Pay" : await derivePaymentMethodLabel(order)
 
     const props: OrderConfirmationProps = {
       customerName: shippingAddress?.first_name || "there",
@@ -485,10 +448,17 @@ export default async function orderPlacedHandler({
       trackingUrl: `https://store.musenz.com/nz/track`,
       shippingMethodLabel: getShippingMethodLabel(order.shipping_methods?.[0]?.name),
       paymentMethodLabel,
+      musePay: isMusePay
+        ? {
+            baseCents: Number(order.metadata?.split_pay_base_cents ?? 0),
+            finalCents: Number(order.metadata?.split_pay_final_cents ?? 0),
+          }
+        : undefined,
     }
 
-    const template =
-      shipments.length > 1
+    const template = isMusePay
+      ? getOrderPlacedStandardTemplate(props)
+      : shipments.length > 1
         ? getOrderPlacedMixedTemplate(props)
         : shipments[0].type === "nzstock"
           ? getOrderPlacedNZStockTemplate(props)
@@ -501,7 +471,9 @@ export default async function orderPlacedHandler({
       channel: "email",
       content: {
         html,
-        subject: `Order Confirmation — ${store?.name || "MUSE NZ"} #${order.display_id}`,
+        subject: isMusePay
+          ? `MUSE Pay Order Confirmation — ${store?.name || "MUSE NZ"} #${order.display_id}`
+          : `Order Confirmation — ${store?.name || "MUSE NZ"} #${order.display_id}`,
       },
     })
   } catch (error) {
