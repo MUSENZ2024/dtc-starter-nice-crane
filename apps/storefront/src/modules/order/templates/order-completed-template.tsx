@@ -381,10 +381,7 @@ export default async function OrderCompletedTemplate({
                   <br />
                   {(address?.country_code ?? "nz").toUpperCase()}
                   {address?.phone && (
-                    <>
-                      <br />
-                      {address.phone}
-                    </>
+                    <span className="mt-2 block text-[#666]">Phone: {address.phone}</span>
                   )}
                 </div>
               </div>
@@ -435,10 +432,7 @@ export default async function OrderCompletedTemplate({
                   <br />
                   {(billingAddress.country_code ?? "nz").toUpperCase()}
                   {billingAddress.phone && (
-                    <>
-                      <br />
-                      {billingAddress.phone}
-                    </>
+                    <span className="mt-2 block text-[#666]">Phone: {billingAddress.phone}</span>
                   )}
                 </div>
               </div>

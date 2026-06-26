@@ -11,7 +11,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import { bgcolor, colors, FONT_STACK, formatEta, formatMoney, FulfillmentType, icons, logoUrl } from "./theme"
+import { bgcolor, colors, DARK_MODE_OVERRIDE_STYLE, FONT_STACK, formatEta, formatMoney, FulfillmentType, icons, logoUrl } from "./theme"
 
 export type EmailItem = {
   id: string
@@ -41,8 +41,10 @@ export type OrderConfirmationProps = {
   discountTotal: number
   taxTotal: number
   total: number
-  address: string
-  billingAddress?: string | null
+  addressLines: string[]
+  phone?: string | null
+  billingAddressLines?: string[] | null
+  billingPhone?: string | null
   shipments: Shipment[]
   trackingUrl: string
   shippingMethodLabel: string
@@ -149,6 +151,42 @@ function Timeline({ type }: { type: FulfillmentType }) {
   )
 }
 
+/**
+ * Each address component gets its own Text element instead of one block
+ * joined with "\n" + white-space:pre-line — that single-blob approach
+ * rendered as one continuous run with no line breaks at all in Gmail's
+ * mobile app (its dark-mode sanitizer drops white-space:pre-line), so this
+ * is the more robust, client-proof way to get reliable line breaks. Phone
+ * gets its own visually separated line so it doesn't read as part of the
+ * postal address.
+ */
+function AddressLines({ lines, phone }: { lines: string[]; phone?: string | null }) {
+  return (
+    <>
+      {lines.map((line, index) => (
+        <Text
+          key={index}
+          style={{
+            ...textStyle,
+            color: index === 0 ? colors.black : colors.muted,
+            fontWeight: index === 0 ? "bold" : "normal",
+            fontSize: "13.5px",
+            lineHeight: "1.5",
+            margin: index === 0 ? "0 0 4px" : "2px 0",
+          }}
+        >
+          {line}
+        </Text>
+      ))}
+      {phone ? (
+        <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", margin: "10px 0 0" }}>
+          Phone: {phone}
+        </Text>
+      ) : null}
+    </>
+  )
+}
+
 function IconSquare({ src, alt }: { src: string; alt: string }) {
   return (
     <table cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.black}>
@@ -187,8 +225,10 @@ export function OrderConfirmationTemplate({
   discountTotal,
   taxTotal,
   total,
-  address,
-  billingAddress,
+  addressLines,
+  phone,
+  billingAddressLines,
+  billingPhone,
   shipments,
   trackingUrl,
   shippingMethodLabel,
@@ -200,15 +240,16 @@ export function OrderConfirmationTemplate({
   return (
     <Html lang="en">
       <Head>
-        <meta name="color-scheme" content="light" />
-        <meta name="supported-color-schemes" content="light" />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="supported-color-schemes" content="light dark" />
+        <style>{DARK_MODE_OVERRIDE_STYLE}</style>
       </Head>
       <Preview>Your MUSE NZ order #{displayId} is locked in.</Preview>
-      <Body style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
-        <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} style={{ backgroundColor: colors.creamDeep }}>
+      <Body className="em-bg-page" style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
+        <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} className="em-bg-page" style={{ backgroundColor: colors.creamDeep }}>
           <tr>
             <td>
-        <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }} bgcolor={colors.black}>
+        <Section className="em-bg-dark" style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }} bgcolor={colors.black}>
           <Img src={logoUrl} width="150" alt="MUSE NZ" style={{ margin: "0 auto" }} />
         </Section>
         <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
@@ -244,10 +285,10 @@ export function OrderConfirmationTemplate({
           </Section>
 
           {/* ============== ORDER SUMMARY ============== */}
-          <Section style={cardStyle} bgcolor={colors.white}>
+          <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
             <Text style={cardTitleStyle}>ORDER SUMMARY</Text>
             {items.map((item, index) => (
-              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep}>
+              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Row>
                   <Column style={{ width: "80px", verticalAlign: "middle" }}>
                     {item.thumbnail ? (
@@ -300,7 +341,7 @@ export function OrderConfirmationTemplate({
               <Row style={{ borderTop: `2px solid ${colors.black}` }}><Column><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>Total paid</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>{formatMoney(total, currencyCode)}</Text></Column></Row>
             </Section>
 
-            <Row style={{ ...softCardStyle, marginTop: "18px" }} bgcolor={colors.creamDeep}>
+            <Row style={{ ...softCardStyle, marginTop: "18px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
               <Column style={{ width: "58px", verticalAlign: "middle" }}>
                 <IconSquare src={icons.card} alt="Payment method" />
               </Column>
@@ -312,9 +353,11 @@ export function OrderConfirmationTemplate({
           </Section>
 
           {/* ============== DELIVERY DETAILS ============== */}
-          <Section style={cardStyle} bgcolor={colors.white}>
+          <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
             <Text style={cardTitleStyle}>DELIVERING TO</Text>
-            <Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", lineHeight: "1.65", margin: "0 0 20px", whiteSpace: "pre-line" }}>{address}</Text>
+            <Section style={{ marginBottom: "20px" }}>
+              <AddressLines lines={addressLines} phone={phone} />
+            </Section>
             {shipments.map((shipment, index) => (
               <Section
                 key={`${shipment.type}-${index}`}
@@ -325,6 +368,7 @@ export function OrderConfirmationTemplate({
                   marginTop: index ? "10px" : 0,
                 }}
                 bgcolor={colors.creamDeep}
+                className="em-bg-soft"
               >
                 <Row>
                   <Column style={{ width: "56px", verticalAlign: "top" }}>
@@ -338,10 +382,10 @@ export function OrderConfirmationTemplate({
                 </Row>
               </Section>
             ))}
-            {billingAddress ? (
-              <Section style={{ ...softCardStyle, marginTop: "10px" }} bgcolor={colors.creamDeep}>
+            {billingAddressLines ? (
+              <Section style={{ ...softCardStyle, marginTop: "10px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Text style={{ ...textStyle, color: colors.muted, fontSize: "10.5px", fontWeight: "bold", letterSpacing: "0.05em", margin: "0 0 8px" }}>BILLING ADDRESS</Text>
-                <Text style={{ ...textStyle, fontSize: "13.5px", lineHeight: "1.65", margin: 0, whiteSpace: "pre-line" }}>{billingAddress}</Text>
+                <AddressLines lines={billingAddressLines} phone={billingPhone} />
               </Section>
             ) : null}
           </Section>
@@ -361,7 +405,7 @@ export function OrderConfirmationTemplate({
             <Text style={cardTitleStyle}>NEED HELP WITH YOUR ORDER?</Text>
 
             <a href={trackingUrl} style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "10px" }} bgcolor={colors.creamDeep}>
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "10px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.track} alt="Track order" />
                 </Column>
@@ -372,7 +416,7 @@ export function OrderConfirmationTemplate({
               </Row>
             </a>
             <a href="mailto:support@musenz.com" style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep}>
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.chat} alt="Contact support" />
                 </Column>
@@ -383,7 +427,7 @@ export function OrderConfirmationTemplate({
               </Row>
             </a>
 
-            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep}>
+            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
               <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", lineHeight: "1.65", margin: 0 }}>
                 <strong style={{ color: colors.black }}>30-day returns.</strong> Unworn, tags intact, full refund.{" "}
                 <a href="https://store.musenz.com/returns" style={{ color: colors.text, fontWeight: "bold" }}>Start a return</a>
@@ -408,7 +452,7 @@ export function OrderConfirmationTemplate({
         </Container>
 
         {/* ============== FOOTER ============== */}
-        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }} bgcolor={colors.black}>
+        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }} bgcolor={colors.black} className="em-bg-dark">
           <Container style={{ maxWidth: "480px", margin: "0 auto" }}>
             <Section style={{ textAlign: "center", marginBottom: "20px" }}>
               <Img src={logoUrl} width="120" alt="MUSE NZ" style={{ margin: "0 auto" }} />

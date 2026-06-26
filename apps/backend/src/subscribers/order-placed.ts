@@ -34,16 +34,20 @@ type AddressFields = {
   phone?: string | null
 }
 
-function formatAddress(address?: AddressFields | null, fallback = "Your delivery address"): string {
+// Returns each address component as its own array entry — relying on a
+// single text blob with "\n" + white-space:pre-line was fragile (Gmail's
+// mobile app was rendering it as one continuous run with no line breaks at
+// all), so the template now renders each line as its own element instead of
+// depending on that CSS property surviving every client's sanitizer.
+function formatAddressLines(address?: AddressFields | null): { lines: string[]; phone: string | null } {
   const lines = [
     [address?.first_name, address?.last_name].filter(Boolean).join(" "),
     address?.address_1,
     address?.address_2,
     [address?.city, address?.province, address?.postal_code].filter(Boolean).join(" "),
     address?.country_code?.toUpperCase() === "NZ" ? "New Zealand" : address?.country_code,
-    address?.phone ? `Phone: ${address.phone}` : null,
-  ].filter(Boolean)
-  return lines.join("\n") || fallback
+  ].filter((line): line is string => Boolean(line))
+  return { lines: lines.length ? lines : ["Your delivery address"], phone: address?.phone || null }
 }
 
 // Compares the fields that actually matter for "is billing the same address
@@ -108,10 +112,13 @@ const STRIPE_PAYMENT_METHOD_LABELS: Record<string, string> = {
  * Customers don't care that we use Stripe under the hood — "Paid securely by
  * Stripe" reads like internal infra info, not something useful to them. They
  * care what they paid WITH: card brand + last 4, or Afterpay, or (for split
- * orders, handled by the separate MUSE Pay template) MUSE Pay. Stripe's
- * PaymentIntent/PaymentMethod data only includes the brand if the payment
- * method object is expanded — Medusa's stripe provider doesn't do that by
- * default — so this makes one extra Stripe API call, best-effort, and falls
+ * orders, handled by the separate MUSE Pay template) MUSE Pay.
+ *
+ * `payment.data.payment_method_types` is the list of methods Stripe was
+ * ALLOWED to offer at checkout (e.g. `["card","afterpay_clearpay"]`) — not
+ * which one the customer actually chose. The only reliable way to know what
+ * was actually used is to retrieve the PaymentMethod object by ID and read
+ * its `.type`. This makes one extra Stripe API call, best-effort, and falls
  * back to a generic "Card" if anything about that call fails.
  */
 async function derivePaymentMethodLabel(
@@ -129,11 +136,6 @@ async function derivePaymentMethodLabel(
     return "Card"
   }
 
-  const methodType = Array.isArray(data.payment_method_types) ? (data.payment_method_types[0] as string) : undefined
-  if (methodType && STRIPE_PAYMENT_METHOD_LABELS[methodType]) {
-    return STRIPE_PAYMENT_METHOD_LABELS[methodType]
-  }
-
   const paymentMethodId = typeof data.payment_method === "string" ? data.payment_method : undefined
   if (!paymentMethodId || !process.env.STRIPE_API_KEY) {
     return "Card"
@@ -142,11 +144,11 @@ async function derivePaymentMethodLabel(
   try {
     const stripe = new Stripe(process.env.STRIPE_API_KEY)
     const method = await stripe.paymentMethods.retrieve(paymentMethodId)
-    if (method.card) {
+    if (method.type === "card" && method.card) {
       const brand = method.card.brand.charAt(0).toUpperCase() + method.card.brand.slice(1)
       return `${brand} •••• ${method.card.last4}`
     }
-    return "Card"
+    return STRIPE_PAYMENT_METHOD_LABELS[method.type] ?? "Card"
   } catch {
     return "Card"
   }
@@ -372,8 +374,8 @@ export default async function orderPlacedHandler({
 
     const shippingAddress = order.shipping_address
     const billingAddress = order.billing_address
-    const addressText = formatAddress(shippingAddress)
-    const billingAddressText = addressesMatch(shippingAddress, billingAddress) ? null : formatAddress(billingAddress)
+    const addressDetail = formatAddressLines(shippingAddress)
+    const billingAddressDetail = addressesMatch(shippingAddress, billingAddress) ? null : formatAddressLines(billingAddress)
 
     const notificationModule = container.resolve("notification")
 
@@ -406,7 +408,7 @@ export default async function orderPlacedHandler({
         createdAt: order.created_at,
         currencyCode: order.currency_code,
         items: musePayItems,
-        address: addressText,
+        address: [...addressDetail.lines, addressDetail.phone ? `Phone: ${addressDetail.phone}` : null].filter(Boolean).join(", "),
         trackingUrl: `https://store.musenz.com/nz/track`,
         totalCents,
         baseCents,
@@ -475,8 +477,10 @@ export default async function orderPlacedHandler({
       discountTotal: toNumber(order.discount_total),
       taxTotal: toNumber(order.tax_total),
       total: toNumber(order.total),
-      address: addressText,
-      billingAddress: billingAddressText,
+      addressLines: addressDetail.lines,
+      phone: addressDetail.phone,
+      billingAddressLines: billingAddressDetail?.lines ?? null,
+      billingPhone: billingAddressDetail?.phone ?? null,
       shipments,
       trackingUrl: `https://store.musenz.com/nz/track`,
       shippingMethodLabel: getShippingMethodLabel(order.shipping_methods?.[0]?.name),

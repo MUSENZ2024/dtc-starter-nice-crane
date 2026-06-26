@@ -12,7 +12,7 @@ import {
   Section,
   Text,
 } from "@react-email/components"
-import { bgcolor, colors, FONT_STACK, formatMoney, formatPaymentDate, icons, logoUrl } from "./theme"
+import { bgcolor, colors, DARK_MODE_OVERRIDE_STYLE, FONT_STACK, formatMoney, formatPaymentDate, icons, logoUrl } from "./theme"
 
 export type MusePayEmailItem = {
   id: string
@@ -119,15 +119,16 @@ export function MusePayConfirmationTemplate({
   return (
     <Html lang="en">
       <Head>
-        <meta name="color-scheme" content="light" />
-        <meta name="supported-color-schemes" content="light" />
+        <meta name="color-scheme" content="light dark" />
+        <meta name="supported-color-schemes" content="light dark" />
+        <style>{DARK_MODE_OVERRIDE_STYLE}</style>
       </Head>
       <Preview>Your MUSE Pay order #{displayId} is confirmed — 4 weekly payments, ships after the final one.</Preview>
-      <Body style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
-        <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} style={{ backgroundColor: colors.creamDeep }}>
+      <Body className="em-bg-page" style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
+        <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} className="em-bg-page" style={{ backgroundColor: colors.creamDeep }}>
           <tr>
             <td>
-        <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }} bgcolor={colors.black}>
+        <Section className="em-bg-dark" style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }} bgcolor={colors.black}>
           <Img src={logoUrl} width="150" alt="MUSE NZ" style={{ margin: "0 auto" }} />
         </Section>
         <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
@@ -147,10 +148,10 @@ export function MusePayConfirmationTemplate({
           </Section>
 
           {/* ============== ORDER SUMMARY — no stock badges, this order isn't shipping yet ============== */}
-          <Section style={cardStyle} bgcolor={colors.white}>
+          <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
             <Text style={cardTitleStyle}>ORDER SUMMARY</Text>
             {items.map((item, index) => (
-              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep}>
+              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Row>
                   <Column style={{ width: "80px", verticalAlign: "middle" }}>
                     {item.thumbnail ? (
@@ -181,7 +182,7 @@ export function MusePayConfirmationTemplate({
           </Section>
 
           {/* ============== PAYMENT SCHEDULE — the core of this email ============== */}
-          <Section style={cardStyle} bgcolor={colors.white}>
+          <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
             <Text style={cardTitleStyle}>YOUR PAYMENT SCHEDULE</Text>
             {installments.map((installment, index) => (
               <Row
@@ -209,7 +210,7 @@ export function MusePayConfirmationTemplate({
                 </Column>
               </Row>
             ))}
-            <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginTop: "16px" }} bgcolor={colors.creamDeep}>
+            <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginTop: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
               <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                 <IconSquare src={icons.card} alt="Card" />
               </Column>
@@ -229,7 +230,7 @@ export function MusePayConfirmationTemplate({
             </Text>
           </Section>
 
-          <Section style={cardStyle} bgcolor={colors.white}>
+          <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
             <Text style={cardTitleStyle}>DELIVERING TO (ONCE PAID OFF)</Text>
             <Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", lineHeight: "1.65", margin: 0 }}>{address}</Text>
           </Section>
@@ -239,7 +240,7 @@ export function MusePayConfirmationTemplate({
             <Text style={cardTitleStyle}>NEED HELP WITH YOUR ORDER?</Text>
 
             <a href="mailto:support@musenz.com" style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep}>
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.chat} alt="Contact support" />
                 </Column>
@@ -250,7 +251,7 @@ export function MusePayConfirmationTemplate({
               </Row>
             </a>
 
-            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep}>
+            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
               <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", lineHeight: "1.65", margin: 0 }}>
                 <strong style={{ color: colors.black }}>30-day returns</strong> apply from the date your order ships — not from today.
               </Text>
@@ -266,7 +267,7 @@ export function MusePayConfirmationTemplate({
         </Container>
 
         {/* ============== FOOTER ============== */}
-        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }} bgcolor={colors.black}>
+        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }} bgcolor={colors.black} className="em-bg-dark">
           <Container style={{ maxWidth: "480px", margin: "0 auto" }}>
             <Section style={{ textAlign: "center", marginBottom: "20px" }}>
               <Img src={logoUrl} width="120" alt="MUSE NZ" style={{ margin: "0 auto" }} />

@@ -17,7 +17,11 @@ export const colors = {
   text: "#1A1A1A",
   muted: "#666666",
   border: "#E8E6E0",
-  white: "#FFFFFF",
+  // Off-white rather than pure #FFFFFF — visually identical, but some
+  // mobile mail clients specifically target pure white/black as "needs
+  // dark-mode conversion" signals, so a value that isn't quite pure white
+  // is less likely to trip that heuristic.
+  white: "#FFFEFC",
 }
 
 export type FulfillmentType = "nzstock" | "standard"
@@ -65,6 +69,32 @@ export const formatMoney = (amount: number, currencyCode: string) =>
 export function bgcolor(color: string) {
   return { bgcolor: color } as { bgcolor: string }
 }
+
+/**
+ * `bgcolor` attributes alone didn't stop Gmail's mobile app from inverting
+ * the email (confirmed: header went from black to white, page background
+ * from cream to dark gray, on-device — desktop Gmail/webmail was fine).
+ * The other half of the standard fix is to stop declaring "light only"
+ * support (which some clients read as "this sender has no dark variant,
+ * I'll synthesize one") and instead explicitly declare a dark variant —
+ * then make that dark variant's colors identical to the light ones via
+ * `!important`, using `[data-ogsc]` (Gmail webmail's dark-mode wrapper
+ * attribute) and the standard `prefers-color-scheme: dark` media query.
+ * Apply the matching class name to every element with one of these
+ * backgrounds — see bgClass() below.
+ */
+export const DARK_MODE_OVERRIDE_STYLE = `
+@media (prefers-color-scheme: dark) {
+  .em-bg-page, [data-ogsc] .em-bg-page { background-color: ${colors.creamDeep} !important; }
+  .em-bg-dark, [data-ogsc] .em-bg-dark { background-color: ${colors.black} !important; }
+  .em-bg-card, [data-ogsc] .em-bg-card { background-color: ${colors.white} !important; }
+  .em-bg-soft, [data-ogsc] .em-bg-soft { background-color: ${colors.creamDeep} !important; }
+}
+[data-ogsc] .em-bg-page { background-color: ${colors.creamDeep} !important; }
+[data-ogsc] .em-bg-dark { background-color: ${colors.black} !important; }
+[data-ogsc] .em-bg-card { background-color: ${colors.white} !important; }
+[data-ogsc] .em-bg-soft { background-color: ${colors.creamDeep} !important; }
+`
 
 export const logoUrl =
   process.env.MUSE_EMAIL_LOGO_URL || "https://store.musenz.com/muse-logo-long.png"
