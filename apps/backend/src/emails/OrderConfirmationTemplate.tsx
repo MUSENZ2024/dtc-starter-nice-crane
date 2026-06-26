@@ -240,12 +240,12 @@ export function OrderConfirmationTemplate({
   return (
     <Html lang="en">
       <Head>
-        <meta name="color-scheme" content="light dark" />
-        <meta name="supported-color-schemes" content="light dark" />
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
         <style>{DARK_MODE_OVERRIDE_STYLE}</style>
       </Head>
       <Preview>Your MUSE NZ order #{displayId} is locked in.</Preview>
-      <Body className="em-bg-page" style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
+      <Body className="em-bg-page" style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0, colorScheme: "light" }}>
         <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} className="em-bg-page" style={{ backgroundColor: colors.creamDeep }}>
           <tr>
             <td>
