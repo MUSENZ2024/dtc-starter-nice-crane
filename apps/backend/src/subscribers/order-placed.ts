@@ -23,38 +23,46 @@ const getFulfillmentType = (metadata?: Record<string, unknown> | null): Fulfillm
   metadata?.fulfillment_type === "nzstock" ? "nzstock" : "standard"
 
 /**
- * Order-level totals (item_total, total, etc.) are reliably correct as soon
- * as fetchOrderWithRetry finds the order at all — that's the financially
- * important number and it's checked separately. Per-item unit_price/
- * quantity occasionally don't resolve in time even after retrying. Rather
- * than show "$NaN" (or withhold the whole email), distribute item_total
- * evenly across quantity-1 items as a reasonable display fallback — close
- * enough for a receipt, and never produces a broken-looking number.
+ * The actual root cause of every "$NaN"/broken-price email in this
+ * subscriber's history: Medusa v2 represents money and quantity fields
+ * internally as BigNumber-like objects — `{ numeric_, raw_, bignumber_ }` —
+ * not plain JS numbers. query.graph sometimes hands these back as-is rather
+ * than the plain number the field "looks" like it should be. Multiplying
+ * two such objects (`unitPrice * quantity`) silently coerces to NaN, and
+ * passing one directly into a React Email template throws
+ * "Objects are not valid as a React child" (confirmed via Cloud runtime
+ * logs — this is what was actually killing every order.placed email since
+ * order #24, not a query timing race). Coercing every numeric field to a
+ * plain number immediately after the query — before any arithmetic or
+ * template construction — eliminates this at the source.
  */
-function withSafePricing(items: OrderLine[], itemTotal: number): OrderLine[] {
-  const needsFallback = items.some((item) => item.unit_price == null || item.quantity == null)
-  if (!needsFallback) {
-    return items
+function toNumber(value: unknown): number {
+  if (typeof value === "number") {
+    return value
   }
-  const fallbackUnitPrice = items.length > 0 ? itemTotal / items.length : 0
-  return items.map((item) => ({
-    ...item,
-    quantity: item.quantity ?? 1,
-    unit_price: item.unit_price ?? fallbackUnitPrice,
-  }))
+  if (value && typeof value === "object" && "numeric_" in (value as Record<string, unknown>)) {
+    return Number((value as { numeric_: unknown }).numeric_) || 0
+  }
+  const coerced = Number(value)
+  return Number.isFinite(coerced) ? coerced : 0
 }
 
-// Per Medusa's "Retrieve Order Totals Using Query" docs
-// (docs.medusajs.com/resources/commerce-modules/order/order-totals):
-// order-level totals must be listed individually ("*" doesn't work for
-// them), but line items should use the "items.*" wildcard — that's the
-// one documented path that reliably resolves unit_price/quantity. Two
-// prior attempts ("items.quantity"/"items.unit_price" explicitly, and
-// "items.detail" via the Order module service) both still came back with
-// item pricing null in practice, while descriptive item fields
-// (product_title, thumbnail) always resolved fine — consistent with
-// unit_price/quantity specifically needing the wildcard's relation setup
-// that explicit field paths don't trigger.
+function withSafePricing(items: OrderLine[], itemTotal: number): OrderLine[] {
+  const fallbackUnitPrice = items.length > 0 ? itemTotal / items.length : 0
+  return items.map((item) => {
+    const quantity = toNumber(item.quantity) || 1
+    const unitPrice = item.unit_price == null ? fallbackUnitPrice : toNumber(item.unit_price)
+    return { ...item, quantity, unit_price: unitPrice }
+  })
+}
+
+// Verbatim from Medusa's own "order.placed" subscriber example
+// (docs.medusajs.com/cloud/emails/react-email#order-placed-email-template).
+// A prior attempt switched to the "items.*" wildcard on the theory that
+// explicit field paths weren't resolving — that wasn't the real problem
+// (see toNumber() above for what actually was), and the wildcard pulled in
+// extra BigNumber-shaped fields with no clearer benefit. Back to the
+// documented field list.
 const ORDER_EMAIL_FIELDS = [
   "id",
   "email",
@@ -67,7 +75,13 @@ const ORDER_EMAIL_FIELDS = [
   "tax_total",
   "total",
   "metadata",
-  "items.*",
+  "items.id",
+  "items.product_title",
+  "items.variant_title",
+  "items.quantity",
+  "items.unit_price",
+  "items.thumbnail",
+  "items.metadata",
   "shipping_address.first_name",
   "shipping_address.last_name",
   "shipping_address.address_1",
@@ -115,7 +129,8 @@ async function fetchOrderWithRetry(
     const hasItems = Array.isArray(order?.items) && order.items.length > 0
     const itemsHavePricing =
       hasItems && order.items.every((item: any) => item.unit_price != null && item.quantity != null)
-    const totalsReady = order?.item_total != null && order?.total != null && order.total > (order.shipping_total ?? 0)
+    const totalsReady =
+      order?.item_total != null && order?.total != null && toNumber(order.total) > toNumber(order.shipping_total)
 
     if (order && hasItems && itemsHavePricing && totalsReady) {
       return order
@@ -170,7 +185,7 @@ export default async function orderPlacedHandler({
       throw new Error(`Order ${data.id} was not found.`)
     }
 
-    const safeItems = withSafePricing(order.items || [], order.item_total ?? order.total)
+    const safeItems = withSafePricing(order.items || [], toNumber(order.item_total ?? order.total))
 
     const recipient = order.email
     if (!recipient) {
@@ -280,11 +295,11 @@ export default async function orderPlacedHandler({
       displayId: String(order.display_id),
       createdAt: order.created_at,
       currencyCode: order.currency_code,
-      subtotal: order.item_total ?? order.total,
-      shippingTotal: order.shipping_total ?? 0,
-      discountTotal: order.discount_total ?? 0,
-      taxTotal: order.tax_total ?? 0,
-      total: order.total,
+      subtotal: toNumber(order.item_total ?? order.total),
+      shippingTotal: toNumber(order.shipping_total),
+      discountTotal: toNumber(order.discount_total),
+      taxTotal: toNumber(order.tax_total),
+      total: toNumber(order.total),
       address: addressText,
       shipments,
       trackingUrl: `https://store.musenz.com/nz/track`,
@@ -310,7 +325,7 @@ export default async function orderPlacedHandler({
   } catch (error) {
     logger.error(
       `Order confirmation failed for ${data.id}: ${
-        error instanceof Error ? error.message : String(error)
+        error instanceof Error ? error.stack ?? error.message : String(error)
       }`
     )
   }
