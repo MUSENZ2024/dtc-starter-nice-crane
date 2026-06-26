@@ -20,6 +20,27 @@ type OrderLine = HttpTypes.StoreOrderLineItem & {
   metadata?: Record<string, unknown> | null
   unit_price?: number | null
   total?: number | null
+  variant_id?: string | null
+}
+
+// "Shipping protection" is a real product/variant added as a cart line item
+// at checkout (see getShippingProtectionItem in
+// apps/storefront/src/modules/checkout/components/step-delivery) so it
+// shows up in order.items like any other purchase — it isn't one, so it
+// needs pulling out before items are grouped into shipments and surfaced as
+// its own line in the totals breakdown instead. Match by variant ID when
+// the env var is configured, and by title as a robust fallback (titles
+// don't depend on an env var being set in whichever environment renders
+// this — e.g. the order confirmation email's backend deploy).
+const shippingProtectionVariantId =
+  process.env.NEXT_PUBLIC_SHIPPING_PROTECTION_VARIANT_ID
+
+function isShippingProtectionLine(item: OrderLine) {
+  const variantId = item.variant_id ?? item.variant?.id
+  if (shippingProtectionVariantId && variantId === shippingProtectionVariantId) {
+    return true
+  }
+  return (item.product_title ?? item.title ?? "").trim().toLowerCase() === "shipping protection"
 }
 
 type OrderPayment = NonNullable<
@@ -192,9 +213,15 @@ export default async function OrderCompletedTemplate({
   const cookies = await nextCookies()
   const isOnboarding = cookies.get("_medusa_onboarding")?.value === "true"
 
-  const items = ((order.items ?? []) as OrderLine[]).sort((a, b) =>
+  const allItems = ((order.items ?? []) as OrderLine[]).sort((a, b) =>
     (a.created_at ?? "") > (b.created_at ?? "") ? -1 : 1
   )
+  const shippingProtectionItem = allItems.find(isShippingProtectionLine)
+  const protectionAmount = shippingProtectionItem
+    ? shippingProtectionItem.total ??
+      (shippingProtectionItem.unit_price ?? 0) * shippingProtectionItem.quantity
+    : 0
+  const items = allItems.filter((item) => !isShippingProtectionLine(item))
   const { nzstock, standard } = groupItemsByFulfillment(items)
   const fulfilmentSummary = getCartFulfilmentSummary(items)
   const hasMixed = nzstock.length > 0 && standard.length > 0
@@ -221,7 +248,7 @@ export default async function OrderCompletedTemplate({
       data-testid="order-complete-container"
     >
       <header className="sticky top-0 z-50 flex h-[60px] items-center justify-between bg-[#0A0A0A] px-[18px] small:h-16 small:px-8">
-        <LocalizedClientLink href="/store" className="flex items-center">
+        <LocalizedClientLink href="/" className="flex items-center">
           <img
             src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
             alt="MUSE"
@@ -270,7 +297,7 @@ export default async function OrderCompletedTemplate({
           </span>
         </div>
         <p className="text-[13.5px] text-[#888]">
-          Confirmation sent to{" "}
+          We’ll email your confirmation to{" "}
           <strong className="text-[#BBB]" data-testid="order-email">
             {order.email}
           </strong>{" "}
@@ -376,26 +403,10 @@ export default async function OrderCompletedTemplate({
                 Payment
               </p>
               <div className="flex items-center gap-3.5 rounded-[14px] bg-[#F8F7F4] px-4 py-3.5">
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#0A0A0A] text-[#C8D050]">
-                  <svg
-                    width="19"
-                    height="19"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    aria-hidden="true"
-                  >
-                    <rect x="2" y="5" width="20" height="14" rx="2" />
-                    <path d="M2 10h20" />
-                  </svg>
-                </span>
-                <div className="flex-1">
-                  <PaymentMethodSummaryClient
-                    initialTitle={paymentDisplayTitle}
-                    amountText={paymentAmountText}
-                  />
-                </div>
+                <PaymentMethodSummaryClient
+                  initialTitle={paymentDisplayTitle}
+                  amountText={paymentAmountText}
+                />
                 <span className="rounded-full border border-[#C3E8CF] bg-[#EBF5EE] px-2.5 py-1 text-[11px] font-bold text-[#1F7A3A]">
                   Paid
                 </span>
@@ -466,7 +477,7 @@ export default async function OrderCompletedTemplate({
           <div className="space-y-1.5">
             <TotalsRow
               label={`Subtotal (${items.length} item${items.length === 1 ? "" : "s"})`}
-              value={formatMoney(order.subtotal, order.currency_code)}
+              value={formatMoney((order.subtotal ?? 0) - protectionAmount, order.currency_code)}
             />
             {(order.discount_total ?? 0) > 0 && (
               <TotalsRow
@@ -484,6 +495,12 @@ export default async function OrderCompletedTemplate({
               }
               green={(order.shipping_total ?? 0) === 0}
             />
+            {protectionAmount > 0 && (
+              <TotalsRow
+                label="Shipping protection"
+                value={formatMoney(protectionAmount, order.currency_code)}
+              />
+            )}
             <TotalsRow
               label="GST included"
               value={formatMoney(order.tax_total, order.currency_code)}

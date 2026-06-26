@@ -27,14 +27,21 @@ type OrderLine = {
 // in apps/storefront/src/modules/checkout/components/step-delivery) — it's
 // a genuine product line, not order metadata, so it has to be filtered out
 // of the item list and surfaced as its own line in the totals breakdown.
+// The variant-ID env var is the storefront's NEXT_PUBLIC_ var, which this
+// backend deploy never has set — title match is the fallback that actually
+// works without coordinating an extra env var across both apps.
 const SHIPPING_PROTECTION_VARIANT_ID =
   process.env.SHIPPING_PROTECTION_VARIANT_ID || process.env.NEXT_PUBLIC_SHIPPING_PROTECTION_VARIANT_ID
 
-function splitShippingProtection(items: OrderLine[]): { items: OrderLine[]; protectionAmount: number } {
-  if (!SHIPPING_PROTECTION_VARIANT_ID) {
-    return { items, protectionAmount: 0 }
+function isShippingProtectionLine(item: OrderLine): boolean {
+  if (SHIPPING_PROTECTION_VARIANT_ID && item.variant_id === SHIPPING_PROTECTION_VARIANT_ID) {
+    return true
   }
-  const protectionItem = items.find((item) => item.variant_id === SHIPPING_PROTECTION_VARIANT_ID)
+  return item.product_title?.trim().toLowerCase() === "shipping protection"
+}
+
+function splitShippingProtection(items: OrderLine[]): { items: OrderLine[]; protectionAmount: number } {
+  const protectionItem = items.find(isShippingProtectionLine)
   if (!protectionItem) {
     return { items, protectionAmount: 0 }
   }

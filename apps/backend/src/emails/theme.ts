@@ -67,7 +67,6 @@ const EMAIL_ICON_BASE_URL =
 export const icons = {
   instagram: `${EMAIL_ICON_BASE_URL}/social-instagram.png`,
   facebook: `${EMAIL_ICON_BASE_URL}/social-facebook.png`,
-  tiktok: `${EMAIL_ICON_BASE_URL}/social-tiktok.png`,
   calendar: `${EMAIL_ICON_BASE_URL}/icon-calendar.png`,
   track: `${EMAIL_ICON_BASE_URL}/icon-track.png`,
   chat: `${EMAIL_ICON_BASE_URL}/icon-chat.png`,

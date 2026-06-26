@@ -1,6 +1,5 @@
 import {
   Body,
-  Button,
   Column,
   Container,
   Head,
@@ -198,7 +197,10 @@ export function OrderConfirmationTemplate({
 
   return (
     <Html lang="en">
-      <Head />
+      <Head>
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
+      </Head>
       <Preview>Your MUSE NZ order #{displayId} is locked in.</Preview>
       <Body style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
         <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }}>
@@ -206,18 +208,33 @@ export function OrderConfirmationTemplate({
         </Section>
         <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
           <Section style={{ textAlign: "center", padding: "0 0 36px" }}>
-            <Text style={{ ...textStyle, color: colors.green, fontSize: "11.5px", fontWeight: "bold", letterSpacing: "0.12em", margin: "0 0 14px" }}>
-              ORDER #{displayId} CONFIRMED
+            <Text style={{ ...textStyle, color: colors.green, fontSize: "11.5px", fontWeight: "bold", letterSpacing: "0.12em", margin: "0 0 18px" }}>
+              ORDER CONFIRMED
             </Text>
-            <Heading style={{ ...textStyle, fontSize: "36px", lineHeight: "1.15", letterSpacing: "-0.02em", margin: "0 0 16px" }}>
+            <Heading style={{ ...textStyle, fontSize: "36px", lineHeight: "1.15", letterSpacing: "-0.02em", margin: "0 0 18px" }}>
               Your order is locked in.
             </Heading>
+            <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto 18px" }}>
+              <tr>
+                <td
+                  style={{
+                    backgroundColor: colors.black,
+                    borderRadius: "999px",
+                    padding: "10px 22px",
+                    fontFamily: FONT_STACK,
+                    fontSize: "16px",
+                    fontWeight: "bold",
+                    color: colors.white,
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  Order <span style={{ color: colors.yellow }}>#{displayId}</span>
+                </td>
+              </tr>
+            </table>
             <Text style={{ ...textStyle, color: colors.muted, fontSize: "15px", lineHeight: "1.6", margin: "0 auto", maxWidth: "400px" }}>
               Thanks {customerName} — we're prepping your order now and will email the moment it ships.
             </Text>
-            <Section style={{ marginTop: "26px" }}>
-              <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: FONT_STACK, fontSize: "13.5px", fontWeight: "bold", letterSpacing: "0.03em", padding: "15px 28px", textDecoration: "none" }}>TRACK YOUR ORDER →</Button>
-            </Section>
           </Section>
 
           {/* ============== ORDER SUMMARY ============== */}
@@ -252,6 +269,7 @@ export function OrderConfirmationTemplate({
                             backgroundColor: colors.blueSoft,
                             borderRadius: "999px",
                             padding: "4px 11px",
+                            whiteSpace: "nowrap",
                           }}
                         >
                           {shippingMethodLabel.toUpperCase()}
@@ -388,7 +406,6 @@ export function OrderConfirmationTemplate({
             <Section style={{ textAlign: "center", marginBottom: "24px" }}>
               <SocialIcon href="https://instagram.com/muse.nz" src={icons.instagram} alt="Instagram" />
               <SocialIcon href="https://facebook.com/muse.nz" src={icons.facebook} alt="Facebook" />
-              <SocialIcon href="https://tiktok.com/@muse.nz" src={icons.tiktok} alt="TikTok" />
             </Section>
 
             <Text style={{ textAlign: "center", fontSize: "11.5px", color: "#999999", margin: "0 0 20px" }}>

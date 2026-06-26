@@ -118,7 +118,10 @@ export function MusePayConfirmationTemplate({
 
   return (
     <Html lang="en">
-      <Head />
+      <Head>
+        <meta name="color-scheme" content="light" />
+        <meta name="supported-color-schemes" content="light" />
+      </Head>
       <Preview>Your MUSE Pay order #{displayId} is confirmed — 4 weekly payments, ships after the final one.</Preview>
       <Body style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0 }}>
         <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }}>
@@ -271,7 +274,6 @@ export function MusePayConfirmationTemplate({
             <Section style={{ textAlign: "center", marginBottom: "24px" }}>
               <SocialIcon href="https://instagram.com/muse.nz" src={icons.instagram} alt="Instagram" />
               <SocialIcon href="https://facebook.com/muse.nz" src={icons.facebook} alt="Facebook" />
-              <SocialIcon href="https://tiktok.com/@muse.nz" src={icons.tiktok} alt="TikTok" />
             </Section>
 
             <Text style={{ textAlign: "center", fontSize: "11.5px", color: "#999999", margin: "0 0 20px" }}>
