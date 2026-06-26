@@ -38,12 +38,15 @@ export type OrderConfirmationProps = {
   currencyCode: string
   subtotal: number
   shippingTotal: number
+  shippingProtectionAmount: number
   discountTotal: number
   taxTotal: number
   total: number
   address: string
   shipments: Shipment[]
   trackingUrl: string
+  shippingMethodLabel: string
+  paymentMethodLabel: string
 }
 
 const textStyle = {
@@ -53,10 +56,15 @@ const textStyle = {
 
 const cardStyle = {
   backgroundColor: colors.white,
-  border: `1px solid ${colors.border}`,
-  borderRadius: "16px",
-  padding: "26px 24px",
+  borderRadius: "20px",
+  padding: "30px 26px",
   marginBottom: "16px",
+}
+
+const softCardStyle = {
+  backgroundColor: colors.creamDeep,
+  borderRadius: "16px",
+  padding: "16px",
 }
 
 const cardTitleStyle = {
@@ -175,12 +183,15 @@ export function OrderConfirmationTemplate({
   currencyCode,
   subtotal,
   shippingTotal,
+  shippingProtectionAmount,
   discountTotal,
   taxTotal,
   total,
   address,
   shipments,
   trackingUrl,
+  shippingMethodLabel,
+  paymentMethodLabel,
 }: OrderConfirmationProps) {
   const mixed = shipments.length > 1
   const items = shipments.flatMap((shipment) => shipment.items)
@@ -193,94 +204,84 @@ export function OrderConfirmationTemplate({
         <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }}>
           <Img src={logoUrl} width="150" alt="MUSE NZ" style={{ margin: "0 auto" }} />
         </Section>
-        <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "36px 18px" }}>
-          <Section style={{ textAlign: "center", padding: "8px 0 28px" }}>
-            <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto 18px" }}>
-              <tr>
-                <td
-                  style={{
-                    width: "60px",
-                    height: "60px",
-                    borderRadius: "50%",
-                    backgroundColor: colors.green,
-                    textAlign: "center",
-                    verticalAlign: "middle",
-                    fontFamily: FONT_STACK,
-                    fontSize: "28px",
-                    fontWeight: "bold",
-                    color: colors.white,
-                    lineHeight: 1,
-                  }}
-                >
-                  ✓
-                </td>
-              </tr>
-            </table>
-            <Heading style={{ ...textStyle, fontSize: "30px", letterSpacing: "-0.01em", margin: "0 0 10px" }}>Your order is locked in.</Heading>
-            <Text style={{ ...textStyle, color: colors.muted, fontSize: "14.5px", margin: 0 }}>
-              Thanks {customerName}. We have received order #{displayId}.
+        <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
+          <Section style={{ textAlign: "center", padding: "0 0 36px" }}>
+            <Text style={{ ...textStyle, color: colors.green, fontSize: "11.5px", fontWeight: "bold", letterSpacing: "0.12em", margin: "0 0 14px" }}>
+              ORDER #{displayId} CONFIRMED
             </Text>
+            <Heading style={{ ...textStyle, fontSize: "36px", lineHeight: "1.15", letterSpacing: "-0.02em", margin: "0 0 16px" }}>
+              Your order is locked in.
+            </Heading>
+            <Text style={{ ...textStyle, color: colors.muted, fontSize: "15px", lineHeight: "1.6", margin: "0 auto", maxWidth: "400px" }}>
+              Thanks {customerName} — we're prepping your order now and will email the moment it ships.
+            </Text>
+            <Section style={{ marginTop: "26px" }}>
+              <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: FONT_STACK, fontSize: "13.5px", fontWeight: "bold", letterSpacing: "0.03em", padding: "15px 28px", textDecoration: "none" }}>TRACK YOUR ORDER →</Button>
+            </Section>
           </Section>
 
           {/* ============== ORDER SUMMARY ============== */}
           <Section style={cardStyle}>
             <Text style={cardTitleStyle}>ORDER SUMMARY</Text>
             {items.map((item, index) => (
-              <Row key={item.id} style={{ borderTop: index ? `1px solid ${colors.border}` : "none", padding: "16px 0" }}>
-                <Column style={{ width: "84px", verticalAlign: "top" }}>
-                  {item.thumbnail ? (
-                    <Img src={item.thumbnail} alt={item.title} width="76" height="76" style={{ borderRadius: "12px", objectFit: "cover" }} />
-                  ) : (
+              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }}>
+                <Row>
+                  <Column style={{ width: "80px", verticalAlign: "middle" }}>
+                    {item.thumbnail ? (
+                      <Img src={item.thumbnail} alt={item.title} width="72" height="72" style={{ borderRadius: "12px", objectFit: "cover" }} />
+                    ) : (
+                      <table cellPadding="0" cellSpacing="0" role="presentation">
+                        <tr><td style={{ width: "72px", height: "72px", borderRadius: "12px", backgroundColor: colors.white }} /></tr>
+                      </table>
+                    )}
+                  </Column>
+                  <Column style={{ paddingLeft: "14px", verticalAlign: "middle" }}>
+                    <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{item.title}</Text>
+                    <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", margin: "4px 0 8px" }}>
+                      {item.variantTitle ? `${item.variantTitle} · ` : ""}Qty {item.quantity}
+                    </Text>
                     <table cellPadding="0" cellSpacing="0" role="presentation">
-                      <tr><td style={{ width: "76px", height: "76px", borderRadius: "12px", backgroundColor: colors.creamDeep }} /></tr>
+                      <tr>
+                        <td
+                          style={{
+                            fontFamily: FONT_STACK,
+                            fontSize: "10px",
+                            fontWeight: "bold",
+                            letterSpacing: "0.04em",
+                            color: colors.blue,
+                            backgroundColor: colors.blueSoft,
+                            borderRadius: "999px",
+                            padding: "4px 11px",
+                          }}
+                        >
+                          {shippingMethodLabel.toUpperCase()}
+                        </td>
+                      </tr>
                     </table>
-                  )}
-                </Column>
-                <Column style={{ paddingLeft: "16px", verticalAlign: "top" }}>
-                  <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{item.title}</Text>
-                  <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", margin: "4px 0 8px" }}>
-                    {item.variantTitle ? `${item.variantTitle} · ` : ""}Qty {item.quantity}
-                  </Text>
-                  <table cellPadding="0" cellSpacing="0" role="presentation">
-                    <tr>
-                      <td
-                        style={{
-                          fontFamily: FONT_STACK,
-                          fontSize: "10px",
-                          fontWeight: "bold",
-                          letterSpacing: "0.04em",
-                          color: item.fulfillmentType === "nzstock" ? colors.green : colors.blue,
-                          backgroundColor: item.fulfillmentType === "nzstock" ? colors.greenSoft : colors.blueSoft,
-                          borderRadius: "999px",
-                          padding: "4px 11px",
-                        }}
-                      >
-                        {item.fulfillmentType === "nzstock" ? "NZ STOCK" : "STANDARD DELIVERY"}
-                      </td>
-                    </tr>
-                  </table>
-                </Column>
-                <Column style={{ width: "84px", textAlign: "right", verticalAlign: "top" }}>
-                  <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{formatMoney(item.unitPrice * item.quantity, currencyCode)}</Text>
-                </Column>
-              </Row>
+                  </Column>
+                  <Column style={{ width: "84px", textAlign: "right", verticalAlign: "middle" }}>
+                    <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{formatMoney(item.unitPrice * item.quantity, currencyCode)}</Text>
+                  </Column>
+                </Row>
+              </Section>
             ))}
 
-            <Section style={{ marginTop: "8px", paddingTop: "16px", borderTop: `1px solid ${colors.border}` }}>
+            <Section style={{ marginTop: "22px" }}>
               <Row><Column><Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", margin: "7px 0" }}>Subtotal</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "13.5px", margin: "7px 0" }}>{formatMoney(subtotal, currencyCode)}</Text></Column></Row>
-              <Row><Column><Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", margin: "7px 0" }}>Shipping</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "13.5px", margin: "7px 0", color: shippingTotal ? colors.text : colors.green, fontWeight: shippingTotal ? "normal" : "bold" }}>{shippingTotal ? formatMoney(shippingTotal, currencyCode) : "Free"}</Text></Column></Row>
+              <Row><Column><Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", margin: "7px 0" }}>Shipping — {shippingMethodLabel}</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "13.5px", margin: "7px 0", color: shippingTotal ? colors.text : colors.green, fontWeight: shippingTotal ? "normal" : "bold" }}>{shippingTotal ? formatMoney(shippingTotal, currencyCode) : "Free"}</Text></Column></Row>
+              {shippingProtectionAmount > 0 ? <Row><Column><Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", margin: "7px 0" }}>Shipping protection</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "13.5px", margin: "7px 0" }}>{formatMoney(shippingProtectionAmount, currencyCode)}</Text></Column></Row> : null}
               {discountTotal > 0 ? <Row><Column><Text style={{ ...textStyle, color: colors.green, fontSize: "13.5px", margin: "7px 0" }}>Discount</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, color: colors.green, fontSize: "13.5px", margin: "7px 0" }}>−{formatMoney(discountTotal, currencyCode)}</Text></Column></Row> : null}
               <Row><Column><Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", margin: "7px 0" }}>GST included</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "13.5px", margin: "7px 0" }}>{formatMoney(taxTotal, currencyCode)}</Text></Column></Row>
               <Row style={{ borderTop: `2px solid ${colors.black}` }}><Column><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>Total paid</Text></Column><Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>{formatMoney(total, currencyCode)}</Text></Column></Row>
             </Section>
 
-            <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginTop: "18px" }}>
-              <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
-                <IconSquare src={icons.card} alt="Card" />
+            <Row style={{ ...softCardStyle, marginTop: "18px" }}>
+              <Column style={{ width: "58px", verticalAlign: "middle" }}>
+                <IconSquare src={icons.card} alt="Payment method" />
               </Column>
-              <Column style={{ padding: "13px 14px", verticalAlign: "middle" }}>
-                <Text style={{ ...textStyle, fontSize: "13px", fontWeight: "bold", margin: 0 }}>Paid securely by Stripe</Text>
-                <Text style={{ ...textStyle, color: colors.muted, fontSize: "11.5px", margin: "2px 0 0" }}>Charge reference #{displayId}</Text>
+              <Column style={{ paddingLeft: "14px", verticalAlign: "middle" }}>
+                <Text style={{ ...textStyle, fontSize: "13px", fontWeight: "bold", margin: 0 }}>Paid with {paymentMethodLabel}</Text>
+                <Text style={{ ...textStyle, color: colors.muted, fontSize: "11.5px", margin: "2px 0 0" }}>Order #{displayId}</Text>
               </Column>
             </Row>
           </Section>
@@ -305,7 +306,7 @@ export function OrderConfirmationTemplate({
                   </Column>
                   <Column style={{ verticalAlign: "top", paddingLeft: "12px" }}>
                     {mixed ? <Text style={{ ...textStyle, color: colors.muted, fontSize: "10.5px", fontWeight: "bold", letterSpacing: "0.05em", margin: "0 0 5px" }}>{(shipment.label || `Shipment ${index + 1} of ${shipments.length}`).toUpperCase()}</Text> : null}
-                    <Text style={{ ...textStyle, fontSize: "13.5px", fontWeight: "bold", margin: 0 }}>{shipment.type === "nzstock" ? "NZ Stock" : "Standard Delivery"}</Text>
+                    <Text style={{ ...textStyle, fontSize: "13.5px", fontWeight: "bold", margin: 0 }}>{shipment.type === "nzstock" ? "NZ Stock" : "International Stock"}</Text>
                     <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", color: colors.black, margin: "5px 0 0" }}>{formatEta(createdAt, shipment.type)}</Text>
                   </Column>
                 </Row>
@@ -322,10 +323,6 @@ export function OrderConfirmationTemplate({
               <Timeline type={shipment.type} />
             </Section>
           ))}
-
-          <Section style={{ textAlign: "center", padding: "12px 0 6px" }}>
-            <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: FONT_STACK, fontSize: "13.5px", fontWeight: "bold", letterSpacing: "0.03em", padding: "15px 26px", textDecoration: "none" }}>TRACK YOUR ORDER</Button>
-          </Section>
 
           {/* ============== NEED HELP ============== */}
           <Section style={{ ...cardStyle, marginTop: "22px" }}>

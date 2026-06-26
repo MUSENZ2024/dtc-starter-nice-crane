@@ -47,10 +47,15 @@ const textStyle = {
 
 const cardStyle = {
   backgroundColor: colors.white,
-  border: `1px solid ${colors.border}`,
-  borderRadius: "16px",
-  padding: "26px 24px",
+  borderRadius: "20px",
+  padding: "30px 26px",
   marginBottom: "16px",
+}
+
+const softCardStyle = {
+  backgroundColor: colors.creamDeep,
+  borderRadius: "16px",
+  padding: "16px",
 }
 
 const cardTitleStyle = {
@@ -119,61 +124,50 @@ export function MusePayConfirmationTemplate({
         <Section style={{ backgroundColor: colors.black, padding: "26px 0", textAlign: "center" }}>
           <Img src={logoUrl} width="150" alt="MUSE NZ" style={{ margin: "0 auto" }} />
         </Section>
-        <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "36px 18px" }}>
-          <Section style={{ textAlign: "center", padding: "8px 0 28px" }}>
-            <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto 18px" }}>
-              <tr>
-                <td
-                  style={{
-                    width: "60px",
-                    height: "60px",
-                    borderRadius: "50%",
-                    backgroundColor: colors.green,
-                    textAlign: "center",
-                    verticalAlign: "middle",
-                    fontFamily: FONT_STACK,
-                    fontSize: "28px",
-                    fontWeight: "bold",
-                    color: colors.white,
-                    lineHeight: 1,
-                  }}
-                >
-                  ✓
-                </td>
-              </tr>
-            </table>
-            <Heading style={{ ...textStyle, fontSize: "28px", letterSpacing: "-0.01em", margin: "0 0 10px" }}>Your MUSE Pay order is confirmed.</Heading>
-            <Text style={{ ...textStyle, color: colors.muted, fontSize: "14.5px", margin: 0 }}>
-              Thanks {customerName}. We have received order #{displayId}, paid via MUSE Pay.
+        <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
+          <Section style={{ textAlign: "center", padding: "0 0 36px" }}>
+            <Text style={{ ...textStyle, color: colors.green, fontSize: "11.5px", fontWeight: "bold", letterSpacing: "0.12em", margin: "0 0 14px" }}>
+              ORDER #{displayId} CONFIRMED
             </Text>
+            <Heading style={{ ...textStyle, fontSize: "34px", lineHeight: "1.15", letterSpacing: "-0.02em", margin: "0 0 16px" }}>
+              Your MUSE Pay order is confirmed.
+            </Heading>
+            <Text style={{ ...textStyle, color: colors.muted, fontSize: "15px", lineHeight: "1.6", margin: "0 auto", maxWidth: "400px" }}>
+              Thanks {customerName} — paid via MUSE Pay across 4 weekly payments. Your order ships once the final payment clears.
+            </Text>
+            <Section style={{ marginTop: "26px" }}>
+              <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: FONT_STACK, fontSize: "13.5px", fontWeight: "bold", letterSpacing: "0.03em", padding: "15px 28px", textDecoration: "none" }}>VIEW YOUR ORDER →</Button>
+            </Section>
           </Section>
 
           {/* ============== ORDER SUMMARY — no stock badges, this order isn't shipping yet ============== */}
           <Section style={cardStyle}>
             <Text style={cardTitleStyle}>ORDER SUMMARY</Text>
             {items.map((item, index) => (
-              <Row key={item.id} style={{ borderTop: index ? `1px solid ${colors.border}` : "none", padding: "16px 0" }}>
-                <Column style={{ width: "84px", verticalAlign: "top" }}>
-                  {item.thumbnail ? (
-                    <Img src={item.thumbnail} alt={item.title} width="76" height="76" style={{ borderRadius: "12px", objectFit: "cover" }} />
-                  ) : (
-                    <table cellPadding="0" cellSpacing="0" role="presentation">
-                      <tr><td style={{ width: "76px", height: "76px", borderRadius: "12px", backgroundColor: colors.creamDeep }} /></tr>
-                    </table>
-                  )}
-                </Column>
-                <Column style={{ paddingLeft: "16px", verticalAlign: "top" }}>
-                  <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{item.title}</Text>
-                  <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", margin: "4px 0 0" }}>
-                    {item.variantTitle ? `${item.variantTitle} · ` : ""}Qty {item.quantity}
-                  </Text>
-                </Column>
-                <Column style={{ width: "84px", textAlign: "right", verticalAlign: "top" }}>
-                  <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{formatMoney(item.unitPrice * item.quantity, currencyCode)}</Text>
-                </Column>
-              </Row>
+              <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }}>
+                <Row>
+                  <Column style={{ width: "80px", verticalAlign: "middle" }}>
+                    {item.thumbnail ? (
+                      <Img src={item.thumbnail} alt={item.title} width="72" height="72" style={{ borderRadius: "12px", objectFit: "cover" }} />
+                    ) : (
+                      <table cellPadding="0" cellSpacing="0" role="presentation">
+                        <tr><td style={{ width: "72px", height: "72px", borderRadius: "12px", backgroundColor: colors.white }} /></tr>
+                      </table>
+                    )}
+                  </Column>
+                  <Column style={{ paddingLeft: "14px", verticalAlign: "middle" }}>
+                    <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{item.title}</Text>
+                    <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", margin: "4px 0 0" }}>
+                      {item.variantTitle ? `${item.variantTitle} · ` : ""}Qty {item.quantity}
+                    </Text>
+                  </Column>
+                  <Column style={{ width: "84px", textAlign: "right", verticalAlign: "middle" }}>
+                    <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{formatMoney(item.unitPrice * item.quantity, currencyCode)}</Text>
+                  </Column>
+                </Row>
+              </Section>
             ))}
-            <Row style={{ borderTop: `2px solid ${colors.black}`, marginTop: "8px" }}>
+            <Row style={{ borderTop: `2px solid ${colors.black}`, marginTop: "20px" }}>
               <Column><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>Order total</Text></Column>
               <Column style={{ textAlign: "right" }}><Text style={{ ...textStyle, fontSize: "17px", fontWeight: "bold", margin: "16px 0 0" }}>{formatMoney(totalCents / 100, currencyCode)}</Text></Column>
             </Row>
@@ -231,10 +225,6 @@ export function MusePayConfirmationTemplate({
           <Section style={cardStyle}>
             <Text style={cardTitleStyle}>DELIVERING TO (ONCE PAID OFF)</Text>
             <Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", lineHeight: "1.65", margin: 0 }}>{address}</Text>
-          </Section>
-
-          <Section style={{ textAlign: "center", padding: "12px 0 6px" }}>
-            <Button href={trackingUrl} style={{ backgroundColor: colors.yellow, borderRadius: "999px", color: colors.black, fontFamily: FONT_STACK, fontSize: "13.5px", fontWeight: "bold", letterSpacing: "0.03em", padding: "15px 26px", textDecoration: "none" }}>VIEW YOUR ORDER</Button>
           </Section>
 
           {/* ============== NEED HELP ============== */}
