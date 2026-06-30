@@ -68,9 +68,34 @@ export type ArrivedNzFulfillment = {
   order?: ArrivedNzEmailOrder | null
 }
 
+type TrackingEvent = {
+  description?: string
+  location?: string
+  time_iso?: string
+  time_utc?: string
+}
+
+type TrackingProvider = {
+  provider?: {
+    name?: string
+  }
+  events?: TrackingEvent[]
+}
+
+export type TrackInfo = {
+  latest_status?: {
+    status?: string
+  }
+  tracking?: {
+    providers?: TrackingProvider[]
+  }
+}
+
 export const ORDER_ARRIVED_NZ_SENT_METADATA_KEY = "muse_order_arrived_nz_email_sent_at"
 export const ORDER_ARRIVED_NZ_TEMPLATE_KEY = "order_arrived_nz"
 export const ORDER_ARRIVED_NZ_SUBJECT = "MUSE NZ: Your order has arrived in NZ 🇳🇿"
+export const MUSE_TRACKING_WORKER_URL =
+  process.env.MUSE_TRACKING_WORKER_URL || "https://muse-track.nz-nofilter.workers.dev"
 
 export const ORDER_ARRIVED_NZ_FULFILLMENT_FIELDS = [
   "id",
@@ -144,6 +169,122 @@ function metadataFlag(metadata: Record<string, unknown> | null | undefined, keys
   })
 }
 
+const includesAny = (text: string, phrases: string[]) =>
+  phrases.some((phrase) => text.includes(phrase))
+
+const DELIVERED_EVENTS = ["delivered", "successfully signed", "successfully received"]
+
+const OUT_FOR_DELIVERY_EVENTS = [
+  "out for delivery",
+  "with courier",
+  "on vehicle",
+  "delivery today",
+  "ready for courier",
+]
+
+const NZ_LOCAL_EVENTS = [
+  "local/regional depot",
+  "local depot",
+  "regional depot",
+  "in transit to local depot",
+  "leaving the new zealand processing center",
+  "leaving new zealand processing center",
+]
+
+const NZ_ARRIVAL_EVENTS = [
+  "international arrival",
+  "arrived in new zealand",
+  "arrived in nz",
+  "pending border clearance",
+  "arrived at destination",
+  "arrival at destination",
+  "destination processing center",
+  "destination processing centre",
+  "plane arriving",
+  "with nz post",
+]
+
+function normaliseCarrier(name?: string) {
+  const normalised = (name || "").toLowerCase()
+
+  if (normalised.includes("nz post") || normalised.includes("new zealand post")) {
+    return "nz post"
+  }
+
+  return normalised
+}
+
+function flattenTrackingEvents(track: TrackInfo | undefined) {
+  const events: Array<{ desc: string; carrier: string; rawTime?: string }> = []
+
+  ;(track?.tracking?.providers || []).forEach((provider) => {
+    const carrier = normaliseCarrier(provider.provider?.name)
+
+    ;(provider.events || []).forEach((event) => {
+      events.push({
+        desc: `${event.description || ""} ${event.location || ""}`.toLowerCase(),
+        carrier,
+        rawTime: event.time_iso || event.time_utc,
+      })
+    })
+  })
+
+  return events.sort(
+    (a, b) =>
+      new Date(b.rawTime || "").getTime() -
+      new Date(a.rawTime || "").getTime()
+  )
+}
+
+export function trackingInfoHasArrivedInNz(track: TrackInfo | undefined): boolean {
+  const rawStatus = (track?.latest_status?.status || "")
+    .replace(/_/g, " ")
+    .toLowerCase()
+  const events = flattenTrackingEvents(track)
+  const latestEvent = events[0]
+  const latestDesc = latestEvent?.desc || ""
+  const combined = `${rawStatus} ${latestDesc}`
+
+  if (includesAny(combined, DELIVERED_EVENTS)) {
+    return false
+  }
+
+  if (includesAny(combined, OUT_FOR_DELIVERY_EVENTS)) {
+    return true
+  }
+
+  return (
+    latestEvent?.carrier === "nz post" ||
+    includesAny(latestDesc, [...NZ_LOCAL_EVENTS, ...NZ_ARRIVAL_EVENTS]) ||
+    includesAny(combined, NZ_ARRIVAL_EVENTS)
+  )
+}
+
+export async function fetchTrackingInfo(trackingNumber: string): Promise<TrackInfo | null> {
+  const response = await fetch(MUSE_TRACKING_WORKER_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      endpoint: "gettrackinfo",
+      body: [{ number: trackingNumber }],
+    }),
+  })
+
+  if (!response.ok) {
+    throw new Error(`Tracking worker returned ${response.status}`)
+  }
+
+  const payload = await response.json() as {
+    data?: {
+      accepted?: Array<{
+        track_info?: TrackInfo
+      }>
+    }
+  }
+
+  return payload.data?.accepted?.[0]?.track_info || null
+}
+
 export function hasArrivedInNzSignal(fulfillment: ArrivedNzFulfillment): boolean {
   const orderMetadata = fulfillment.order?.metadata
   const fulfillmentMetadata = fulfillment.metadata
@@ -173,6 +314,8 @@ export function hasArrivedInNzSignal(fulfillment: ArrivedNzFulfillment): boolean
     "landed in nz",
     "with nz post",
     "nz post final delivery",
+    ...NZ_ARRIVAL_EVENTS,
+    ...NZ_LOCAL_EVENTS,
   ]
 
   if (metadataValueIncludes(orderMetadata, arrivalPhrases) || metadataValueIncludes(fulfillmentMetadata, arrivalPhrases)) {

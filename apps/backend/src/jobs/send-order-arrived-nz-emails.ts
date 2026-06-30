@@ -3,11 +3,13 @@ import { Modules } from "@medusajs/framework/utils"
 import {
   ArrivedNzFulfillment,
   fetchAuthoritativeArrivedNzOrderTotals,
+  fetchTrackingInfo,
   hasArrivedInNzSignal,
   ORDER_ARRIVED_NZ_FULFILLMENT_FIELDS,
   ORDER_ARRIVED_NZ_SENT_METADATA_KEY,
   ORDER_ARRIVED_NZ_SUBJECT,
   renderOrderArrivedNzEmail,
+  trackingInfoHasArrivedInNz,
 } from "../lib/order-arrived-nz-email"
 
 const LOOKBACK_DAYS = 45
@@ -56,7 +58,22 @@ export default async function sendOrderArrivedNzEmails(container: MedusaContaine
         continue
       }
 
-      if (!hasArrivedInNzSignal(fulfillment)) {
+      let arrivedInNz = hasArrivedInNzSignal(fulfillment)
+
+      if (!arrivedInNz) {
+        try {
+          const trackInfo = await fetchTrackingInfo(label.tracking_number.trim())
+          arrivedInNz = trackingInfoHasArrivedInNz(trackInfo || undefined)
+        } catch (error) {
+          logger.warn(
+            `Skipping arrived-in-NZ tracking lookup for ${order.id}: ${
+              error instanceof Error ? error.message : String(error)
+            }`
+          )
+        }
+      }
+
+      if (!arrivedInNz) {
         continue
       }
 
