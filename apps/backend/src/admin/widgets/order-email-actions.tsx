@@ -7,11 +7,34 @@ import { sdk } from "../lib/sdk"
 
 type OrderEmailTemplateKey =
   | "order_edited"
+  | "order_invoice"
+  | "order_payment_receipt"
+  | "order_link"
   | "payment_reminder"
   | "payment_error"
+  | "pending_payment_success"
   | "refund_update"
   | "order_cancelled"
   | "delivery_address_update"
+  | "shipping_update"
+  | "out_for_delivery"
+  | "delivered"
+  | "ready_for_pickup"
+  | "picked_up_by_customer"
+  | "order_out_for_local_delivery"
+  | "order_locally_delivered"
+  | "order_missed_local_delivery"
+  | "return_created"
+  | "return_received"
+  | "return_approved"
+  | "return_declined"
+  | "store_credit_issued"
+  | "gift_card_created"
+  | "customer_account_invite"
+  | "customer_account_welcome"
+  | "customer_password_reset"
+  | "contact_customer"
+  | "customer_email_change_confirmation"
 
 type OrderEmailTemplate = {
   key: OrderEmailTemplateKey
@@ -26,6 +49,24 @@ const TEMPLATES: OrderEmailTemplate[] = [
     label: "Order edited",
     subject: "MUSE NZ: Your order has been updated",
     description: "Tell the customer their order details have changed.",
+  },
+  {
+    key: "order_invoice",
+    label: "Order invoice",
+    subject: "MUSE NZ: Invoice for your order",
+    description: "Send the current invoice and order totals.",
+  },
+  {
+    key: "order_payment_receipt",
+    label: "Order payment receipt",
+    subject: "MUSE NZ: Payment receipt for your order",
+    description: "Confirm payment has been received.",
+  },
+  {
+    key: "order_link",
+    label: "Order link",
+    subject: "MUSE NZ: Your order link",
+    description: "Send a fresh order link or order status update.",
   },
   {
     key: "delivery_address_update",
@@ -46,6 +87,12 @@ const TEMPLATES: OrderEmailTemplate[] = [
     description: "Tell the customer payment could not be processed.",
   },
   {
+    key: "pending_payment_success",
+    label: "Pending payment success",
+    subject: "MUSE NZ: Your payment has been processed",
+    description: "Confirm a pending payment has cleared.",
+  },
+  {
     key: "refund_update",
     label: "Refund update",
     subject: "MUSE NZ: Refund update for your order",
@@ -56,6 +103,120 @@ const TEMPLATES: OrderEmailTemplate[] = [
     label: "Order cancelled",
     subject: "MUSE NZ: Your order has been cancelled",
     description: "Confirm the order has been cancelled.",
+  },
+  {
+    key: "shipping_update",
+    label: "Shipping update",
+    subject: "MUSE NZ: Shipping update for your order",
+    description: "Send a general tracking or delivery update.",
+  },
+  {
+    key: "out_for_delivery",
+    label: "Out for delivery",
+    subject: "MUSE NZ: Your order is out for delivery",
+    description: "Tell the customer delivery is due soon.",
+  },
+  {
+    key: "delivered",
+    label: "Delivered",
+    subject: "MUSE NZ: Your order has been delivered",
+    description: "Confirm the order has been delivered.",
+  },
+  {
+    key: "ready_for_pickup",
+    label: "Ready for pickup",
+    subject: "MUSE NZ: Your order is ready for pickup",
+    description: "Tell the customer their order can be collected.",
+  },
+  {
+    key: "picked_up_by_customer",
+    label: "Picked up by customer",
+    subject: "MUSE NZ: Your order has been picked up",
+    description: "Confirm the customer has collected the order.",
+  },
+  {
+    key: "order_out_for_local_delivery",
+    label: "Order out for local delivery",
+    subject: "MUSE NZ: Your order is out for local delivery",
+    description: "Send a local-delivery dispatch update.",
+  },
+  {
+    key: "order_locally_delivered",
+    label: "Order locally delivered",
+    subject: "MUSE NZ: Your order has been delivered",
+    description: "Confirm a local delivery has been completed.",
+  },
+  {
+    key: "order_missed_local_delivery",
+    label: "Order missed local delivery",
+    subject: "MUSE NZ: We missed you for delivery",
+    description: "Tell the customer local delivery could not be completed.",
+  },
+  {
+    key: "return_created",
+    label: "Return created",
+    subject: "MUSE NZ: Your return has been created",
+    description: "Confirm a return has been opened.",
+  },
+  {
+    key: "return_received",
+    label: "Return received",
+    subject: "MUSE NZ: We received your return",
+    description: "Tell the customer their return has arrived.",
+  },
+  {
+    key: "return_approved",
+    label: "Return approved",
+    subject: "MUSE NZ: Your return has been approved",
+    description: "Approve a customer return request.",
+  },
+  {
+    key: "return_declined",
+    label: "Return declined",
+    subject: "MUSE NZ: Return update for your order",
+    description: "Decline or explain a return request.",
+  },
+  {
+    key: "store_credit_issued",
+    label: "Store credit issued",
+    subject: "MUSE NZ: Store credit has been issued",
+    description: "Tell the customer store credit is ready.",
+  },
+  {
+    key: "gift_card_created",
+    label: "Gift card created",
+    subject: "MUSE NZ: Your gift card is ready",
+    description: "Send a gift card notification.",
+  },
+  {
+    key: "customer_account_invite",
+    label: "Customer account invite",
+    subject: "MUSE NZ: Create your MUSE account",
+    description: "Invite a customer to create an account.",
+  },
+  {
+    key: "customer_account_welcome",
+    label: "Customer account welcome",
+    subject: "MUSE NZ: Welcome to your MUSE account",
+    description: "Welcome a customer after account activation.",
+  },
+  {
+    key: "customer_password_reset",
+    label: "Customer password reset",
+    subject: "MUSE NZ: Reset your password",
+    description: "Send a password reset support update.",
+  },
+  {
+    key: "contact_customer",
+    label: "Contact customer",
+    subject: "MUSE NZ: Update about your order",
+    description: "Send a flexible message about the order.",
+  },
+  {
+    key: "customer_email_change_confirmation",
+    label: "Email change confirmation",
+    subject: "MUSE NZ: Email address updated",
+    description: "Confirm the customer's email address was updated.",
   },
 ]
 
