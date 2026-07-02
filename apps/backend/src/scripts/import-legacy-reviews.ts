@@ -13,7 +13,9 @@ type LegacyReview = {
 }
 
 const arrayLiteralAfter = (source: string, marker: string) => {
-  const start = source.indexOf("[", source.indexOf(marker))
+  const markerIndex = source.indexOf(marker)
+  const equalsIndex = source.indexOf("=", markerIndex)
+  const start = source.indexOf("[", equalsIndex)
   let depth = 0
   for (let index = start; index < source.length; index += 1) {
     if (source[index] === "[") depth += 1
@@ -27,6 +29,9 @@ const parseRecords = (literal: string): LegacyReview[] =>
   // The legacy arrays contain plain object literals only; this keeps the import
   // tied to the one existing source of truth instead of maintaining a second copy.
   Function(`return (${literal})`)() as LegacyReview[]
+
+const reviewKey = (review: Pick<LegacyReview, "image" | "name" | "text">) =>
+  [review.name.trim(), review.text.trim(), review.image ?? ""].join("::")
 
 export default async function importLegacyReviews({
   container,
@@ -46,14 +51,27 @@ export default async function importLegacyReviews({
   const text = parseRecords(arrayLiteralAfter(written, "allWrittenMuseReviews"))
   const service: ProductReviewModuleService = container.resolve(PRODUCT_REVIEW_MODULE)
   const existing = await service.listReviews({ source: "legacy" })
+  const existingKeys = new Set(
+    existing.map((review) =>
+      reviewKey({
+        name: review.reviewer_name,
+        text: review.content,
+        image: review.image_url ?? undefined,
+      })
+    )
+  )
+  const legacyReviews = [...photos, ...text]
+  const missingReviews = legacyReviews.filter((review) => !existingKeys.has(reviewKey(review)))
 
-  if (existing.length) {
-    container.resolve("logger").info("Legacy reviews already imported; nothing to do.")
+  if (!missingReviews.length) {
+    container
+      .resolve("logger")
+      .info(`Legacy reviews already imported; ${existing.length} legacy reviews found.`)
     return
   }
 
   await service.createReviews(
-    [...photos, ...text].map((review) => ({
+    missingReviews.map((review) => ({
       title: null,
       content: review.text,
       rating: review.rating ?? 5,
@@ -64,5 +82,9 @@ export default async function importLegacyReviews({
       verified_purchase: true,
     }))
   )
-  container.resolve("logger").info(`Imported ${photos.length + text.length} legacy MUSE reviews.`)
+  container
+    .resolve("logger")
+    .info(
+      `Imported ${missingReviews.length} missing legacy MUSE reviews. ${existing.length} legacy reviews were already present.`
+    )
 }

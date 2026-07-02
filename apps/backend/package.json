@@ -15,7 +15,7 @@
   "scripts": {
     "build": "medusa build",
     "typecheck": "tsc --noEmit",
-    "predeploy": "medusa db:migrate",
+    "predeploy": "medusa db:migrate && medusa exec ./src/scripts/import-legacy-reviews.ts",
     "start": "medusa start",
     "dev": "medusa develop",
     "test": "pnpm test:unit",
