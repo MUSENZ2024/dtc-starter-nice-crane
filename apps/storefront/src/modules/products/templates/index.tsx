@@ -116,6 +116,7 @@ const ProductTemplate = async ({
   const textReviews = getProductTextReviews(product)
   const storedReviews = await getStoreReviews()
   const storedWrittenReviews = storedReviews?.reviews.filter((review) => !review.image_url) ?? null
+  const featuredWrittenReviews = storedWrittenReviews?.slice(0, 4) ?? null
   const storedPhotoReviews = storedReviews?.reviews.filter((review) => review.image_url) ?? null
   const reviewDateFormatter = new Intl.DateTimeFormat("en-NZ", {
     day: "numeric",
@@ -207,31 +208,87 @@ const ProductTemplate = async ({
           </div>
         </div>
 
-        {storedWrittenReviews ? (
-          <div className="mb-10 border-t border-[#E8E6E0] pt-8">
-            <h2 className="text-[24px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[34px]">
-              Written reviews
-            </h2>
-            <p className="mt-1 text-[13px] text-[#666]">Written feedback from MUSE customers.</p>
-            <div className="mt-5 grid gap-3 small:grid-cols-2">
-              {storedWrittenReviews.map((review) => (
-                <article key={review.id} className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-4 small:p-5">
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
+        {storedWrittenReviews && featuredWrittenReviews ? (
+          <div className="mb-8 border-t border-[#E8E6E0] pt-8">
+            <div className="flex flex-col gap-2 small:flex-row small:items-end small:justify-between">
+              <div>
+                <h2 className="text-[22px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[30px]">
+                  Written reviews
+                </h2>
+                <p className="mt-1 text-[13px] text-[#666]">
+                  A quick snapshot of written customer feedback.
+                </p>
+              </div>
+              <span className="w-fit rounded-full border border-[#E8E6E0] bg-[#F8F7F4] px-3 py-1 text-[11px] font-black uppercase tracking-[0.06em] text-[#666]">
+                {storedWrittenReviews.length} written reviews
+              </span>
+            </div>
+
+            <div className="no-scrollbar -mx-[18px] mt-4 flex snap-x gap-2 overflow-x-auto px-[18px] pb-2 small:mx-0 small:grid small:grid-cols-4 small:gap-3 small:px-0">
+              {featuredWrittenReviews.map((review) => (
+                <article
+                  key={`featured-${review.id}`}
+                  className="w-[250px] shrink-0 snap-start rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-3 small:w-auto"
+                >
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <span className="text-[12px] tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
                       {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
                     </span>
-                    {review.verified_purchase && <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">Verified</span>}
+                    {review.verified_purchase && (
+                      <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">
+                        Verified
+                      </span>
+                    )}
                   </div>
-                  {review.title && <h3 className="mt-3 text-sm font-bold">{review.title}</h3>}
-                  <p className="mt-3 text-[13px] font-medium leading-5 text-[#333]">{review.content}</p>
-                  <div className="mt-4 text-[12px] text-[#666]">
+                  {review.title && <h3 className="mb-1 text-[12px] font-bold">{review.title}</h3>}
+                  <p className="line-clamp-2 text-[12.5px] font-medium leading-5 text-[#333]">
+                    {review.content}
+                  </p>
+                  <div className="mt-3 truncate text-[11px] text-[#666]">
                     <span className="font-bold text-[#0A0A0A]">{review.reviewer_name}</span>
-                    <span className="mx-2 text-[#BBB]">•</span>
+                    <span className="mx-1.5 text-[#BBB]">•</span>
                     {reviewDateFormatter.format(new Date(review.created_at))}
                   </div>
                 </article>
               ))}
             </div>
+
+            <details className="mt-3 border-y border-[#E8E6E0]">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-4 py-3 text-[12px] font-black uppercase tracking-[0.06em] text-[#0A0A0A] [&::-webkit-details-marker]:hidden">
+                Read all {storedWrittenReviews.length} written reviews
+                <span className="text-[20px] font-normal text-[#666]" aria-hidden="true">
+                  +
+                </span>
+              </summary>
+              <div className="grid gap-2 border-t border-[#E8E6E0] py-4 small:grid-cols-2">
+                {storedWrittenReviews.map((review) => (
+                  <article
+                    key={review.id}
+                    className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-3"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-[12px] tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
+                        {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
+                      </span>
+                      {review.verified_purchase && (
+                        <span className="text-[9px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">
+                          Verified
+                        </span>
+                      )}
+                    </div>
+                    {review.title && <h3 className="mt-2 text-[12px] font-bold">{review.title}</h3>}
+                    <p className="mt-2 text-[12.5px] font-medium leading-5 text-[#333]">
+                      {review.content}
+                    </p>
+                    <div className="mt-3 text-[11px] text-[#666]">
+                      <span className="font-bold text-[#0A0A0A]">{review.reviewer_name}</span>
+                      <span className="mx-1.5 text-[#BBB]">•</span>
+                      {reviewDateFormatter.format(new Date(review.created_at))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </details>
           </div>
         ) : (
           textReviews.length > 0 && (
