@@ -115,6 +115,28 @@ const ProductTemplate = async ({
   const fulfilment = getFulfilmentState(product)
   const textReviews = getProductTextReviews(product)
   const storedReviews = await getStoreReviews()
+  const storedWrittenReviews = storedReviews?.reviews.filter((review) => !review.image_url) ?? null
+  const storedPhotoReviews = storedReviews?.reviews.filter((review) => review.image_url) ?? null
+  const reviewDateFormatter = new Intl.DateTimeFormat("en-NZ", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+  const displayedPhotoReviews = storedPhotoReviews
+    ? storedPhotoReviews.map((review) => ({
+        id: review.id,
+        image: review.image_url!,
+        name: review.reviewer_name,
+        date: reviewDateFormatter.format(new Date(review.created_at)),
+        text: review.content,
+      }))
+    : photoReviews.map((review) => ({
+        id: `${review.name}-${review.date}`,
+        image: review.image,
+        name: review.name,
+        date: review.date,
+        text: review.text,
+      }))
   const reviewSummary = storedReviews ?? {
     reviews: [],
     total: MUSE_REVIEW_SUMMARY.total,
@@ -185,14 +207,14 @@ const ProductTemplate = async ({
           </div>
         </div>
 
-        {storedReviews ? (
+        {storedWrittenReviews ? (
           <div className="mb-10 border-t border-[#E8E6E0] pt-8">
             <h2 className="text-[24px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[34px]">
-              Customer reviews
+              Written reviews
             </h2>
-            <p className="mt-1 text-[13px] text-[#666]">Feedback from MUSE customers.</p>
+            <p className="mt-1 text-[13px] text-[#666]">Written feedback from MUSE customers.</p>
             <div className="mt-5 grid gap-3 small:grid-cols-2">
-              {storedReviews.reviews.map((review) => (
+              {storedWrittenReviews.map((review) => (
                 <article key={review.id} className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-4 small:p-5">
                   <div className="flex items-center justify-between gap-3">
                     <span className="text-sm tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
@@ -200,54 +222,57 @@ const ProductTemplate = async ({
                     </span>
                     {review.verified_purchase && <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">Verified</span>}
                   </div>
-                  {review.image_url && <Image src={review.image_url} alt={`Review from ${review.reviewer_name}`} width={640} height={480} className="mt-3 aspect-[4/3] w-full rounded-md object-cover" />}
                   {review.title && <h3 className="mt-3 text-sm font-bold">{review.title}</h3>}
                   <p className="mt-3 text-[13px] font-medium leading-5 text-[#333]">{review.content}</p>
-                  <div className="mt-4 text-[12px] text-[#666]"><span className="font-bold text-[#0A0A0A]">{review.reviewer_name}</span></div>
+                  <div className="mt-4 text-[12px] text-[#666]">
+                    <span className="font-bold text-[#0A0A0A]">{review.reviewer_name}</span>
+                    <span className="mx-2 text-[#BBB]">•</span>
+                    {reviewDateFormatter.format(new Date(review.created_at))}
+                  </div>
                 </article>
               ))}
             </div>
           </div>
         ) : (
-          <>
-
-        {textReviews.length > 0 && (
-          <div className="mb-10 border-t border-[#E8E6E0] pt-8">
-            <h2 className="text-[24px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[34px]">
-              Customer reviews
-            </h2>
-            <p className="mt-1 text-[13px] text-[#666]">
-              Verified feedback from customers who ordered this product.
-            </p>
-            <div className="mt-5 grid gap-3 small:grid-cols-2">
-              {textReviews.map((review) => (
-                <article
-                  key={review.id}
-                  className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-4 small:p-5"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="text-sm tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
-                      {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
-                    </span>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">
-                      Verified
-                    </span>
-                  </div>
-                  <p className="mt-3 text-[13px] font-medium leading-5 text-[#333]">
-                    {review.text}
-                  </p>
-                  <div className="mt-4 text-[12px] text-[#666]">
-                    <span className="font-bold text-[#0A0A0A]">{review.name}</span>
-                    <span className="mx-2 text-[#BBB]">•</span>
-                    {review.date}
-                  </div>
-                </article>
-              ))}
+          textReviews.length > 0 && (
+            <div className="mb-10 border-t border-[#E8E6E0] pt-8">
+              <h2 className="text-[24px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[34px]">
+                Written reviews
+              </h2>
+              <p className="mt-1 text-[13px] text-[#666]">
+                Verified feedback from customers who ordered this product.
+              </p>
+              <div className="mt-5 grid gap-3 small:grid-cols-2">
+                {textReviews.map((review) => (
+                  <article
+                    key={review.id}
+                    className="rounded-[12px] border border-[#E8E6E0] bg-[#F8F7F4] p-4 small:p-5"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-sm tracking-[1px] text-[#C1440E]" aria-label={`${review.rating} out of 5 stars`}>
+                        {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
+                      </span>
+                      <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-[#1F7A3A]">
+                        Verified
+                      </span>
+                    </div>
+                    <p className="mt-3 text-[13px] font-medium leading-5 text-[#333]">
+                      {review.text}
+                    </p>
+                    <div className="mt-4 text-[12px] text-[#666]">
+                      <span className="font-bold text-[#0A0A0A]">{review.name}</span>
+                      <span className="mx-2 text-[#BBB]">•</span>
+                      {review.date}
+                    </div>
+                  </article>
+                ))}
+              </div>
             </div>
-          </div>
+          )
         )}
 
-        <details className="mb-10 border-y border-[#E8E6E0]">
+        {!storedWrittenReviews && (
+          <details className="mb-10 border-y border-[#E8E6E0]">
           <summary className="flex min-h-12 cursor-pointer list-none items-center justify-between gap-4 py-4 text-sm font-black uppercase tracking-[0.06em] text-[#0A0A0A] [&::-webkit-details-marker]:hidden">
             Read all {allWrittenMuseReviews.length} written reviews
             <span className="text-[22px] font-normal text-[#666]" aria-hidden="true">
@@ -279,7 +304,8 @@ const ProductTemplate = async ({
               </article>
             ))}
           </div>
-        </details>
+          </details>
+        )}
 
         <div className="mb-10">
           <div className="mb-4 flex items-end justify-between gap-4">
@@ -288,7 +314,7 @@ const ProductTemplate = async ({
                 Photo reviews
               </h2>
               <p className="mt-1 text-[13px] text-[#666]">
-                {photoReviews.length} customer-submitted photos
+                {displayedPhotoReviews.length} customer-submitted photos
               </p>
             </div>
             <span className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] small:block">
@@ -297,9 +323,9 @@ const ProductTemplate = async ({
           </div>
 
           <div className="no-scrollbar -mx-[18px] flex snap-x gap-2 overflow-x-auto px-[18px] pb-3 small:mx-0 small:gap-4 small:px-0">
-            {photoReviews.map((review, index) => (
+            {displayedPhotoReviews.map((review, index) => (
               <article
-                key={`${review.name}-${review.date}`}
+                key={review.id}
                 className="w-[126px] shrink-0 snap-start overflow-hidden rounded-[12px] bg-[#F8F7F4] ring-1 ring-[#E8E6E0] small:w-[calc((100%_-_3rem)/4)] small:max-w-[304px] small:rounded-[14px]"
               >
                 <div className="relative aspect-[4/3] bg-[#ECE9E2]">
@@ -332,8 +358,6 @@ const ProductTemplate = async ({
             ))}
           </div>
         </div>
-          </>
-        )}
 
         <ReviewSubmission productId={product.id} />
       </section>
