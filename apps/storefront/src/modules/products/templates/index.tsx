@@ -123,7 +123,7 @@ const ProductTemplate = async ({
     month: "short",
     year: "numeric",
   })
-  const displayedPhotoReviews = storedPhotoReviews
+  const allDisplayedPhotoReviews = storedPhotoReviews
     ? storedPhotoReviews.map((review) => ({
         id: review.id,
         image: review.image_url!,
@@ -138,6 +138,7 @@ const ProductTemplate = async ({
         date: review.date,
         text: review.text,
       }))
+  const displayedPhotoReviews = allDisplayedPhotoReviews.slice(0, 12)
   const reviewSummary = storedReviews ?? {
     reviews: [],
     total: MUSE_REVIEW_SUMMARY.total,
@@ -371,7 +372,7 @@ const ProductTemplate = async ({
                 Photo reviews
               </h2>
               <p className="mt-1 text-[13px] text-[#666]">
-                {displayedPhotoReviews.length} customer-submitted photos
+                Showing {displayedPhotoReviews.length} of {allDisplayedPhotoReviews.length} customer photos
               </p>
             </div>
             <span className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] small:block">
@@ -380,7 +381,7 @@ const ProductTemplate = async ({
           </div>
 
           <div className="no-scrollbar -mx-[18px] flex snap-x gap-2 overflow-x-auto px-[18px] pb-3 small:mx-0 small:gap-4 small:px-0">
-            {displayedPhotoReviews.map((review, index) => (
+            {displayedPhotoReviews.map((review) => (
               <article
                 key={review.id}
                 className="w-[126px] shrink-0 snap-start overflow-hidden rounded-[12px] bg-[#F8F7F4] ring-1 ring-[#E8E6E0] small:w-[calc((100%_-_3rem)/4)] small:max-w-[304px] small:rounded-[14px]"
@@ -391,8 +392,8 @@ const ProductTemplate = async ({
                     alt={`Photo review from ${review.name}`}
                     fill
                     sizes="(min-width: 768px) 24vw, 126px"
+                    quality={45}
                     className="object-cover"
-                    priority={index < 4}
                   />
                 </div>
                 <div className="p-2.5 small:p-3.5">

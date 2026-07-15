@@ -25,7 +25,10 @@ export async function getStoreReviews(): Promise<StoreReviewSummary | null> {
   try {
     return await sdk.client.fetch<StoreReviewSummary>("/store/reviews/list", {
       method: "GET",
-      cache: "no-store",
+      cache: "force-cache",
+      next: {
+        revalidate: 300,
+      },
     })
   } catch {
     return null
