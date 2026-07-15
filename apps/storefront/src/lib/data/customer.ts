@@ -195,6 +195,144 @@ export async function resetPassword(
   redirect(`/${countryCode}/account`)
 }
 
+export async function updateCustomerPassword(
+  _currentState: { success: boolean; error: string | null },
+  formData: FormData
+): Promise<{ success: boolean; error: string | null }> {
+  const oldPassword = formData.get("old_password") as string
+  const newPassword = formData.get("new_password") as string
+  const confirmPassword = formData.get("confirm_password") as string
+
+  if (!oldPassword || !newPassword || !confirmPassword) {
+    return { success: false, error: "All fields are required." }
+  }
+
+  if (newPassword.length < 8) {
+    return {
+      success: false,
+      error: "New password must be at least 8 characters.",
+    }
+  }
+
+  if (newPassword !== confirmPassword) {
+    return { success: false, error: "New passwords must match." }
+  }
+
+  const customer = await retrieveCustomer()
+
+  if (!customer?.email) {
+    return {
+      success: false,
+      error: "Unable to verify your account. Please log in again.",
+    }
+  }
+
+  // Medusa's auth update route trusts the bearer token's identity rather than
+  // checking an old password, so we verify it ourselves with a login attempt
+  // before allowing the change.
+  let token: string
+
+  try {
+    const result = await sdk.auth.login("customer", "emailpass", {
+      email: customer.email,
+      password: oldPassword,
+    })
+
+    if (typeof result !== "string") {
+      return {
+        success: false,
+        error: "Additional authentication is required to change your password.",
+      }
+    }
+
+    token = result
+  } catch {
+    return { success: false, error: "Current password is incorrect." }
+  }
+
+  try {
+    await sdk.auth.updateProvider(
+      "customer",
+      "emailpass",
+      {
+        email: customer.email,
+        password: newPassword,
+      },
+      token
+    )
+  } catch {
+    return {
+      success: false,
+      error: "Could not update password. Please try again.",
+    }
+  }
+
+  await setAuthToken(token)
+
+  const cacheTag = await getCacheTag("customers")
+  revalidateTag(cacheTag)
+
+  return { success: true, error: null }
+}
+
+export async function updateCustomerEmail(
+  _currentState: { success: boolean; error: string | null },
+  formData: FormData
+): Promise<{ success: boolean; error: string | null }> {
+  const newEmail = (formData.get("email") as string)?.trim()
+  const currentPassword = formData.get("current_password") as string
+
+  if (!newEmail || !currentPassword) {
+    return {
+      success: false,
+      error: "Email and current password are required.",
+    }
+  }
+
+  const customer = await retrieveCustomer()
+
+  if (!customer?.email) {
+    return {
+      success: false,
+      error: "Unable to verify your account. Please log in again.",
+    }
+  }
+
+  if (newEmail === customer.email) {
+    return { success: false, error: "This is already your email address." }
+  }
+
+  // Changing the login email is sensitive, so we confirm the current
+  // password before renaming the underlying auth identity.
+  try {
+    await sdk.auth.login("customer", "emailpass", {
+      email: customer.email,
+      password: currentPassword,
+    })
+  } catch {
+    return { success: false, error: "Current password is incorrect." }
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  try {
+    await sdk.client.fetch("/store/customers/me/email", {
+      method: "POST",
+      body: { email: newEmail },
+      headers,
+    })
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+
+  const cacheTag = await getCacheTag("customers")
+  revalidateTag(cacheTag)
+
+  return { success: true, error: null }
+}
+
 export async function signout(countryCode: string) {
   await sdk.auth.logout()
 

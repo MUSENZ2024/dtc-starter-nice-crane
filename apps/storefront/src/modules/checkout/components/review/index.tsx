@@ -1,7 +1,8 @@
 "use client"
 
-import { Heading, Text, clx } from "@modules/common/components/ui"
+import { Heading, clx } from "@modules/common/components/ui"
 
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import PaymentButton from "../payment-button"
 import { useSearchParams } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
@@ -37,17 +38,31 @@ const Review = ({ cart }: { cart: HttpTypes.StoreCart }) => {
       </div>
       {isOpen && previousStepsCompleted && (
         <>
-          <div className="mb-6 rounded-2xl border border-muse-border bg-muse-cream-warm p-4">
-            <Text className="mb-2 text-[14px] font-bold text-muse-black">
-              Review your order before payment is confirmed.
-            </Text>
-            <Text className="text-[12.5px] leading-relaxed text-muse-text-muted">
-              By placing your order, you agree to MUSE NZ&apos;s Terms of
-              Service, Returns Policy, and Privacy Policy. Your payment is
-              processed securely and your confirmation is sent by email.
-            </Text>
-          </div>
           <PaymentButton cart={cart} data-testid="submit-order-button" />
+          <p className="mt-3 text-center text-[11.5px] leading-relaxed text-muse-text-light">
+            By placing your order, you agree to our{" "}
+            <LocalizedClientLink
+              href="/terms"
+              className="underline hover:text-muse-black"
+            >
+              Terms
+            </LocalizedClientLink>
+            ,{" "}
+            <LocalizedClientLink
+              href="/terms#returns"
+              className="underline hover:text-muse-black"
+            >
+              Returns Policy
+            </LocalizedClientLink>
+            , and{" "}
+            <LocalizedClientLink
+              href="/privacy"
+              className="underline hover:text-muse-black"
+            >
+              Privacy Policy
+            </LocalizedClientLink>
+            .
+          </p>
         </>
       )}
     </div>

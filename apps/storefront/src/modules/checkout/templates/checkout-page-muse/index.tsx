@@ -87,7 +87,7 @@ export default function CheckoutPageMuse({
           <link rel="preconnect" href="https://maps.gstatic.com" />
           <Script
             id="google-maps-places-script"
-            src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&loading=async&language=en-NZ&region=NZ`}
+            src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&language=en-NZ&region=NZ`}
             strategy="afterInteractive"
           />
         </>

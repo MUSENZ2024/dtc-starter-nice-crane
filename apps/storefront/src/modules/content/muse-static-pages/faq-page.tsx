@@ -4,12 +4,26 @@ import { useEffect, useRef } from "react"
 
 import { faqHtml } from "./faq.html"
 
+const visibleFaqHtml = faqHtml.replace(
+  /\n\n            <div class="faq-item" id="split-pay"[\s\S]*?(?=\n\n          <\/div>\n        <\/div>\n\n        <!-- SECTION 5: SHIPPING -->)/,
+  ""
+)
+
 export default function FaqPage() {
   const rootRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
+
+    // The archived FAQ markup still contains inline callbacks from its
+    // standalone HTML version. React supplies the live handlers below.
+    root.querySelectorAll<HTMLElement>("[onclick], [oninput]").forEach(
+      (element) => {
+        element.removeAttribute("onclick")
+        element.removeAttribute("oninput")
+      }
+    )
 
     const sectionHeads = Array.from(
       root.querySelectorAll<HTMLElement>(".section-head")
@@ -83,13 +97,44 @@ export default function FaqPage() {
       filter()
       search?.focus()
     })
+
+    const openDeepLink = (hash: string) => {
+      const id = hash.replace(/^#/, "")
+      if (!id) return
+
+      const item = root.querySelector<HTMLElement>(`.faq-item#${CSS.escape(id)}`)
+      if (!item) return
+
+      const section = item.closest(".faq-section")
+      const question = item.querySelector<HTMLElement>(".faq-q")
+
+      section?.classList.add("section-open")
+      section?.querySelector(".section-head")?.setAttribute("aria-expanded", "true")
+      item.classList.add("open")
+      question?.setAttribute("aria-expanded", "true")
+
+      window.requestAnimationFrame(() => {
+        item.scrollIntoView({ behavior: "smooth", block: "center" })
+      })
+    }
+
+    if (window.location.hash) {
+      openDeepLink(window.location.hash)
+    }
+
+    const handleHashChange = () => openDeepLink(window.location.hash)
+    window.addEventListener("hashchange", handleHashChange)
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange)
+    }
   }, [])
 
   return (
     <div
       ref={rootRef}
       className="muse-static-page muse-static-page-faq"
-      dangerouslySetInnerHTML={{ __html: faqHtml }}
+      dangerouslySetInnerHTML={{ __html: visibleFaqHtml }}
     />
   )
 }

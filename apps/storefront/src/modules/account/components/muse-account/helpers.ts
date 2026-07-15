@@ -1,4 +1,5 @@
 import { convertToLocale } from "@lib/util/money"
+import { isStripeLike, paymentInfoMap } from "@lib/constants"
 import { HttpTypes } from "@medusajs/types"
 
 export const getCustomerName = (customer: HttpTypes.StoreCustomer | null) => {
@@ -65,11 +66,119 @@ export const formatStatus = (value?: string | null) => {
     .join(" ")
 }
 
+type PaymentLike = {
+  provider_id?: string
+  data?: Record<string, unknown> | null
+}
+
+type FulfillmentLabelLike = {
+  tracking_number?: string | null
+  tracking_url?: string | null
+  label_url?: string | null
+  status?: string | null
+}
+
+type FulfillmentLike = {
+  labels?: FulfillmentLabelLike[] | null
+}
+
+const formatWords = (value?: string | null, fallback = "") => {
+  if (!value) {
+    return fallback
+  }
+
+  return value
+    .replace(/^pp_/, "")
+    .replace(/_stripe$/, "")
+    .replace(/_/g, " ")
+    .split(" ")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ")
+}
+
+const formatCardBrand = (brand?: unknown) =>
+  typeof brand === "string" && brand.length > 0
+    ? formatWords(brand, "Card")
+    : "Card"
+
+const getPaymentDataString = (
+  data: Record<string, unknown> | null | undefined,
+  keys: string[]
+) => {
+  for (const key of keys) {
+    const value = data?.[key]
+    if (typeof value === "string" && value.trim()) {
+      return value.trim()
+    }
+  }
+
+  return undefined
+}
+
+export const getPaymentDisplay = (payment?: PaymentLike) => {
+  if (!payment) {
+    return "Payment confirmed"
+  }
+
+  const data = payment.data
+  const last4 = getPaymentDataString(data, [
+    "card_last4",
+    "last4",
+    "display_number",
+  ])
+  const brand = getPaymentDataString(data, ["card_brand", "brand"])
+  const paymentType = getPaymentDataString(data, [
+    "payment_method_type",
+    "type",
+    "payment_type",
+  ])
+
+  if (last4 && (isStripeLike(payment.provider_id) || brand)) {
+    return `${formatCardBrand(brand)} ending ${last4}`
+  }
+
+  if (paymentType === "afterpay_clearpay") {
+    return "Afterpay"
+  }
+
+  if (paymentType) {
+    return formatWords(paymentType, "Payment confirmed")
+  }
+
+  return paymentInfoMap[payment.provider_id || ""]?.title || "Payment confirmed"
+}
+
+export const getPaymentStatusDisplay = (value?: string | null) => {
+  if (value === "captured" || value === "authorized") {
+    return "Paid"
+  }
+
+  if (value === "partially_refunded") {
+    return "Partially refunded"
+  }
+
+  if (value === "refunded") {
+    return "Refunded"
+  }
+
+  if (value === "canceled" || value === "cancelled") {
+    return "Cancelled"
+  }
+
+  return formatStatus(value || "pending")
+}
+
 export const getOrderStatus = (order: HttpTypes.StoreOrder) => {
   const fulfillmentStatus = order.fulfillment_status
+  const tracking = getOrderTracking(order)
 
   if (fulfillmentStatus === "delivered") {
     return { label: "Delivered", className: "muse-status-delivered" }
+  }
+
+  if (tracking.length > 0) {
+    return { label: "Tracking available", className: "muse-status-transit" }
   }
 
   if (
@@ -88,12 +197,40 @@ export const getPrimaryOrderItem = (order: HttpTypes.StoreOrder) =>
 
 export const getItemMeta = (item?: HttpTypes.StoreOrderLineItem | null) => {
   if (!item) {
-    return "Qty 0"
+    return ""
   }
 
   const variantTitle = item.variant?.title || undefined
+  const sizeLabel = variantTitle ? `Size ${variantTitle}` : undefined
+  const quantityLabel =
+    item.quantity && item.quantity > 1 ? `Quantity ${item.quantity}` : undefined
 
-  return [variantTitle, `Qty ${item.quantity}`].filter(Boolean).join(" · ")
+  return [sizeLabel, quantityLabel].filter(Boolean).join(" · ")
+}
+
+export const getOrderTracking = (order: HttpTypes.StoreOrder) => {
+  const fulfillments = (order as unknown as {
+    fulfillments?: FulfillmentLike[] | null
+  }).fulfillments
+
+  return (fulfillments || [])
+    .flatMap((fulfillment) => fulfillment.labels || [])
+    .map((label) => {
+      const number = label.tracking_number?.trim()
+      if (!number) {
+        return null
+      }
+
+      return {
+        number,
+        url:
+          label.tracking_url ||
+          label.label_url ||
+          `/nz/track?number=${encodeURIComponent(number)}`,
+        status: label.status ? formatStatus(label.status) : undefined,
+      }
+    })
+    .filter(Boolean) as Array<{ number: string; url: string; status?: string }>
 }
 
 export const getAddressLines = (

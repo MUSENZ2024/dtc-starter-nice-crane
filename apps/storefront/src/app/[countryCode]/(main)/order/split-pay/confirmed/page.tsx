@@ -2,12 +2,14 @@ import {
   SPLIT_PAY_INSTALLMENTS,
   formatSplitPayMoney,
 } from "@lib/split-pay"
+import { isMusePayEnabled } from "@lib/muse-pay"
 import { retrieveOrder } from "@lib/data/orders"
 import { getStripeServer } from "@lib/stripe/server"
 import { convertToLocale } from "@lib/util/money"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HttpTypes } from "@medusajs/types"
 import { Metadata } from "next"
+import { notFound } from "next/navigation"
 import Stripe from "stripe"
 
 export const metadata: Metadata = {
@@ -73,6 +75,10 @@ async function getSplitPayCardLabel(scheduleId?: string) {
 }
 
 export default async function SplitPayConfirmedPage({ searchParams }: Props) {
+  if (!isMusePayEnabled) {
+    notFound()
+  }
+
   const params = await searchParams
   const currency = getParam(params, "currency") || "nzd"
   const totalCents = Number(getParam(params, "total_cents") || 0)

@@ -5,9 +5,11 @@ import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { ProductFilterParams, SortOptions } from "./products.types"
-import { getAuthHeaders, getCacheOptions } from "./cookies"
+import { getAuthHeaders } from "./cookies"
 import { PRODUCT_LIST_FIELDS } from "./product-fields"
 import { getRegion, retrieveRegion } from "./regions"
+
+const DEFAULT_PRODUCT_REVALIDATE_SECONDS = 60
 
 const isPublishedProduct = (product: HttpTypes.StoreProduct) => {
   const status = (product as HttpTypes.StoreProduct & { status?: string }).status
@@ -37,11 +39,20 @@ export const listProducts = async ({
   queryParams,
   countryCode,
   regionId,
+  revalidateSeconds,
 }: {
   pageParam?: number
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductListParams
   countryCode?: string
   regionId?: string
+  /**
+   * Opt in to a short time-based cache instead of the default no-store
+   * fetch. Use only for non-critical, high-frequency call sites (nav search
+   * index, cart drawer upsells) where a brief delay before catalogue edits
+   * show up is an acceptable trade for not hitting the backend on every
+   * page render.
+   */
+  revalidateSeconds?: number
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -67,11 +78,10 @@ export const listProducts = async ({
     ...(await getAuthHeaders()),
   }
 
-  const next = {
-    ...(await getCacheOptions("products")),
-  }
-
   const fields = withProductStatusField(queryParams?.fields)
+  const next = {
+    revalidate: revalidateSeconds ?? DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+  }
 
   return sdk.client
     .fetch<{ products: HttpTypes.StoreProduct[]; count: number }>(
@@ -87,7 +97,6 @@ export const listProducts = async ({
         },
         headers,
         next,
-        cache: "force-cache",
       }
     )
     .then(({ products, count }) => {
@@ -114,11 +123,13 @@ export const listProductsWithSort = async ({
   queryParams,
   sortBy = "created_at",
   countryCode,
+  revalidateSeconds,
 }: {
   page?: number
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
   sortBy?: SortOptions
   countryCode: string
+  revalidateSeconds?: number
 }): Promise<{
   response: { products: HttpTypes.StoreProduct[]; count: number }
   nextPage: number | null
@@ -137,6 +148,7 @@ export const listProductsWithSort = async ({
       limit: pageSize,
     },
     countryCode,
+    revalidateSeconds,
   })
 
   products.push(...firstPage.response.products)
@@ -159,6 +171,7 @@ export const listProductsWithSort = async ({
         limit: pageSize,
       },
       countryCode,
+      revalidateSeconds,
     })
 
     if (!nextProducts.length) {
@@ -305,7 +318,8 @@ const getCheapestAmount = (product: HttpTypes.StoreProduct) => {
       ?.map((variant) => variant.calculated_price?.calculated_amount)
       .filter((amount): amount is number => typeof amount === "number") ?? []
 
-  return amounts.length ? Math.min(...amounts) / 100 : 0
+  // Medusa prices in this store are already in display currency units.
+  return amounts.length ? Math.min(...amounts) : 0
 }
 
 const productHasTagValue = (product: HttpTypes.StoreProduct, value: string) =>
@@ -404,7 +418,9 @@ export async function listProductsFiltered({
     category_id,
     collection_id,
     stock,
+    nz_stock_collection_id,
     tag_id,
+    tag_filter_groups,
     colour_tag_id,
     tag_product_ids,
     q,
@@ -418,18 +434,16 @@ export async function listProductsFiltered({
     limit = 12,
   } = filters
 
-  const serverTagIds =
-    tag_id?.length || (colour_tag_id?.length === 1 && !tag_id?.length)
-      ? [...(tag_id ?? []), ...(tag_id?.length ? [] : colour_tag_id ?? [])]
-      : undefined
-
   const queryParams = {
     ...(category_id?.length ? { category_id } : {}),
     ...(collection_id?.length ? { collection_id } : {}),
-    ...(serverTagIds?.length ? { tag_id: serverTagIds } : {}),
     ...(q ? { q } : {}),
   } as HttpTypes.FindParams & HttpTypes.StoreProductParams
 
+  const tagFilterIds = tag_filter_groups?.flat() ?? tag_id ?? []
+  const productTagIdsToFetch = Array.from(
+    new Set([...tagFilterIds, ...(colour_tag_id ?? [])])
+  )
   const needsClientFiltering = Boolean(
     stock ||
       sizes?.length ||
@@ -440,7 +454,7 @@ export async function listProductsFiltered({
       priceMin !== undefined ||
       priceMax !== undefined ||
       sortBy === "ships_soonest" ||
-      (tag_id?.length ?? 0) > 1 ||
+      productTagIdsToFetch.length ||
       !["created_at", "best_sellers", "price_asc", "price_desc"].includes(sortBy)
   )
 
@@ -453,8 +467,9 @@ export async function listProductsFiltered({
           limit,
         },
         sortBy,
-        countryCode,
-      })
+      countryCode,
+      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+    })
 
       return {
         products: response.products,
@@ -470,8 +485,9 @@ export async function listProductsFiltered({
         ...queryParams,
         limit,
       },
-      countryCode,
-    })
+        countryCode,
+        revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+      })
 
     return {
       products: response.products,
@@ -481,36 +497,51 @@ export async function listProductsFiltered({
     }
   }
 
-  const productsForFiltering =
-    colour_tag_id?.length && colourTagFilterApplied
-      ? mergeProductsById(
-          await Promise.all(
-            colour_tag_id.map(async (colourTagId) => {
-              const { response } = await listProducts({
-                pageParam: 1,
-                queryParams: {
-                  ...queryParams,
-                  tag_id: [colourTagId],
-                  limit: 100,
-                },
-                countryCode,
-              })
-
-              return response.products
+  let productsForFiltering = productTagIdsToFetch.length
+    ? mergeProductsById(
+        await Promise.all(
+          productTagIdsToFetch.map(async (productTagId) => {
+            const { response } = await listProducts({
+              pageParam: 1,
+              queryParams: {
+                ...queryParams,
+                tag_id: [productTagId],
+                limit: 100,
+              },
+              countryCode,
+              revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
             })
-          )
-        )
-      : (
-          await listProductsWithSort({
-            page: 1,
-            queryParams: {
-              ...queryParams,
-              limit: 100,
-            },
-            sortBy: sortBy === "ships_soonest" ? "created_at" : sortBy,
-            countryCode,
+
+            return response.products
           })
-        ).response.products
+        )
+      )
+    : (
+        await listProductsWithSort({
+          page: 1,
+          queryParams: {
+            ...queryParams,
+            limit: 100,
+          },
+          sortBy: sortBy === "ships_soonest" ? "created_at" : sortBy,
+          countryCode,
+          revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+        })
+      ).response.products
+
+  if (sortBy === "ships_soonest" && nz_stock_collection_id) {
+    const { response } = await listProducts({
+      pageParam: 1,
+      queryParams: {
+        collection_id: [nz_stock_collection_id],
+        limit: 100,
+      },
+      countryCode,
+      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+    })
+
+    productsForFiltering = mergeProductsById([response.products, productsForFiltering])
+  }
 
   let filtered = [...productsForFiltering]
 
@@ -518,17 +549,20 @@ export async function listProductsFiltered({
     filtered = filtered.filter((product) => productHasStockState(product, stock))
   }
 
-  if (tag_id?.length) {
+
+  if (tag_filter_groups?.length || tag_id?.length) {
     filtered = filtered.filter((product) => {
       const productTagIds = new Set(product.tags?.map((tag) => tag.id) ?? [])
 
-      return tag_id.every((id) => {
-        const taggedProductIds = tag_product_ids?.[id]
+      return (tag_filter_groups ?? [tag_id ?? []]).every((group) =>
+        group.some((id) => {
+          const taggedProductIds = tag_product_ids?.[id]
 
-        return taggedProductIds?.length
-          ? taggedProductIds.includes(product.id)
-          : productTagIds.has(id)
-      })
+          return taggedProductIds?.length
+            ? taggedProductIds.includes(product.id)
+            : productTagIds.has(id)
+        })
+      )
     })
   }
 

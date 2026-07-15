@@ -3,7 +3,9 @@ import Medusa, { FetchArgs, FetchInput } from "@medusajs/js-sdk"
 
 // Defaults to standard port for Medusa server
 let MEDUSA_BACKEND_URL = "http://localhost:9000"
-const MEDUSA_FETCH_TIMEOUT_MS = 20000
+const MEDUSA_FETCH_TIMEOUT_MS = Number(
+  process.env.MEDUSA_FETCH_TIMEOUT_MS ?? 15000
+)
 
 if (process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL) {
   MEDUSA_BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL

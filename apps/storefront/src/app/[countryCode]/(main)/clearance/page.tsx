@@ -1,5 +1,4 @@
 import { Metadata } from "next"
-import { notFound } from "next/navigation"
 
 import { listCategories } from "@lib/data/categories"
 import { listCollections } from "@lib/data/collections"
@@ -36,8 +35,6 @@ type Params = {
 }
 
 export default async function ClearancePage(props: Params) {
-  notFound()
-
   const params = await props.params
   const searchParams = await props.searchParams
 
@@ -55,7 +52,7 @@ export default async function ClearancePage(props: Params) {
     ])
 
   const nzStockCollection = collectionsResponse.collections.find(
-    (collection) => collection.handle === "nz-stock"
+    (collection) => collection.handle?.trim() === "nz-stock"
   )
   const standardCollection = collectionsResponse.collections.find(
     (collection) => collection.handle === "standard-delivery"

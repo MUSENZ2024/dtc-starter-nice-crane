@@ -90,6 +90,9 @@ export default function CheckoutSummaryMuse({
                   />
                   {fulfilment.shortLabel}
                 </p>
+                <p className="mt-0.5 text-[11.5px] text-muse-text-light">
+                  {fulfilment.deliveryLabel}
+                </p>
                 {item.quantity > 1 && (
                   <p className="text-[11.5px] text-muse-text-light">
                     {money(cart, item.unit_price ?? 0)} each
@@ -110,7 +113,7 @@ export default function CheckoutSummaryMuse({
               {fulfilmentSummary.fullOrderLabel}
             </p>
             <p className="mt-1 text-[11.5px] text-muse-text-muted">
-              Each item keeps the same fulfilment state from product page to delivery.
+              {fulfilmentSummary.supportCopy}
             </p>
           </div>
         )}

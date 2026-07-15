@@ -27,6 +27,7 @@ export default function StepContact({
   onEdit,
 }: Props) {
   const [email, setEmail] = useState(cart.email ?? customer?.email ?? "")
+  const [error, setError] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -34,9 +35,17 @@ export default function StepContact({
     event.preventDefault()
 
     startTransition(async () => {
-      await updateCart({ email })
-      router.refresh()
-      onComplete()
+      setError(null)
+
+      try {
+        await updateCart({ email })
+        router.refresh()
+        onComplete()
+      } catch {
+        setError(
+          "We couldn't save your email right now. Please check your connection and try again."
+        )
+      }
     })
   }
 
@@ -78,6 +87,12 @@ export default function StepContact({
               className="w-full rounded-xl border border-muse-input bg-white px-4 py-3.5 text-[14px] text-muse-black outline-none transition placeholder:text-[#c0bdb8] focus:border-muse-black focus:ring-2 focus:ring-black/5"
             />
           </div>
+
+          {error && (
+            <p role="alert" className="text-[12.5px] font-medium text-red-700">
+              {error}
+            </p>
+          )}
 
           <label className="flex cursor-pointer items-start gap-2.5 text-[13px] text-muse-text-muted">
             <input type="checkbox" defaultChecked className="mt-0.5 accent-muse-black" />

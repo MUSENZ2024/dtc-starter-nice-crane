@@ -6,7 +6,9 @@ import {
   getSplitPayInstallments,
 } from "@lib/split-pay"
 import { HttpTypes } from "@medusajs/types"
+import { InformationCircleSolid } from "@medusajs/icons"
 import { Button } from "@modules/common/components/ui"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import {
   Elements,
   PaymentElement,
@@ -39,6 +41,7 @@ export default function SplitPayTest({ cart }: Props) {
   const [isLoading, setIsLoading] = useState(false)
   const [setupState, setSetupState] = useState<SetupIntentResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [showInfo, setShowInfo] = useState(false)
   const searchParams = useSearchParams()
   const splitPayError = searchParams.get("split_pay_error")
   const totalCents = getCartTotalCents(cart)
@@ -120,13 +123,38 @@ export default function SplitPayTest({ cart }: Props) {
           <h3 className="text-[15px] font-black text-muse-black">
             MUSE Split Pay
           </h3>
-          <span className="rounded-full bg-white px-3 py-1 text-[10.5px] font-extrabold uppercase tracking-[0.08em] text-muse-text-muted">
-            Test
-          </span>
+          <button
+            type="button"
+            onClick={() => setShowInfo((open) => !open)}
+            aria-expanded={showInfo}
+            aria-controls="split-pay-info-panel"
+            className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-muse-text-muted transition hover:text-muse-black"
+          >
+            <InformationCircleSolid />
+            <span className="sr-only">How does MUSE Split Pay work?</span>
+          </button>
         </div>
         <p className="text-[12.5px] leading-5 text-muse-text-muted">
           Pay over 4 weekly card payments. Your order ships once paid in full.
         </p>
+        {showInfo && (
+          <div
+            id="split-pay-info-panel"
+            className="mt-2 rounded-xl bg-white px-3 py-3 text-[12.5px] leading-5 text-muse-text-muted"
+          >
+            <p>
+              Choose Split Pay and enter your card once. The first of four
+              weekly payments is taken straight away; the rest charge
+              automatically. Your order ships once the final payment clears.
+            </p>
+            <LocalizedClientLink
+              href="/faq#split-pay"
+              className="mt-1.5 inline-block font-bold text-muse-orange hover:text-muse-black"
+            >
+              Learn more
+            </LocalizedClientLink>
+          </div>
+        )}
       </div>
 
       <div className="mb-4 rounded-xl bg-white px-3 py-3 text-[12.5px]">

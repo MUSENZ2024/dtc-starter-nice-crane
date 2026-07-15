@@ -292,6 +292,84 @@ const isAdidasProduct = (product: HttpTypes.StoreProduct) => {
   return /\badidas\b/.test(searchable)
 }
 
+const isDrMartensProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\b(dr\.?\s*martens|doc\s*martens|drmartens)\b/.test(searchable)
+}
+
+const isSalomonProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\bsalomon\b/.test(searchable)
+}
+
+const getUsMensWomensSizeButtonLabel = (value: string) => {
+  const mensSize = Number(value)
+
+  if (!Number.isFinite(mensSize)) {
+    return value.toUpperCase()
+  }
+
+  return `M ${value} / W ${mensSize + 1.5}`
+}
+
+const isTimberlandProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\btimberland\b/.test(searchable)
+}
+
+const isHokaProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\bhoka\b/.test(searchable)
+}
+
 const northFacePufferSizeRows = [
   ["XXS", "62cm", "109cm", "46cm", "63cm", "155-160cm / 45-52kg"],
   ["XS", "64cm", "113cm", "48cm", "64cm", "160-165cm / 53-58kg"],
@@ -374,23 +452,50 @@ const nikeJordanShoeSizeRows = [
   ["14.5", "16", "49", "32.5", "13.5"],
 ]
 
+// Salomon uses paired U.S. Men's / U.S. Women's buttons. Keep the requested
+// Nike conversion grid as the shared reference for the drawer columns.
+const salomonShoeSizeRows = nikeJordanShoeSizeRows
+
+// Timberland uses the same paired U.S. Men's / U.S. Women's drawer format.
+const timberlandShoeSizeRows = nikeJordanShoeSizeRows
+
+// Hoka uses the same paired U.S. Men's / U.S. Women's drawer format.
+const hokaShoeSizeRows = nikeJordanShoeSizeRows
+
 const adidasShoeSizeRows = [
-  ["4", "5", "35", "21", "2.5"],
-  ["4.5", "5.5", "35.5", "21.5", "3"],
-  ["5", "6", "36", "22", "3.5"],
-  ["5.5", "6.5", "36.5", "22.5", "4"],
-  ["6", "7", "37", "23", "4.5"],
-  ["6.5", "7.5", "38", "23.5", "5"],
-  ["7", "8", "38.5", "24", "5.5"],
-  ["7.5", "8.5", "39", "24.5", "6"],
-  ["8", "9", "40", "25", "6.5"],
-  ["8.5", "9.5", "40.5", "25.5", "7"],
-  ["9", "10", "41", "26", "7.5"],
-  ["9.5", "10.5", "42", "26.5", "8"],
-  ["10", "11", "42.5", "27", "8.5"],
-  ["10.5", "11.5", "43", "27.5", "9"],
-  ["11", "12", "44", "28", "9.5"],
-  ["12", "13", "45", "29", "10.5"],
+  ["3.5", "5", "35.5", "22", "3"],
+  ["4", "5.5", "36", "22.5", "3.5"],
+  ["4.5", "6", "36.5", "23", "4"],
+  ["5", "6.5", "37", "23.5", "4.5"],
+  ["5.5", "7", "38", "24", "5"],
+  ["6", "7.5", "38.5", "24.5", "5.5"],
+  ["6.5", "8", "39", "25", "6"],
+  ["7", "8.5", "40", "25.5", "6.5"],
+  ["7.5", "9", "40.5", "26", "7"],
+  ["8", "9.5", "41", "26.5", "7.5"],
+  ["8.5", "10", "42", "27", "8"],
+  ["9", "10.5", "42.5", "27.5", "8.5"],
+  ["9.5", "11", "43", "28", "9"],
+  ["10", "11.5", "44", "28.5", "9.5"],
+  ["11", "12.5", "45", "29", "10.5"],
+]
+
+// Dr Martens products are listed in EU sizing. The US, CM, and UK conversions
+// follow the supplied Nike conversion chart so shoppers can compare a size
+// they already own.
+const drMartensShoeSizeRows = [
+  ["4", "5", "36", "22", "3"],
+  ["5", "6", "37", "23", "4"],
+  ["6", "7", "38", "24", "5"],
+  ["7", "8", "39", "25", "6"],
+  ["8", "9", "41", "26", "7"],
+  ["9", "10", "42", "27", "8"],
+  ["10", "11", "43", "28", "9"],
+  ["11", "12", "45", "29", "10"],
+  ["12", "13", "46", "30", "11"],
+  ["13", "14", "47", "31", "12"],
+  ["14", "15", "48", "32", "13"],
+  ["15", "16", "49", "33", "14"],
 ]
 
 const AccordionItem = ({
@@ -521,6 +626,10 @@ export default function ProductActions({
   const useAsicsSizing = isAsicsProduct(product)
   const useNikeJordanSizing = isNikeOrJordanProduct(product)
   const useAdidasSizing = isAdidasProduct(product)
+  const useDrMartensSizing = isDrMartensProduct(product)
+  const useSalomonSizing = isSalomonProduct(product)
+  const useTimberlandSizing = isTimberlandProduct(product)
+  const useHokaSizing = isHokaProduct(product)
   const sizeValues =
     sizeOption?.values?.filter((value) =>
       useBirkenstockSizing ? isBirkenstockAdultSize(value.value) : true
@@ -531,6 +640,14 @@ export default function ProductActions({
     ? "True to size — 92% got their usual Birkenstock/EU size"
     : useAsicsSizing
     ? "True to size — 73% got their usual ASICS size"
+    : useDrMartensSizing
+    ? "True to size — 53% got their usual Dr Martens size"
+    : useSalomonSizing
+    ? "True to size — 88% got their usual Salomon size"
+    : useTimberlandSizing
+    ? "True to size — 91% got their usual Timberland size"
+    : useHokaSizing
+    ? "True to size — 91% got their usual Hoka size"
     : useNikeJordanSizing
     ? "True to size — 88% got their usual Nike/Jordan size"
     : useAdidasSizing
@@ -542,6 +659,14 @@ export default function ProductActions({
     ? "Choose your usual EU size. If you are between sizes or prefer a roomier clog fit, size up."
     : useAsicsSizing
     ? "ASICS are listed in EU sizing. Use the chart to compare your usual men's, women's, CM, or UK size."
+    : useDrMartensSizing
+    ? "Dr Martens are listed in EU sizing. Use the chart to compare your usual men's, women's, CM, or UK size."
+    : useSalomonSizing
+    ? "Salomon sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
+    : useTimberlandSizing
+    ? "Timberland sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
+    : useHokaSizing
+    ? "Hoka sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
     : useNikeJordanSizing
     ? "Nike and Jordan are listed in U.S. men's sizing on MUSE. Use the chart to compare men's, women's, EU, CM, and UK conversions."
     : useAdidasSizing
@@ -553,6 +678,14 @@ export default function ProductActions({
     ? "0%"
     : useAsicsSizing
     ? "1%"
+    : useDrMartensSizing
+    ? "1%"
+    : useSalomonSizing
+    ? "1%"
+    : useTimberlandSizing
+    ? "1%"
+    : useHokaSizing
+    ? "1%"
     : useNikeJordanSizing
     ? "1%"
     : useAdidasSizing
@@ -560,8 +693,14 @@ export default function ProductActions({
     : "9%"
   const fitTrueToSize = useBirkenstockSizing
     ? "92%"
-    : useNikeJordanSizing || useAdidasSizing
+    : useDrMartensSizing
+    ? "53%"
+    : useNikeJordanSizing || useAdidasSizing || useSalomonSizing
     ? "88%"
+    : useTimberlandSizing
+    ? "91%"
+    : useHokaSizing
+    ? "91%"
     : "73%"
   const fitSizedUp = useNorthFacePufferSizing
     ? "9%"
@@ -569,6 +708,14 @@ export default function ProductActions({
     ? "8%"
     : useAsicsSizing
     ? "26%"
+    : useDrMartensSizing
+    ? "56%"
+    : useSalomonSizing
+    ? "11%"
+    : useTimberlandSizing
+    ? "8%"
+    : useHokaSizing
+    ? "8%"
     : useNikeJordanSizing
     ? "11%"
     : useAdidasSizing
@@ -585,7 +732,13 @@ export default function ProductActions({
       ]
     : useBirkenstockSizing
     ? ["Birkenstock EU", "Women U.S.", "Men U.S."]
-    : useAsicsSizing || useNikeJordanSizing || useAdidasSizing
+    : useAsicsSizing ||
+      useNikeJordanSizing ||
+      useAdidasSizing ||
+      useDrMartensSizing ||
+      useSalomonSizing ||
+      useTimberlandSizing ||
+      useHokaSizing
     ? ["Men's", "Women's", "EU", "CM", "UK"]
     : ["Size", "Chest (cm)", "Length (cm)", "Sleeve (cm)"]
   const sizeGuideRows = useNorthFacePufferSizing
@@ -598,9 +751,17 @@ export default function ProductActions({
     ? adidasShoeSizeRows
     : useAsicsSizing
     ? asicsShoeSizeRows
+    : useDrMartensSizing
+    ? drMartensShoeSizeRows
+    : useSalomonSizing
+    ? salomonShoeSizeRows
+    : useTimberlandSizing
+    ? timberlandShoeSizeRows
+    : useHokaSizing
+    ? hokaShoeSizeRows
     : defaultSizeRows
   const sizeGuideLabel =
-    useBirkenstockSizing || useAsicsSizing
+    useBirkenstockSizing || useAsicsSizing || useDrMartensSizing
       ? "EU sizing · Size guide"
       : "US sizing · Size guide"
 
@@ -859,7 +1020,9 @@ export default function ProductActions({
                       : "border-[#D5D2CC] bg-white text-[#0A0A0A] hover:border-[#0A0A0A]"
                   }`}
                 >
-                  {value.value.toUpperCase()}
+                  {useSalomonSizing || useTimberlandSizing || useHokaSizing
+                    ? getUsMensWomensSizeButtonLabel(value.value)
+                    : value.value.toUpperCase()}
                   {isUnavailable && (
                     <span className="pointer-events-none absolute left-2 right-2 top-1/2 h-px -rotate-12 bg-[#AAA]" />
                   )}
@@ -868,6 +1031,21 @@ export default function ProductActions({
             })}
           </div>
           {useNikeJordanSizing && (
+            <p className="mt-2 text-[12.5px] font-semibold text-[#666]">
+              Sizes are shown as US Men's / US Women's.
+            </p>
+          )}
+          {useSalomonSizing && (
+            <p className="mt-2 text-[12.5px] font-semibold text-[#666]">
+              Sizes are shown as US Men's / US Women's.
+            </p>
+          )}
+          {useTimberlandSizing && (
+            <p className="mt-2 text-[12.5px] font-semibold text-[#666]">
+              Sizes are shown as US Men's / US Women's.
+            </p>
+          )}
+          {useHokaSizing && (
             <p className="mt-2 text-[12.5px] font-semibold text-[#666]">
               Sizes are shown as US Men's / US Women's.
             </p>
@@ -1047,6 +1225,14 @@ export default function ProductActions({
                   ? "Birkenstock footwear is made in European sizes. Use the adult conversion chart in the size guide for U.S. sizing."
                   : useAsicsSizing
                   ? "ASICS footwear is listed in EU sizing on our site. Use the size guide to compare men's, women's, CM, and UK conversions."
+                  : useDrMartensSizing
+                  ? "Dr Martens footwear is listed in EU sizing on MUSE. Use the size guide to compare men's, women's, CM, and UK conversions."
+                  : useSalomonSizing
+                  ? "Salomon sizes are shown as U.S. Men's / U.S. Women's on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
+                  : useTimberlandSizing
+                  ? "Timberland sizes are shown as U.S. Men's / U.S. Women's on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
+                  : useHokaSizing
+                  ? "Hoka sizes are shown as U.S. Men's / U.S. Women's on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
                   : useNikeJordanSizing
                   ? "Nike and Jordan footwear is listed in U.S. men's sizing on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
                   : useAdidasSizing
@@ -1059,6 +1245,14 @@ export default function ProductActions({
                     ? "This Birkenstock style fits true to size."
                     : useAsicsSizing
                     ? "This ASICS style fits true to size."
+                    : useDrMartensSizing
+                    ? "This Dr Martens style fits true to size."
+                    : useSalomonSizing
+                    ? "Salomon footwear fits true to size for most buyers."
+                    : useTimberlandSizing
+                    ? "Timberland footwear fits true to size for most buyers."
+                    : useHokaSizing
+                    ? "Hoka footwear fits true to size for most buyers."
                     : useNikeJordanSizing
                     ? "Nike/Jordan footwear fits true to size for most buyers."
                     : useAdidasSizing
@@ -1069,6 +1263,14 @@ export default function ProductActions({
                   ? "Based on fit feedback, 92% got their usual size and 8% sized up."
                   : useAsicsSizing
                   ? "Based on fit feedback, 1% sized down, 73% got their usual size, and 26% sized up."
+                  : useDrMartensSizing
+                  ? "Based on fit feedback, 1% sized down, 53% got their usual size, and 56% sized up."
+                  : useSalomonSizing
+                  ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
+                  : useTimberlandSizing
+                  ? "Based on fit feedback, 1% sized down, 91% got their usual size, and 8% sized up."
+                  : useHokaSizing
+                  ? "Based on fit feedback, 1% sized down, 91% got their usual size, and 8% sized up."
                   : useNikeJordanSizing
                   ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
                   : useAdidasSizing
@@ -1164,16 +1366,30 @@ export default function ProductActions({
                     ? "Birkenstock Boston fits true to size."
                     : useAsicsSizing
                     ? "ASICS footwear fits true to size for most buyers."
+                    : useDrMartensSizing
+                    ? "Dr Martens footwear fits true to size for most buyers."
+                    : useSalomonSizing
+                    ? "Salomon footwear fits true to size for most buyers."
+                    : useTimberlandSizing
+                    ? "Timberland footwear fits true to size for most buyers."
+                    : useHokaSizing
+                    ? "Hoka footwear fits true to size for most buyers."
                     : useNikeJordanSizing
                     ? "Nike/Jordan footwear fits true to size for most buyers."
                     : useAdidasSizing
                     ? "adidas footwear fits true to size for most buyers."
                     : "This style fits true to size."}
                 </strong>{" "}
-                {useNikeJordanSizing || useAdidasSizing
+                {useNikeJordanSizing || useAdidasSizing || useSalomonSizing
                   ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
+                  : useTimberlandSizing
+                  ? "Based on fit feedback, 1% sized down, 91% got their usual size, and 8% sized up."
+                  : useHokaSizing
+                  ? "Based on fit feedback, 1% sized down, 91% got their usual size, and 8% sized up."
                   : useAsicsSizing
                   ? "Based on fit feedback, 1% sized down, 73% got their usual size, and 26% sized up."
+                  : useDrMartensSizing
+                  ? "Based on fit feedback, 1% sized down, 53% got their usual size, and 56% sized up."
                   : useBirkenstockSizing
                   ? "Based on fit feedback, 92% of buyers got their usual size and 8% sized up."
                   : "Based on 47 verified reviews, 73% of buyers got their usual size."}
@@ -1196,6 +1412,14 @@ export default function ProductActions({
                     : useAdidasSizing
                     ? "size up if you prefer extra toe room or have wider feet"
                     : useAsicsSizing
+                    ? "size up if you prefer extra toe room"
+                    : useDrMartensSizing
+                    ? "size up if you prefer extra toe room"
+                    : useSalomonSizing
+                    ? "size up if you prefer extra toe room"
+                    : useTimberlandSizing
+                    ? "size up if you prefer extra toe room"
+                    : useHokaSizing
                     ? "size up if you prefer extra toe room"
                     : "size up"}
                 </p>
@@ -1294,6 +1518,73 @@ export default function ProductActions({
                   <p>
                     If your usual size sits between two EU sizes, choose the
                     larger size if you prefer more toe room.
+                  </p>
+                </div>
+              )}
+              {useDrMartensSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    Dr Martens products on MUSE use EU sizing. The chart above
+                    combines men's, women's, EU, CM, and UK conversions so you
+                    can compare against the size you already wear.
+                  </p>
+                  <p>
+                    Most buyers stay true to size. If you are between EU sizes
+                    or prefer extra toe room, choose the larger size.
+                  </p>
+                </div>
+              )}
+              {useSalomonSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    Salomon sizes on MUSE are shown as U.S. Men's / U.S.
+                    Women's. The chart above combines men's, women's, EU, CM,
+                    and UK conversions so you can compare against the size you
+                    already wear.
+                  </p>
+                  <p>
+                    Most buyers stay true to size. If you are between sizes or
+                    prefer extra toe room, choose the larger size.
+                  </p>
+                </div>
+              )}
+              {useTimberlandSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    Timberland sizes on MUSE are shown as U.S. Men's / U.S.
+                    Women's. The chart above combines men's, women's, EU, CM,
+                    and UK conversions so you can compare against the size you
+                    already wear.
+                  </p>
+                  <p>
+                    Most buyers stay true to size. If you are between sizes or
+                    prefer extra toe room, choose the larger size.
+                  </p>
+                </div>
+              )}
+              {useHokaSizing && (
+                <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
+                  <p>
+                    <strong className="font-bold text-[#0A0A0A]">
+                      Size Note:
+                    </strong>{" "}
+                    Hoka sizes on MUSE are shown as U.S. Men's / U.S. Women's.
+                    The chart above combines men's, women's, EU, CM, and UK
+                    conversions so you can compare against the size you already
+                    wear.
+                  </p>
+                  <p>
+                    Most buyers stay true to size. If you are between sizes or
+                    prefer extra toe room, choose the larger size.
                   </p>
                 </div>
               )}

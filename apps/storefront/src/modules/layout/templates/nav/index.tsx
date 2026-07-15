@@ -107,14 +107,22 @@ function MuseAnnouncementBar() {
 }
 
 export default async function Nav() {
-  const categories = await listCategories().catch(() => [])
-  const { response: productResponse } = await listProducts({
-    countryCode: "nz",
-    queryParams: {
-      fields: SEARCH_PRODUCT_FIELDS,
-      limit: SEARCH_PRODUCT_LIMIT,
-    },
-  }).catch(() => ({ response: { products: [], count: 0 } }))
+  const [categories, productResult] = await Promise.all([
+    listCategories().catch(() => []),
+    listProducts({
+      countryCode: "nz",
+      queryParams: {
+        fields: SEARCH_PRODUCT_FIELDS,
+        limit: SEARCH_PRODUCT_LIMIT,
+      },
+      // This powers the nav search-as-you-type index and renders on every
+      // page. Fetching it fresh (no-store) on every request and on every
+      // post-cart-mutation router.refresh() was a major source of perceived
+      // slowness; a short cache window removes that cost almost entirely.
+      revalidateSeconds: 120,
+    }).catch(() => ({ response: { products: [], count: 0 } })),
+  ])
+  const productResponse = productResult.response
 
   const categoryLinks = getVisibleCategoryLinks(categories)
   const productLinks = productResponse.products
@@ -198,16 +206,26 @@ export default async function Nav() {
                   </div>
                 </div>
 
+                <LocalizedClientLink
+                  href="/clearance"
+                  className="text-[11px] font-black uppercase tracking-[0.14em] text-[#C1440E] transition hover:opacity-80"
+                >
+                  Clearance
+                </LocalizedClientLink>
+
                 <LocalizedClientLink href="/track" className="muse-nav-link">
                   Track
+                </LocalizedClientLink>
+                <LocalizedClientLink href="/faq" className="muse-nav-link">
+                  FAQ / Help
                 </LocalizedClientLink>
               </div>
             </div>
 
             <LocalizedClientLink
-              href="/store"
+              href="/"
               className="flex items-center justify-center transition hover:opacity-75"
-              aria-label="MUSE store"
+              aria-label="MUSE home"
               data-testid="nav-store-link"
             >
               <img

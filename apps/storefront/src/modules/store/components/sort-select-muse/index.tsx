@@ -58,7 +58,7 @@ export default function SortSelectMuse({ currentSort }: { currentSort: string })
       {open && (
         <div
           role="listbox"
-          className="absolute right-0 top-[calc(100%+8px)] z-[90] w-[220px] overflow-hidden rounded-xl border border-muse-black/10 bg-muse-black py-1.5 text-muse-cream shadow-xl"
+          className="absolute bottom-[calc(100%+8px)] right-0 z-[90] w-[220px] overflow-hidden rounded-xl border border-muse-black/10 bg-muse-black py-1.5 text-muse-cream shadow-xl small:bottom-auto small:top-[calc(100%+8px)]"
         >
           {SORT_OPTIONS.map((option) => {
             const active = option.value === current.value

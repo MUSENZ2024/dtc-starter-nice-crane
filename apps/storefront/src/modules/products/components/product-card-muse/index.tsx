@@ -7,6 +7,7 @@ import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
+import Image from "next/image"
 import { useState, useTransition } from "react"
 
 type Props = {
@@ -62,6 +63,35 @@ const variantInStock = (variant: HttpTypes.StoreProductVariant) => {
   return (variant.inventory_quantity ?? 0) > 0
 }
 
+const PROMOTIONAL_TAG_LABELS: Record<string, string> = {
+  sale: "On sale",
+  "on-sale": "On sale",
+  bestseller: "Bestseller",
+  "best-seller": "Bestseller",
+  "best-sellers": "Bestseller",
+}
+
+const getPromotionalBadge = (product: HttpTypes.StoreProduct) => {
+  const tags = product.tags ?? []
+
+  for (const tag of tags) {
+    const value = tag.value?.toLowerCase()
+    if (!value) {
+      continue
+    }
+
+    const match = value.match(/^(?:badge|status)[:/](.+)$/)
+    const handle = match?.[1] ?? value
+    const label = PROMOTIONAL_TAG_LABELS[handle]
+
+    if (label) {
+      return label
+    }
+  }
+
+  return undefined
+}
+
 export default function ProductCardMuse({
   product,
   countryCode,
@@ -78,6 +108,7 @@ export default function ProductCardMuse({
     typeof product.metadata?.rrp_nzd === "string"
       ? product.metadata.rrp_nzd
       : undefined
+  const promotionalBadge = getPromotionalBadge(product)
   const sizes = getSizes(product)
   const hasSizes = sizes.length > 0
 
@@ -119,14 +150,9 @@ export default function ProductCardMuse({
             />
             {fulfilment.shortLabel}
           </span>
-          {position === 1 && (
+          {promotionalBadge && (
             <span className="rounded-full bg-muse-yellow px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black">
-              Bestseller
-            </span>
-          )}
-          {rrp && (
-            <span className="rounded-full bg-muse-orange px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-white">
-              Sale
+              {promotionalBadge}
             </span>
           )}
         </div>
@@ -134,10 +160,13 @@ export default function ProductCardMuse({
         <LocalizedClientLink href={`/products/${product.handle}`} className="block">
           <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.5),transparent_55%),linear-gradient(135deg,var(--muse-cream-deep),var(--muse-cream-warm)_55%,var(--muse-cream-deep))]">
             {product.thumbnail ? (
-              <img
+              <Image
                 src={product.thumbnail}
                 alt={product.title}
-                className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                fill
+                priority={position <= 4}
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="object-cover transition duration-500 group-hover:scale-105"
               />
             ) : (
               <span className="text-[clamp(40px,6vw,64px)] font-black tracking-[-0.04em] text-black/[0.07]">

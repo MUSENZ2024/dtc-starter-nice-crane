@@ -43,7 +43,7 @@ export default async function StorePage(props: Params) {
   ])
 
   const nzStockCollection = collectionsResponse.collections.find(
-    (collection) => collection.handle === "nz-stock"
+    (collection) => collection.handle?.trim() === "nz-stock"
   )
   const standardCollection = collectionsResponse.collections.find(
     (collection) => collection.handle === "standard-delivery"

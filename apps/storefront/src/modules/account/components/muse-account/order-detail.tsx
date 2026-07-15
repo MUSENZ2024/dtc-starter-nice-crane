@@ -1,12 +1,17 @@
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { BagIcon } from "./icons"
+import OrderStatusBadge from "./order-status-badge"
 import {
   formatDate,
   formatMoney,
   formatStatus,
   getAddressLines,
+  getItemMeta,
+  getOrderTracking,
   getOrderStatus,
+  getPaymentDisplay,
+  getPaymentStatusDisplay,
 } from "./helpers"
 
 type PaymentLike = {
@@ -22,13 +27,6 @@ const getPayment = (order: HttpTypes.StoreOrder): PaymentLike | undefined => {
   return paymentCollections?.[0]?.payments?.[0]
 }
 
-const getCardEnding = (payment?: PaymentLike) => {
-  const data = payment?.data
-  const last4 = data?.last4 || data?.card_last4 || data?.display_number
-
-  return typeof last4 === "string" ? `Card ending ${last4}` : payment?.provider_id
-}
-
 export default function MuseOrderDetail({
   order,
 }: {
@@ -36,6 +34,7 @@ export default function MuseOrderDetail({
 }) {
   const status = getOrderStatus(order)
   const payment = getPayment(order)
+  const tracking = getOrderTracking(order)
   const shippingAddress = order.shipping_address
   const shippingLines = getAddressLines(shippingAddress)
   const shippingName = [shippingAddress?.first_name, shippingAddress?.last_name]
@@ -67,7 +66,10 @@ export default function MuseOrderDetail({
           <div className="muse-panel">
             <div className="muse-panel-head">
               <h2 className="muse-panel-title">Items</h2>
-              <span className={`muse-status ${status.className}`}>{status.label}</span>
+              <OrderStatusBadge
+                fallback={status}
+                trackingNumbers={tracking.map((entry) => entry.number)}
+              />
             </div>
             <div className="grid gap-[18px]">
               {order.items?.map((item) => (
@@ -83,12 +85,13 @@ export default function MuseOrderDetail({
                       <BagIcon className="h-6 w-6 text-muse-text-light" />
                     )}
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <div className="font-black text-muse-black">{item.title}</div>
-                    <div className="text-[13px] text-muse-text-light">
-                      Variant: {item.variant?.title || "Standard"} · SKU{" "}
-                      {item.variant?.sku || "N/A"} · Qty {item.quantity}
-                    </div>
+                    {getItemMeta(item) ? (
+                      <div className="text-[13px] text-muse-text-light">
+                        {getItemMeta(item)}
+                      </div>
+                    ) : null}
                   </div>
                 </div>
               ))}
@@ -96,7 +99,10 @@ export default function MuseOrderDetail({
             <div className="muse-divider" />
             <div className="grid grid-cols-1 gap-3 small:grid-cols-2">
               <KeyValue label="Fulfillment" value={formatStatus(order.fulfillment_status)} />
-              <KeyValue label="Payment" value={formatStatus(order.payment_status)} />
+              <KeyValue
+                label="Payment"
+                value={getPaymentStatusDisplay(order.payment_status)}
+              />
               <KeyValue label="Currency" value={order.currency_code.toUpperCase()} />
               <KeyValue label="Order email" value={order.email || ""} />
             </div>
@@ -112,6 +118,27 @@ export default function MuseOrderDetail({
               />
               <KeyValue label="Shipping method" value={shippingMethod} />
             </div>
+            {tracking.length > 0 ? (
+              <div className="mt-[18px] border-t border-muse-border pt-4">
+                <span className="mb-3 block text-[11px] font-black uppercase tracking-[0.1em] text-muse-text-light">
+                  Tracking
+                </span>
+                <div className="grid gap-2">
+                  {tracking.map((item) => (
+                    <a
+                      key={item.number}
+                      href={item.url}
+                      className="flex flex-col gap-1 rounded-[10px] border border-muse-border bg-muse-cream px-4 py-3 text-sm font-black text-muse-black transition hover:border-muse-black xsmall:flex-row xsmall:items-center xsmall:justify-between"
+                    >
+                      <span>Tracking {item.number}</span>
+                      <span className="text-[11px] uppercase tracking-[0.08em] text-muse-orange">
+                        {item.status || "Track order"}
+                      </span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : null}
           </div>
         </div>
 
@@ -119,8 +146,11 @@ export default function MuseOrderDetail({
           <div className="muse-panel">
             <h2 className="muse-panel-title">Payment</h2>
             <div className="mt-[18px] grid gap-3">
-              <KeyValue label="Provider" value={getCardEnding(payment) || "Payment"} />
-              <KeyValue label="Status" value={formatStatus(order.payment_status)} />
+              <KeyValue label="Method" value={getPaymentDisplay(payment)} />
+              <KeyValue
+                label="Payment"
+                value={getPaymentStatusDisplay(order.payment_status)}
+              />
             </div>
           </div>
 

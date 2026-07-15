@@ -1,5 +1,4 @@
 import { Metadata } from "next"
-import { notFound } from "next/navigation"
 
 import FaqPage from "@modules/content/muse-static-pages/faq-page"
 
@@ -28,8 +27,6 @@ const faqSchema = {
 }
 
 export default function Page() {
-  notFound()
-
   return (
     <>
       <script

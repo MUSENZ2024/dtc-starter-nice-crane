@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MUSE — Real Proof Section Skeleton</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background: #F4F2ED; font-family: system-ui, -apple-system, sans-serif; }
+
+    .proof-strip {
+      display: flex;
+      gap: 12px;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      /* Left padding so first card lines up with section header */
+      padding-left: 18px;
+      /* Right padding so last card doesn't flush against edge */
+      padding-right: 18px;
+      /* Hide scrollbar */
+      scrollbar-width: none;
+    }
+    .proof-strip::-webkit-scrollbar { display: none; }
+
+    .proof-card {
+      scroll-snap-align: start;
+      flex-shrink: 0;
+      /* Mobile: 3 cards visible + 4th peeking.
+         Width = (100vw - left-pad - 2×gap) / 3.15
+         On 390px: ≈ 112px each → 3 cards + ~28px of 4th visible */
+      width: calc((100vw - 18px - 24px) / 3.15);
+      aspect-ratio: 9 / 16;
+      border-radius: 18px;
+      overflow: hidden;
+      background: #0A0A0A;
+      position: relative;
+    }
+
+    /* Desktop: fixed comfortable width, all 9 visible in a single scrollable row */
+    @media (min-width: 640px) {
+      .proof-strip {
+        padding-left: 32px;
+        padding-right: 32px;
+        gap: 14px;
+      }
+      .proof-card {
+        width: 220px;
+        border-radius: 22px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .proof-card { width: 260px; }
+    }
+
+    .proof-card img,
+    .proof-card video {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  </style>
+</head>
+<body class="text-[#0A0A0A]">
+
+<!-- ============================================================
+  REAL PROOF SECTION
+  Drop between the Reviews section and the Instagram feed in page.tsx.
+  Move files from realproof/ → apps/storefront/public/realproof/
+  then update paths to /realproof/filename.
+============================================================ -->
+
+<section class="mb-20 overflow-hidden">
+
+  <!-- Header — constrained width, normal padding -->
+  <div class="mx-auto mb-7 flex max-w-[1320px] flex-col gap-4 px-[18px] sm:flex-row sm:items-end sm:justify-between sm:px-8">
+    <div>
+      <p class="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#C1440E]">
+        Real proof
+      </p>
+      <h2 class="text-[34px] font-black leading-[0.98] tracking-[-0.045em] sm:text-[52px]">
+        Straight from our customers.
+      </h2>
+      <p class="mt-3 max-w-[560px] text-[15px] leading-[1.65] text-[#666]">
+        Real orders, real unboxings, and real fit photos from people who have shopped with us.
+      </p>
+    </div>
+    <!-- Follow CTA — right of header on desktop, stacks below on mobile -->
+    <a
+      href="https://www.instagram.com/muse.nz/"
+      target="_blank"
+      rel="noreferrer"
+      class="inline-flex h-[52px] shrink-0 items-center gap-3 self-end rounded-full bg-[#0A0A0A] px-6 text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#F4F2ED] transition hover:bg-[#C1440E]"
+    >
+      <img
+        src="../PaymentBadges/1x/Asset 2-8.png"
+        alt="Instagram"
+        class="h-5 w-5 object-contain"
+      />
+      Follow @muse.nz
+    </a>
+  </div>
+
+  <!-- 9-item horizontal scroll strip -->
+  <!-- On mobile: 3 cards + 4th peeking. On desktop: scroll to see all 9. -->
+  <div class="proof-strip">
+
+    <!-- 1. Video — autoplay, loop, muted -->
+    <div class="proof-card">
+      <video
+        src="AQMKmIY6p2tnns4X9_1j51oMyymyQFEug_wvLVLswh3iK96VFFgmywO92ZyA1dQC9V-rcOO5X0bfaJ_T0DURtHXRXg6L-2moXTCR1W8.mp4"
+        autoplay
+        loop
+        muted
+        playsinline
+        poster="videoframe_755.png"
+      ></video>
+    </div>
+
+    <!-- 2 -->
+    <div class="proof-card">
+      <img src="626460199_17962157423994934_9218799453926765843_n.jpg" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 3 -->
+    <div class="proof-card">
+      <img src="580063289_18101820067735467_9027610100397158007_n.jpg" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 4 — peeks on mobile to signal scroll -->
+    <div class="proof-card">
+      <img src="562998152_18079872514861173_8352883702044158535_n.jpg" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 5 -->
+    <div class="proof-card">
+      <img src="639552729_17963916020994934_6353348850236910971_n.jpg" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 6 -->
+    <div class="proof-card">
+      <img src="564831123_18047441489347978_1608318233264721454_n.jpg" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 7 -->
+    <div class="proof-card">
+      <img src="videoframe_755.png" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 8 -->
+    <div class="proof-card">
+      <img src="626459852_17962257686994934_6931010819832897641_n.jpg" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 9 -->
+    <div class="proof-card">
+      <img src="videoframe_938.png" alt="Customer photo" loading="lazy" />
+    </div>
+
+    <!-- 10 -->
+    <div class="proof-card">
+      <img src="631274563_17963408489994934_4220081347609135448_n.jpg" alt="Customer photo" loading="lazy" />
+    </div>
+
+  </div>
+
+
+</section>
+<!-- ============================================================ END SECTION ============================================================ -->
+
+<div class="mx-auto max-w-[1320px] px-[18px] py-6 text-center text-sm text-[#999]">
+  Section skeleton · drop between Reviews and Instagram sections in <code>page.tsx</code>
+</div>
+
+</body>
+</html>

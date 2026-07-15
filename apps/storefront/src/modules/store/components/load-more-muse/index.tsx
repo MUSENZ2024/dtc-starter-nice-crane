@@ -5,7 +5,6 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 type Props = {
   showing: number
   total: number
-  hasMore: boolean
   currentPage: number
   pageSize: number
 }
@@ -13,70 +12,89 @@ type Props = {
 export default function LoadMoreMuse({
   showing,
   total,
-  hasMore,
   currentPage,
   pageSize,
 }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
-  const pct = total ? Math.round((showing / total) * 100) : 0
+  const totalPages = Math.ceil(total / pageSize)
 
-  if (!hasMore && showing >= total) {
+  if (totalPages <= 1) {
     return null
   }
 
-  const loadMore = () => {
+  const goToPage = (page: number) => {
     const next = new URLSearchParams(params.toString())
 
-    next.set("page", String(currentPage + 1))
-    router.push(`${pathname}?${next.toString()}`, { scroll: false })
-  }
-
-  const goBack = () => {
-    const next = new URLSearchParams(params.toString())
-
-    if (currentPage <= 2) {
+    if (page === 1) {
       next.delete("page")
     } else {
-      next.set("page", String(currentPage - 1))
+      next.set("page", String(page))
     }
 
     router.push(`${pathname}?${next.toString()}`, { scroll: false })
   }
 
+  const visiblePages = Array.from(
+    { length: Math.min(totalPages, 5) },
+    (_, index) => {
+      const start = Math.min(
+        Math.max(1, currentPage - 2),
+        Math.max(1, totalPages - 4)
+      )
+      return start + index
+    }
+  )
+
   return (
-    <div className="py-10 text-center">
-      <p className="mb-3 text-[12.5px] text-muse-text-muted">
+    <nav className="py-10 text-center" aria-label="Product pages">
+      <p className="mb-5 text-[12.5px] text-muse-text-muted">
         Showing <strong className="text-muse-black">{showing}</strong> of{" "}
         <strong className="text-muse-black">{total}</strong> styles
       </p>
-      <div className="mx-auto mb-5 h-1 w-48 overflow-hidden rounded-full bg-muse-border">
-        <div
-          className="h-full rounded-full bg-muse-black transition-all duration-500"
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <div className="flex flex-wrap justify-center gap-2.5">
-      {currentPage > 1 && (
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
         <button
           type="button"
-          onClick={goBack}
-          className="rounded-full border border-muse-input bg-white px-7 py-4 text-[13px] font-bold uppercase tracking-widest text-muse-black transition hover:-translate-y-0.5 hover:border-muse-black"
+          onClick={() => goToPage(currentPage - 1)}
+          disabled={currentPage === 1}
+          aria-label="Previous page"
+          className="flex h-11 w-11 items-center justify-center rounded-lg border border-muse-input bg-white text-2xl text-muse-black transition hover:border-muse-black disabled:cursor-not-allowed disabled:opacity-35"
         >
-          Previous {pageSize}
+          ‹
         </button>
-      )}
-      {hasMore && (
+        {visiblePages.map((page) => {
+          const active = page === currentPage
+
+          return (
+            <button
+              key={page}
+              type="button"
+              onClick={() => goToPage(page)}
+              aria-current={active ? "page" : undefined}
+              className={`flex h-11 min-w-11 items-center justify-center rounded-lg border px-3 text-sm font-bold transition ${
+                active
+                  ? "border-muse-black bg-muse-black text-muse-cream"
+                  : "border-muse-input bg-white text-muse-black hover:border-muse-black"
+              }`}
+            >
+              {page}
+            </button>
+          )
+        })}
         <button
           type="button"
-          onClick={loadMore}
-          className="rounded-full bg-muse-black px-10 py-4 text-[13px] font-bold uppercase tracking-widest text-muse-cream transition hover:-translate-y-0.5 hover:bg-muse-orange"
+          onClick={() => goToPage(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          aria-label="Next page"
+          className="flex h-11 w-11 items-center justify-center rounded-lg border border-muse-input bg-white text-2xl text-muse-black transition hover:border-muse-black disabled:cursor-not-allowed disabled:opacity-35"
         >
-          Load more styles →
+          ›
         </button>
-      )}
+        <span className="ml-2 text-[12.5px] text-muse-text-muted">
+          of {totalPages} pages
+        </span>
       </div>
-    </div>
+    </nav>
   )
 }

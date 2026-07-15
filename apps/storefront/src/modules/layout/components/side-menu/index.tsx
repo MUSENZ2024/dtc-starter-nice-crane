@@ -32,7 +32,7 @@ const SideMenu = ({
   const countryToggleState = useToggleState()
   const languageToggleState = useToggleState()
   const sideMenuItems = [
-    { label: "Shop All", href: "/store" },
+    { label: "Home", href: "/" },
     ...navLinks,
     { label: "Account", href: "/account" },
     { label: "Cart", href: "/cart" },

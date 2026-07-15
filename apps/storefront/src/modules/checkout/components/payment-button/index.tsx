@@ -95,6 +95,17 @@ const StripePaymentButton = ({
       return
     }
 
+    // Set this before confirming: redirect-based methods (Afterpay, Klarna)
+    // navigate the browser away immediately, before any code after
+    // confirmPayment() gets a chance to run. sessionStorage survives the
+    // round trip through Stripe/the redirect and back to this tab.
+    if (clientSecret) {
+      window.sessionStorage.setItem(
+        "muse:lastStripePaymentClientSecret",
+        clientSecret
+      )
+    }
+
     const { error, paymentIntent } = await stripe.confirmPayment({
       elements,
       clientSecret: clientSecret as string,
@@ -119,7 +130,7 @@ const StripePaymentButton = ({
         },
         return_url: `${window.location.origin}/${
           cart.shipping_address?.country_code || "nz"
-        }/checkout?step=review&muse_step=payment`,
+        }/checkout/payment-return?cart_id=${cart.id}`,
       },
       redirect: "if_required",
     })
@@ -131,12 +142,6 @@ const StripePaymentButton = ({
         (pi && pi.status === "requires_capture") ||
         (pi && pi.status === "succeeded")
       ) {
-        if (clientSecret) {
-          window.sessionStorage.setItem(
-            "muse:lastStripePaymentClientSecret",
-            clientSecret
-          )
-        }
         return onPaymentCompleted()
       }
 
@@ -149,12 +154,6 @@ const StripePaymentButton = ({
       (paymentIntent && paymentIntent.status === "requires_capture") ||
       paymentIntent?.status === "succeeded"
     ) {
-      if (clientSecret) {
-        window.sessionStorage.setItem(
-          "muse:lastStripePaymentClientSecret",
-          clientSecret
-        )
-      }
       return onPaymentCompleted()
     }
 

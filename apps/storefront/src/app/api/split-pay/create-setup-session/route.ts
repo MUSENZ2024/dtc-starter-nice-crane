@@ -1,4 +1,5 @@
 import { retrieveCart } from "@lib/data/cart"
+import { isMusePayEnabled } from "@lib/muse-pay"
 import {
   SPLIT_PAY_INSTALLMENTS,
   formatSplitPayMoney,
@@ -9,6 +10,10 @@ import { getStripeServer } from "@lib/stripe/server"
 import { NextRequest, NextResponse } from "next/server"
 
 export async function POST(request: NextRequest) {
+  if (!isMusePayEnabled) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   try {
     const cart = await retrieveCart()
 

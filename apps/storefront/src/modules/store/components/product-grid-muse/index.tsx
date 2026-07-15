@@ -89,7 +89,6 @@ export default async function ProductGridMuse({
       <LoadMoreMuse
         showing={showing}
         total={result.total}
-        hasMore={result.hasMore}
         currentPage={page}
         pageSize={limit}
       />

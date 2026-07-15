@@ -12,9 +12,9 @@ export default function CheckoutHeaderMuse() {
         </LocalizedClientLink>
 
         <LocalizedClientLink
-          href="/store"
+          href="/"
           className="flex items-center justify-center transition hover:opacity-80"
-          aria-label="MUSE store"
+          aria-label="MUSE home"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img

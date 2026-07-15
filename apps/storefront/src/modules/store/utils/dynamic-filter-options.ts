@@ -132,6 +132,7 @@ export const buildDynamicTagFilters = (tags: StoreProductTag[]) => {
   const explicitBrands = merchTags.filter((tag) => tag.group === "brand")
 
   const inferredBrands = merchTags.filter((tag) =>
+    !tag.group &&
     merchTags.some(
       (candidate) =>
         candidate.value !== tag.value &&

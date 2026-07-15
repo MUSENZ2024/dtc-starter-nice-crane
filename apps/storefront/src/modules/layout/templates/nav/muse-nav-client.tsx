@@ -48,7 +48,7 @@ const synonymMap: Record<string, string[]> = {
   birks: ["birkenstock", "birk", "slide", "sandal"],
   birkenstock: ["birks", "birk", "slide", "sandal"],
   "fast shipping": ["NZ Stock", "Auckland", "ships fast"],
-  sale: ["markdown", "discount"],
+  sale: ["Clearance", "markdown", "discount"],
 }
 
 const curatedCollections: SuggestionLink[] = [
@@ -57,6 +57,13 @@ const curatedCollections: SuggestionLink[] = [
     subtitle: "Browse the full MUSE catalogue",
     href: "/store",
     keywords: "shop all store catalogue products browse all",
+  },
+  {
+    title: "Clearance",
+    subtitle: "Genuine markdowns, NZ stock first",
+    href: "/clearance",
+    keywords: "sale clearance markdown discount deal",
+    accent: "orange",
   },
   {
     title: "New Balance",
@@ -85,6 +92,18 @@ const curatedCollections: SuggestionLink[] = [
 ]
 
 const helpSuggestions: SuggestionLink[] = [
+  {
+    title: "Shipping times",
+    subtitle: "NZ Stock vs Standard Delivery",
+    href: "/faq#shipping",
+    keywords: "shipping delivery fast shipping nz stock standard delivery dispatch how long",
+  },
+  {
+    title: "Returns and exchanges",
+    subtitle: "Sizing, returns and money-back guarantee",
+    href: "/faq#returns",
+    keywords: "return exchange size sizing refund money back guarantee",
+  },
   {
     title: "Ask for a shoe",
     subtitle: "Can not find the pair? Contact MUSE",
@@ -421,11 +440,14 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   }
 
   const primaryLinks: DrawerLink[] = [
+    { label: "Home", href: "/" },
     { label: "Shop All", href: "/store" },
     ...categoryLinks,
+    { label: "Clearance", href: "/clearance", accent: "red" as const },
   ]
 
   const secondaryLinks = [
+    { label: "FAQ / Help", href: "/faq" },
     { label: "Track Order", href: "/track" },
     { label: "Account", href: "/account" },
   ]
@@ -693,11 +715,11 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                       />
                     ))
                   ) : (
-                    <EmptyGroupText text="Try NZ Stock or a brand." />
+                    <EmptyGroupText text="Try NZ Stock, Clearance or a brand." />
                   )}
                 </SuggestionGroup>
 
-                <SuggestionGroup title="Support">
+                <SuggestionGroup title="FAQ / Help Answers">
                   {searchResults.help.length ? (
                     searchResults.help.map((item) => (
                       <SearchSuggestionLink

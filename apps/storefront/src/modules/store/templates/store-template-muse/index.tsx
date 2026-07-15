@@ -258,6 +258,14 @@ export default function StoreTemplateMuse({
   const activeColourHandles = splitParam(searchParams.colour)
   const activeColourTagIds = resolveColourTagIds(activeColourHandles, productTags)
   const activeTagIds = resolveTagIds(activeTagHandles, productTags)
+  const activeTagFilterGroups = [
+    resolveTagIds(
+      activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
+      productTags
+    ),
+    resolveTagIds(activeLineHandles, productTags),
+    resolveTagIds(splitParam(searchParams.badge), productTags),
+  ].filter((group): group is string[] => Boolean(group?.length))
   const activeTagProductIds = resolveTagProductIds(activeTagIds, productTags)
   const stockFilter =
     isClearance
@@ -282,7 +290,11 @@ export default function StoreTemplateMuse({
     limit: searchParams.grid === "dense" ? 20 : 12,
     q: searchParams.q,
     stock: isClearance ? "nz-stock" : stockCollectionIds ? undefined : stockFilter,
+    nz_stock_collection_id: nzStockCollectionId,
     tag_id: activeTagIds,
+    tag_filter_groups: activeTagFilterGroups.length
+      ? activeTagFilterGroups
+      : undefined,
     colour_tag_id: activeColourTagIds,
     tag_product_ids: activeTagProductIds,
     category_id: splitParam(searchParams.cat),

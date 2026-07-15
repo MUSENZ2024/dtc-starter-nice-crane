@@ -2,8 +2,10 @@ import {
   SPLIT_PAY_INSTALLMENTS,
   formatSplitPayMoney,
 } from "@lib/split-pay"
+import { isMusePayEnabled } from "@lib/muse-pay"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { Metadata } from "next"
+import { notFound } from "next/navigation"
 
 export const metadata: Metadata = {
   title: "Split Pay Created | MUSE NZ",
@@ -22,6 +24,10 @@ function getParam(
 }
 
 export default async function SplitPayCompletePage({ searchParams }: Props) {
+  if (!isMusePayEnabled) {
+    notFound()
+  }
+
   const params = await searchParams
   const currency = getParam(params, "currency") || "nzd"
   const totalCents = Number(getParam(params, "total_cents") || 0)

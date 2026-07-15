@@ -2,6 +2,7 @@ import {
   SPLIT_PAY_INSTALLMENTS,
   formatSplitPayMoney,
 } from "@lib/split-pay"
+import { isMusePayEnabled } from "@lib/muse-pay"
 import { getStripeServer } from "@lib/stripe/server"
 import { sdk } from "@lib/config"
 import { getAuthHeaders } from "@lib/data/cookies"
@@ -296,6 +297,10 @@ async function createSplitPaySchedule({
 }
 
 export async function POST(request: NextRequest) {
+  if (!isMusePayEnabled) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   try {
     const body = (await request.json()) as {
       setup_intent_id?: string
@@ -359,6 +364,10 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  if (!isMusePayEnabled) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  }
+
   const sessionId = request.nextUrl.searchParams.get("session_id")
   const countryCode = request.nextUrl.searchParams.get("country_code") || "nz"
 

@@ -212,5 +212,11 @@ export function getCartFulfilmentSummary(
       hasNzStock && hasStandard
         ? `Some items ship sooner. Full order estimate: ${fullOrderRange}`
         : `Full order estimate: ${fullOrderRange}`,
+    supportCopy:
+      hasNzStock && hasStandard
+        ? "NZ Stock items may arrive earlier; the full order estimate uses the slowest item."
+        : hasNzStock
+        ? "Held locally and usually dispatched from Auckland."
+        : "Tracked delivery with NZ Post on the final leg.",
   }
 }

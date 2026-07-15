@@ -24,7 +24,7 @@ import { getLocale } from "./locale-actions"
 export async function retrieveCart(cartId?: string, fields?: string) {
   const id = cartId || (await getCartId())
   fields ??=
-    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name"
+    "*items, *region, *items.product, *items.variant, *items.thumbnail, *items.metadata, +items.total, *promotions, +shipping_methods.name, *payment_collection, *payment_collection.payment_sessions"
 
   if (!id) {
     return null
@@ -127,30 +127,34 @@ export async function addToCart({
     throw new Error("Missing variant ID when adding to cart")
   }
 
-  let cart = await getOrSetCart(countryCode)
+  // Skip the upfront cart lookup when we already trust the cookie's cart
+  // id — that round trip to the backend is pure latency in the common case
+  // where the cart already exists. Fall back to the slower
+  // retrieve-or-create path only if this optimistic write fails.
+  const existingCartId = await getCartId()
+
+  if (existingCartId) {
+    try {
+      await createCartLineItem(existingCartId, variantId, quantity)
+      await revalidateCartState()
+      return
+    } catch (error) {
+      if (!isRecoverableStaleCartError(error)) {
+        medusaError(error)
+      }
+
+      await resetCartState()
+    }
+  }
+
+  const cart = await getOrSetCart(countryCode)
 
   if (!cart) {
     throw new Error("Error retrieving or creating cart")
   }
 
-  try {
-    await createCartLineItem(cart.id, variantId, quantity)
-    await revalidateCartState()
-  } catch (error) {
-    if (!isRecoverableStaleCartError(error)) {
-      medusaError(error)
-    }
-
-    await resetCartState()
-    cart = await getOrSetCart(countryCode)
-
-    if (!cart) {
-      throw new Error("Error creating a fresh cart")
-    }
-
-    await createCartLineItem(cart.id, variantId, quantity)
-    await revalidateCartState()
-  }
+  await createCartLineItem(cart.id, variantId, quantity)
+  await revalidateCartState()
 }
 
 export async function updateLineItem({
@@ -319,8 +323,17 @@ function isCompletedCartError(error: unknown) {
   return getErrorMessage(error).includes("already completed")
 }
 
+function isMissingCartError(error: unknown) {
+  const message = getErrorMessage(error)
+  return message.includes("cart") && message.includes("not found")
+}
+
 function isRecoverableStaleCartError(error: unknown) {
-  return isPaymentSessionCleanupError(error) || isCompletedCartError(error)
+  return (
+    isPaymentSessionCleanupError(error) ||
+    isCompletedCartError(error) ||
+    isMissingCartError(error)
+  )
 }
 
 function getErrorMessage(error: unknown) {

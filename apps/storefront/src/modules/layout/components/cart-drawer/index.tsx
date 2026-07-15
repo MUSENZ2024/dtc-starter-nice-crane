@@ -487,7 +487,7 @@ export default function CartDrawer({
                   {fulfilmentSummary.fullOrderLabel}
                 </p>
                 <p className="text-muse-text-muted">
-                  Tracked NZ Post final leg · free over $200
+                  {fulfilmentSummary.supportCopy} Free over $200.
                 </p>
               </div>
 

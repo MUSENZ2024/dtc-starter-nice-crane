@@ -8,12 +8,7 @@ import PaymentContainer, {
   StripeCardContainer,
 } from "@modules/checkout/components/payment-container"
 import Divider from "@modules/common/components/divider"
-import {
-  Button,
-  Heading,
-  Text,
-  clx,
-} from "@modules/common/components/ui"
+import { Heading, Text, clx } from "@modules/common/components/ui"
 import { HttpTypes } from "@medusajs/types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -38,6 +33,7 @@ const Payment = ({
     activeSession?.provider_id ?? ""
   )
   const didAutoSelectPayment = useRef(false)
+  const didAutoAdvance = useRef(false)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -120,6 +116,30 @@ const Payment = ({
   useEffect(() => {
     setError(null)
   }, [isOpen])
+
+  useEffect(() => {
+    if (!isOpen) {
+      didAutoAdvance.current = false
+      return
+    }
+
+    if (didAutoAdvance.current || isLoading || !selectedPaymentMethod) {
+      return
+    }
+
+    const ready =
+      paidByGiftcard ||
+      !isStripeLike(selectedPaymentMethod) ||
+      paymentComplete
+
+    if (!ready) {
+      return
+    }
+
+    didAutoAdvance.current = true
+    handleSubmit()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, isLoading, paidByGiftcard, paymentComplete, selectedPaymentMethod])
 
   useEffect(() => {
     if (
@@ -225,21 +245,15 @@ const Payment = ({
             data-testid="payment-method-error-message"
           />
 
-          <Button
-            size="large"
-            className="mt-6"
-            onClick={handleSubmit}
-            isLoading={isLoading}
-            disabled={
-              (isStripeLike(selectedPaymentMethod) && !paymentComplete) ||
-              (!selectedPaymentMethod && !paidByGiftcard)
-            }
-            data-testid="submit-payment-button"
-          >
-            {!activeSession && isStripeLike(selectedPaymentMethod)
-              ? "Enter payment details"
-              : "Review order"}
-          </Button>
+          {isLoading && (
+            <div
+              className="mt-6 flex items-center justify-center gap-2 text-[12.5px] font-semibold text-muse-text-muted"
+              data-testid="submit-payment-button"
+            >
+              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muse-border border-t-muse-black" />
+              Continuing to review...
+            </div>
+          )}
         </div>
 
         <div className={isOpen ? "hidden" : "block"}>

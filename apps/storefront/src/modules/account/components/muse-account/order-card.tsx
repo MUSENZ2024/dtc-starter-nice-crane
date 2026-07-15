@@ -1,10 +1,12 @@
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { BagIcon } from "./icons"
+import OrderStatusBadge from "./order-status-badge"
 import {
   formatDate,
   formatMoney,
   getItemMeta,
+  getOrderTracking,
   getOrderStatus,
   getPrimaryOrderItem,
 } from "./helpers"
@@ -16,6 +18,7 @@ export default function MuseOrderCard({
 }) {
   const status = getOrderStatus(order)
   const item = getPrimaryOrderItem(order)
+  const tracking = getOrderTracking(order)
 
   return (
     <article className="muse-order-card p-[22px]" data-testid="order-card">
@@ -28,7 +31,10 @@ export default function MuseOrderCard({
             {formatDate(order.created_at)}
           </div>
         </div>
-        <span className={`muse-status ${status.className}`}>{status.label}</span>
+        <OrderStatusBadge
+          fallback={status}
+          trackingNumbers={tracking.map((entry) => entry.number)}
+        />
       </div>
 
       <div className="mt-[18px] flex items-center gap-3">

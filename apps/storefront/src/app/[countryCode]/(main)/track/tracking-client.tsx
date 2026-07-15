@@ -156,26 +156,48 @@ const BANNER_COPY: Record<
   },
 }
 
-const STAGE_DAYS = [
-  { match: ["delivered"], days: 0 },
-  { match: ["out for delivery", "with courier", "on vehicle"], days: 0 },
-  { match: ["available for pickup", "ready for collection"], days: 1 },
-  {
-    match: [
-      "nz post",
-      "nzpost",
-      "new zealand",
-      "arrived in your country",
-      "delivery depot",
-    ],
-    days: 2,
-  },
-  { match: ["customs", "cleared", "import"], days: 2 },
-  { match: ["plane arriving", "arrived at destination", "arrival"], days: 3 },
-  { match: ["airline departure", "departed", "in transit to"], days: 6 },
-  { match: ["handed to carrier", "accepted", "processed", "dispatched"], days: 8 },
-  { match: ["picked up", "received", "order placed"], days: 10 },
+const includesAny = (text: string, phrases: string[]) =>
+  phrases.some((phrase) => text.includes(phrase))
+
+const DELIVERED_EVENTS = ["delivered", "successfully signed", "successfully received"]
+const OUT_FOR_DELIVERY_EVENTS = [
+  "out for delivery",
+  "with courier",
+  "on vehicle",
+  "delivery today",
+  "ready for courier",
 ]
+const NZ_LOCAL_EVENTS = [
+  "local/regional depot",
+  "local depot",
+  "regional depot",
+  "in transit to local depot",
+  "leaving the new zealand processing center",
+  "leaving new zealand processing center",
+]
+const NZ_ARRIVAL_EVENTS = [
+  "international arrival",
+  "arrived in new zealand",
+  "pending border clearance",
+  "arrived at destination",
+  "arrival at destination",
+  "destination processing center",
+  "destination processing centre",
+  "plane arriving",
+]
+
+function addBusinessDays(from: Date, days: number) {
+  const date = new Date(from)
+  let remaining = days
+
+  while (remaining > 0) {
+    date.setDate(date.getDate() + 1)
+    const day = date.getDay()
+    if (day !== 0 && day !== 6) remaining -= 1
+  }
+
+  return date
+}
 
 async function api(endpoint: string, body: Array<{ number: string }>) {
   const response = await fetch(WORKER, {
@@ -229,20 +251,28 @@ function formatEventTime(isoOrUtc?: string) {
   })
 }
 
-function estimateDelivery(latestDesc: string, rawStatus: string) {
-  const haystack = `${latestDesc} ${rawStatus}`.toLowerCase()
+function estimateDelivery(state: StateKey, latestDesc: string) {
+  const latest = latestDesc.toLowerCase()
+  let days = 7
 
-  for (const stage of STAGE_DAYS) {
-    if (stage.match.some((keyword) => haystack.includes(keyword))) {
-      const date = new Date()
-      date.setDate(date.getDate() + stage.days)
-      return { days: stage.days, date }
-    }
+  if (state === "delivered" || state === "outfordelivery") {
+    days = 0
+  } else if (includesAny(latest, ["available for pickup", "ready for collection"])) {
+    days = 1
+  } else if (includesAny(latest, NZ_LOCAL_EVENTS)) {
+    // Recent MUSE shipments show the local-depot scan as the final NZ Post leg.
+    days = 2
+  } else if (includesAny(latest, NZ_ARRIVAL_EVENTS)) {
+    days = 3
+  } else if (includesAny(latest, ["airline departure", "departed", "in transit to new zealand"])) {
+    days = 5
+  } else if (includesAny(latest, ["handed to carrier", "accepted", "processed", "dispatched"])) {
+    days = 7
+  } else if (includesAny(latest, ["picked up", "received", "order placed"])) {
+    days = 9
   }
 
-  const date = new Date()
-  date.setDate(date.getDate() + 7)
-  return { days: 7, date }
+  return { days, date: addBusinessDays(new Date(), days) }
 }
 
 function formatETA(date: Date, days: number) {
@@ -261,27 +291,21 @@ function deriveState(track: TrackInfo | undefined, events: EventItem[]): StateKe
   const rawStatus = (track?.latest_status?.status || "")
     .replace(/_/g, " ")
     .toLowerCase()
-  const latestDesc = (events[0]?.desc || "").toLowerCase()
+  const latestEvent = events[0]
+  const latestDesc = (latestEvent?.desc || "").toLowerCase()
   const combined = `${rawStatus} ${latestDesc}`
 
-  if (combined.includes("delivered")) return "delivered"
+  if (includesAny(combined, DELIVERED_EVENTS)) return "delivered"
 
-  if (
-    combined.includes("out for delivery") ||
-    combined.includes("with courier") ||
-    combined.includes("on vehicle") ||
-    combined.includes("delivery today")
-  ) {
+  if (includesAny(combined, OUT_FOR_DELIVERY_EVENTS)) {
     return "outfordelivery"
   }
 
+  // Carrier aggregators often keep their broad status at "in transit" after
+  // NZ Post has already scanned the parcel. The newest event is more precise.
   if (
-    combined.includes("nz post") ||
-    combined.includes("new zealand post") ||
-    combined.includes("arrived in your country") ||
-    combined.includes("arrived in new zealand") ||
-    combined.includes("delivery depot") ||
-    combined.includes("customs")
+    latestEvent?.carrier === "NZ Post" ||
+    includesAny(latestDesc, [...NZ_LOCAL_EVENTS, ...NZ_ARRIVAL_EVENTS])
   ) {
     return "arrived"
   }
@@ -345,10 +369,7 @@ function buildTrackingData(track: TrackInfo): TrackingData {
   )
 
   const stateKey = deriveState(track, events)
-  const rawStatus = (track?.latest_status?.status || "")
-    .replace(/_/g, " ")
-    .toLowerCase()
-  const eta = estimateDelivery(events[0]?.desc || "", rawStatus)
+  const eta = estimateDelivery(stateKey, events[0]?.desc || "")
   const flags = STATE_FLAGS[stateKey]
   const copy = BANNER_COPY[stateKey]
 
@@ -688,7 +709,7 @@ export default function TrackingClient() {
                 type="button"
                 onClick={() => setOrderOpen((open) => !open)}
               >
-                <span className="collapse-header-label">Your order</span>
+                <span className="collapse-header-label">Your lookup</span>
                 <span className="collapse-chevron">⌃</span>
               </button>
               <div className="collapse-body">

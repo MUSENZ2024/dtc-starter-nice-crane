@@ -1,5 +1,6 @@
 "use client"
 
+import { isMusePayEnabled } from "@lib/muse-pay"
 import { HttpTypes } from "@medusajs/types"
 import Payment from "@modules/checkout/components/payment"
 import Review from "@modules/checkout/components/review"
@@ -52,15 +53,13 @@ export default function StepPaymentMuse({
             />
           </div>
 
-          <SplitPayTest cart={cart} />
+          {isMusePayEnabled && <SplitPayTest cart={cart} />}
 
           <div className="rounded-2xl border border-muse-border bg-white p-4">
             <Review cart={cart} />
           </div>
 
           <p className="text-center text-[11.5px] leading-relaxed text-muse-text-light">
-            By placing your order you agree to MUSE NZ&apos;s Terms of Service and Privacy Policy.
-            <br />
             30-day money back · inspected before dispatch · Auckland, New Zealand
           </p>
         </div>

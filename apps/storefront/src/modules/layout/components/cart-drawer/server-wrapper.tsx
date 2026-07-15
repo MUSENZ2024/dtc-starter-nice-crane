@@ -16,7 +16,12 @@ export default async function CartDrawerWrapper() {
   const addonProducts = cart?.items?.length
     ? await listProducts({
         countryCode,
-        queryParams: { limit: 48 },
+        queryParams: { limit: 24 },
+        // Drawer recommendations don't need live-to-the-second catalogue
+        // data. This wrapper re-renders on every cart mutation (add,
+        // update, remove), so fetching fresh every time was a major source
+        // of add-to-cart latency.
+        revalidateSeconds: 60,
       })
         .then(({ response }) => {
           const productsById = new Map(
