@@ -95,6 +95,16 @@ const variantInStock = (variant: ProductCardMuseVariant) => {
   return (variant.inventory_quantity ?? 0) > 0
 }
 
+const parsePrice = (price?: string) => {
+  if (!price) {
+    return 0
+  }
+
+  const parsed = Number(price.replace(/[^0-9.]/g, ""))
+
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
 export default function ProductCardMuse({
   product,
   countryCode,
@@ -102,7 +112,12 @@ export default function ProductCardMuse({
 }: Props) {
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
-  const { openDrawer, beginCartMutation, finishCartMutation } = useCartDrawer()
+  const {
+    openDrawer,
+    beginCartMutation,
+    finishCartMutation,
+    removeOptimisticItem,
+  } = useCartDrawer()
   const fulfilment = product.fulfilment
   const brand = product.brand
   const promotionalBadge = product.promotionalBadge
@@ -122,7 +137,18 @@ export default function ProductCardMuse({
     const variantId = variant.id
 
     startTransition(async () => {
-      beginCartMutation()
+      beginCartMutation({
+        variantId,
+        productTitle: product.title || "MUSE item",
+        productHandle: product.handle,
+        variantTitle: getVariantSize(variant, product) ?? "One size",
+        thumbnail: product.thumbnail,
+        quantity: 1,
+        unitPrice: parsePrice(product.price),
+        currencyCode: "nzd",
+        fulfilmentShortLabel: fulfilment.shortLabel,
+        fulfilmentDotClassName: fulfilment.dotClassName,
+      })
       openDrawer()
       try {
         await addToCart({
@@ -131,6 +157,9 @@ export default function ProductCardMuse({
           countryCode,
         })
         setQuickAddOpen(false)
+      } catch (error) {
+        removeOptimisticItem(variantId)
+        throw error
       } finally {
         finishCartMutation()
       }

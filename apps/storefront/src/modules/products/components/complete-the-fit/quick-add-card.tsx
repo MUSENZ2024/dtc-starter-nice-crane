@@ -90,7 +90,12 @@ export default function CompleteTheFitCard({
   const [pickerOpen, setPickerOpen] = useState(false)
   const [addedVariantId, setAddedVariantId] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
-  const { openDrawer, beginCartMutation, finishCartMutation } = useCartDrawer()
+  const {
+    openDrawer,
+    beginCartMutation,
+    finishCartMutation,
+    removeOptimisticItem,
+  } = useCartDrawer()
   const { cheapestPrice } = getProductPrice({ product })
   const choices = getVariantChoices(product)
   const hasQuickAdd = choices.length > 0
@@ -106,13 +111,28 @@ export default function CompleteTheFitCard({
     }
 
     startTransition(async () => {
-      beginCartMutation()
+      beginCartMutation({
+        variantId: variant.id,
+        productTitle: product.title || "MUSE item",
+        productHandle: product.handle,
+        variantTitle: getVariantSize(variant, product) ?? variant.title,
+        thumbnail: product.thumbnail ?? product.images?.[0]?.url,
+        quantity: 1,
+        unitPrice: cheapestPrice?.calculated_price_number ?? 0,
+        currencyCode: cheapestPrice?.currency_code ?? "nzd",
+        fulfilmentShortLabel: fulfilment.shortLabel,
+        fulfilmentDotClassName:
+          fulfilment.labelColor === "green" ? "bg-[#1F7A3A]" : "bg-[#C1440E]",
+      })
       openDrawer()
       try {
         await addToCart({ variantId: variant.id, quantity: 1, countryCode })
         setAddedVariantId(variant.id)
         setPickerOpen(false)
         window.setTimeout(() => setAddedVariantId(null), 1800)
+      } catch (error) {
+        removeOptimisticItem(variant.id)
+        throw error
       } finally {
         finishCartMutation()
       }

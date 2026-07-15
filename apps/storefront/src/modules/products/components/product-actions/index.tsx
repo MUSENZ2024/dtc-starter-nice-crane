@@ -543,7 +543,12 @@ export default function ProductActions({
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const countryCode = useParams().countryCode as string
-  const { openDrawer, beginCartMutation, finishCartMutation } = useCartDrawer()
+  const {
+    openDrawer,
+    beginCartMutation,
+    finishCartMutation,
+    removeOptimisticItem,
+  } = useCartDrawer()
   const editLineId = searchParams.get("edit_line_id")
   const editQuantity = Math.max(
     1,
@@ -795,7 +800,23 @@ export default function ProductActions({
     }
 
     setIsAdding(true)
-    beginCartMutation()
+    beginCartMutation(
+      editLineId
+        ? undefined
+        : {
+            variantId: selectedVariant.id,
+            productTitle: product.title ?? "MUSE item",
+            productHandle: product.handle,
+            variantTitle: selectedVariant.title ?? currentSize,
+            thumbnail: product.thumbnail ?? product.images?.[0]?.url,
+            quantity: 1,
+            unitPrice: numericPrice,
+            currencyCode: region.currency_code ?? "nzd",
+            fulfilmentShortLabel: fulfilment.shortLabel,
+            fulfilmentDotClassName:
+              fulfilment.labelColor === "green" ? "bg-[#1F7A3A]" : "bg-[#C1440E]",
+          }
+    )
     openDrawer()
     try {
       if (editLineId) {
@@ -821,6 +842,9 @@ export default function ProductActions({
         clearTimeout(addedTimerRef.current)
       }
       addedTimerRef.current = setTimeout(() => setAddedToCart(false), 2000)
+    } catch (error) {
+      removeOptimisticItem(selectedVariant.id)
+      throw error
     } finally {
       finishCartMutation()
       setIsAdding(false)

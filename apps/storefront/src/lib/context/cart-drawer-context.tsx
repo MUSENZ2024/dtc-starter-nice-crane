@@ -5,35 +5,123 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
 } from "react"
+
+export type OptimisticCartItem = {
+  id: string
+  variantId: string
+  productTitle: string
+  productHandle?: string | null
+  variantTitle?: string | null
+  thumbnail?: string | null
+  quantity: number
+  baseQuantity: number
+  unitPrice: number
+  currencyCode: string
+  fulfilmentShortLabel?: string
+  fulfilmentDotClassName?: string
+}
+
+type OptimisticCartInput = Omit<OptimisticCartItem, "id" | "baseQuantity">
+
+type CartSnapshotLine = {
+  variantId?: string | null
+  quantity: number
+}
 
 type CartDrawerContextValue = {
   isOpen: boolean
   isCartMutating: boolean
+  optimisticItems: OptimisticCartItem[]
   openDrawer: () => void
   closeDrawer: () => void
-  beginCartMutation: () => void
+  beginCartMutation: (item?: OptimisticCartInput) => void
   finishCartMutation: () => void
+  removeOptimisticItem: (variantId: string) => void
+  registerCartSnapshot: (lines: CartSnapshotLine[]) => void
 }
 
 const CartDrawerContext = createContext<CartDrawerContextValue>({
   isOpen: false,
   isCartMutating: false,
+  optimisticItems: [],
   openDrawer: () => {},
   closeDrawer: () => {},
   beginCartMutation: () => {},
   finishCartMutation: () => {},
+  removeOptimisticItem: () => {},
+  registerCartSnapshot: () => {},
 })
 
 export function CartDrawerProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isCartMutating, setIsCartMutating] = useState(false)
+  const [optimisticItems, setOptimisticItems] = useState<OptimisticCartItem[]>([])
+  const cartQuantitySnapshot = useRef<Map<string, number>>(new Map())
 
   const openDrawer = useCallback(() => setIsOpen(true), [])
   const closeDrawer = useCallback(() => setIsOpen(false), [])
-  const beginCartMutation = useCallback(() => setIsCartMutating(true), [])
+  const beginCartMutation = useCallback((item?: OptimisticCartInput) => {
+    setIsCartMutating(true)
+
+    if (!item) {
+      return
+    }
+
+    const baseQuantity = cartQuantitySnapshot.current.get(item.variantId) ?? 0
+
+    setOptimisticItems((current) => {
+      const existing = current.find(
+        (optimisticItem) => optimisticItem.variantId === item.variantId
+      )
+
+      if (existing) {
+        return current.map((optimisticItem) =>
+          optimisticItem.variantId === item.variantId
+            ? {
+                ...optimisticItem,
+                quantity: optimisticItem.quantity + item.quantity,
+              }
+            : optimisticItem
+        )
+      }
+
+      return [
+        ...current,
+        {
+          ...item,
+          baseQuantity,
+          id: `${item.variantId}-${Date.now()}`,
+        },
+      ]
+    })
+  }, [])
   const finishCartMutation = useCallback(() => setIsCartMutating(false), [])
+  const removeOptimisticItem = useCallback((variantId: string) => {
+    setOptimisticItems((current) =>
+      current.filter((item) => item.variantId !== variantId)
+    )
+  }, [])
+  const registerCartSnapshot = useCallback((lines: CartSnapshotLine[]) => {
+    const nextSnapshot = new Map<string, number>()
+
+    lines.forEach((line) => {
+      if (line.variantId) {
+        nextSnapshot.set(line.variantId, line.quantity)
+      }
+    })
+
+    cartQuantitySnapshot.current = nextSnapshot
+    setOptimisticItems((current) =>
+      current.filter((item) => {
+        const currentQuantity = nextSnapshot.get(item.variantId) ?? 0
+
+        return currentQuantity < item.baseQuantity + item.quantity
+      })
+    )
+  }, [])
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : ""
@@ -59,10 +147,13 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
       value={{
         isOpen,
         isCartMutating,
+        optimisticItems,
         openDrawer,
         closeDrawer,
         beginCartMutation,
         finishCartMutation,
+        removeOptimisticItem,
+        registerCartSnapshot,
       }}
     >
       {children}

@@ -87,8 +87,10 @@ export default function CartDrawer({
   const {
     isOpen,
     isCartMutating,
+    optimisticItems,
     openDrawer,
     closeDrawer,
+    registerCartSnapshot,
   } = useCartDrawer()
   const { items: savedItems, hydrated, isSaved, toggleSaved, removeSaved } =
     useSavedItems()
@@ -103,13 +105,56 @@ export default function CartDrawer({
     setMounted(true)
   }, [])
 
-  const subtotal = cart?.subtotal ?? cart?.item_subtotal ?? 0
-  const itemCount = cart?.items?.reduce((acc, item) => acc + item.quantity, 0) ?? 0
+  useEffect(() => {
+    registerCartSnapshot(
+      (cart?.items ?? []).map((item) => ({
+        variantId: getCartItemVariantId(item),
+        quantity: item.quantity,
+      }))
+    )
+  }, [cart, registerCartSnapshot])
+
+  const cartItems = cart?.items ?? []
+  const optimisticByVariant = new Map(
+    optimisticItems.map((item) => [item.variantId, item])
+  )
+  const cartVariantIds = new Set(
+    cartItems
+      .map((item) => getCartItemVariantId(item))
+      .filter((variantId): variantId is string => Boolean(variantId))
+  )
+  const pendingOnlyItems = optimisticItems.filter(
+    (item) => !cartVariantIds.has(item.variantId)
+  )
+  const getVisibleQuantity = (item: HttpTypes.StoreCartLineItem) => {
+    const variantId = getCartItemVariantId(item)
+    const optimisticItem = variantId ? optimisticByVariant.get(variantId) : null
+
+    return optimisticItem
+      ? Math.max(item.quantity, optimisticItem.baseQuantity + optimisticItem.quantity)
+      : item.quantity
+  }
+  const pendingSubtotal = optimisticItems.reduce((sum, item) => {
+    const matchingCartItem = cartItems.find(
+      (cartItem) => getCartItemVariantId(cartItem) === item.variantId
+    )
+    const realQuantity = matchingCartItem?.quantity ?? 0
+    const missingQuantity = Math.max(
+      0,
+      item.baseQuantity + item.quantity - realQuantity
+    )
+
+    return sum + item.unitPrice * missingQuantity
+  }, 0)
+  const subtotal = (cart?.subtotal ?? cart?.item_subtotal ?? 0) + pendingSubtotal
+  const itemCount =
+    cartItems.reduce((acc, item) => acc + getVisibleQuantity(item), 0) +
+    pendingOnlyItems.reduce((acc, item) => acc + item.quantity, 0)
   const freeShippingGap = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal)
   const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)
   const shippingUnlocked = freeShippingGap === 0
-  const isEmpty = !cart?.items?.length
-  const fulfilmentSummary = getCartFulfilmentSummary(cart?.items)
+  const isEmpty = cartItems.length === 0 && pendingOnlyItems.length === 0
+  const fulfilmentSummary = getCartFulfilmentSummary(cartItems)
 
   function getSavedItemFromCartItem(
     item: HttpTypes.StoreCartLineItem
@@ -310,8 +355,9 @@ export default function CartDrawer({
         <div className="flex-1 overflow-y-auto overscroll-contain">
           {!isEmpty ? (
             <ul className="flex flex-col gap-5 px-6 pt-5">
-              {cart!.items!.map((item) => {
+              {cartItems.map((item) => {
                 const fulfilment = getFulfilmentState(item)
+                const visibleQuantity = getVisibleQuantity(item)
 
                 return (
                   <li
@@ -361,20 +407,20 @@ export default function CartDrawer({
                       <div className="flex h-[34px] items-center overflow-hidden rounded-full border border-muse-input bg-white">
                         <button
                           type="button"
-                          onClick={() => handleQty(item.id, -1, item.quantity)}
-                          disabled={isPending}
+                          onClick={() => handleQty(item.id, -1, visibleQuantity)}
+                          disabled={isPending || isCartMutating}
                           className="flex w-[34px] items-center justify-center text-lg text-muse-text-muted transition hover:text-muse-black disabled:opacity-50"
                           aria-label="Decrease quantity"
                         >
                           -
                         </button>
                         <span className="w-7 text-center text-[13px] font-bold text-muse-black">
-                          {item.quantity}
+                          {visibleQuantity}
                         </span>
                         <button
                           type="button"
-                          onClick={() => handleQty(item.id, 1, item.quantity)}
-                          disabled={isPending}
+                          onClick={() => handleQty(item.id, 1, visibleQuantity)}
+                          disabled={isPending || isCartMutating}
                           className="flex w-[34px] items-center justify-center text-lg text-muse-text-muted transition hover:text-muse-black disabled:opacity-50"
                           aria-label="Increase quantity"
                         >
@@ -383,7 +429,7 @@ export default function CartDrawer({
                       </div>
 
                       <span className="whitespace-nowrap text-[15px] font-extrabold text-muse-black">
-                        {money(cart, (item.unit_price ?? 0) * item.quantity)}
+                        {money(cart, (item.unit_price ?? 0) * visibleQuantity)}
                       </span>
                     </div>
                   </div>
@@ -400,6 +446,69 @@ export default function CartDrawer({
                   </li>
                 )
               })}
+              {pendingOnlyItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex gap-4 border-b border-muse-border pb-5 last:border-0"
+                >
+                  <div className="relative flex h-[84px] w-[84px] flex-shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-br from-muse-cream-deep to-muse-cream-warm">
+                    {item.thumbnail ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={item.thumbnail}
+                        alt={item.productTitle}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-[10px] font-black uppercase tracking-widest text-muse-text-light">
+                        Muse
+                      </span>
+                    )}
+                    {item.fulfilmentShortLabel && (
+                      <span className="absolute bottom-1.5 left-1.5 flex items-center gap-1 rounded-full bg-muse-cream/95 px-2 py-0.5 text-[9px] font-bold uppercase tracking-wider">
+                        <span
+                          className={`inline-block h-[5px] w-[5px] rounded-full ${
+                            item.fulfilmentDotClassName ?? "bg-[#C1440E]"
+                          }`}
+                        />
+                        {item.fulfilmentShortLabel}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <p className="mb-1 truncate text-[13.5px] font-bold text-muse-black">
+                      {item.productTitle}
+                    </p>
+                    <div className="mb-2.5 flex items-center gap-2 text-xs text-muse-text-muted">
+                      <span>{item.variantTitle}</span>
+                      <span className="font-semibold text-muse-orange">
+                        Confirming...
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex h-[34px] items-center overflow-hidden rounded-full border border-muse-input bg-white opacity-70">
+                        <span className="flex w-[34px] items-center justify-center text-lg text-muse-text-muted">
+                          -
+                        </span>
+                        <span className="w-7 text-center text-[13px] font-bold text-muse-black">
+                          {item.quantity}
+                        </span>
+                        <span className="flex w-[34px] items-center justify-center text-lg text-muse-text-muted">
+                          +
+                        </span>
+                      </div>
+
+                      <span className="whitespace-nowrap text-[15px] font-extrabold text-muse-black">
+                        {convertToLocale({
+                          amount: item.unitPrice * item.quantity,
+                          currency_code: item.currencyCode,
+                        })}
+                      </span>
+                    </div>
+                  </div>
+                </li>
+              ))}
             </ul>
           ) : isCartMutating ? (
             <div className="flex flex-col items-center justify-center gap-4 px-6 py-16 text-center">
