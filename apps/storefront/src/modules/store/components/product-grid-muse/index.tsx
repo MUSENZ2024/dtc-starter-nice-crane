@@ -1,7 +1,11 @@
 import { listProductsFiltered } from "@lib/data/products"
 import { ProductFilterParams } from "@lib/data/products.types"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
+import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
-import ProductCardMuse from "@modules/products/components/product-card-muse"
+import ProductCardMuse, {
+  ProductCardMuseProduct,
+} from "@modules/products/components/product-card-muse"
 import ActiveFilterChips from "@modules/store/components/active-filter-chips"
 import LoadMoreMuse from "@modules/store/components/load-more-muse"
 import SortSelectMuse from "@modules/store/components/sort-select-muse"
@@ -15,6 +19,81 @@ type Props = {
   gridView?: "standard" | "dense"
   emptyTitle?: string
   emptyDescription?: string
+}
+
+const PROMOTIONAL_TAG_LABELS: Record<string, string> = {
+  sale: "On sale",
+  "on-sale": "On sale",
+  bestseller: "Bestseller",
+  "best-seller": "Bestseller",
+  "best-sellers": "Bestseller",
+}
+
+const getPromotionalBadge = (product: HttpTypes.StoreProduct) => {
+  const tags = product.tags ?? []
+
+  for (const tag of tags) {
+    const value = tag.value?.toLowerCase()
+    if (!value) {
+      continue
+    }
+
+    const match = value.match(/^(?:badge|status)[:/](.+)$/)
+    const handle = match?.[1] ?? value
+    const label = PROMOTIONAL_TAG_LABELS[handle]
+
+    if (label) {
+      return label
+    }
+  }
+
+  return undefined
+}
+
+const toProductCard = (product: HttpTypes.StoreProduct): ProductCardMuseProduct => {
+  const fulfilment = getFulfilmentState(product)
+  const { cheapestPrice } = getProductPrice({ product })
+  const rrp =
+    typeof product.metadata?.rrp_nzd === "string"
+      ? product.metadata.rrp_nzd
+      : undefined
+
+  return {
+    id: product.id,
+    title: product.title || "MUSE product",
+    handle: product.handle,
+    thumbnail: product.thumbnail,
+    brand:
+      typeof product.metadata?.brand === "string"
+        ? product.metadata.brand
+        : undefined,
+    price: cheapestPrice?.calculated_price,
+    compareAt: rrp ? `$${rrp} RRP` : undefined,
+    fulfilment: {
+      shortLabel: fulfilment.shortLabel,
+      dotClassName: fulfilment.dotClassName,
+      deliveryLabel: fulfilment.deliveryLabel,
+    },
+    promotionalBadge: getPromotionalBadge(product),
+    options: product.options?.map((option) => ({
+      id: option.id,
+      title: option.title,
+    })),
+    variants: product.variants?.map((variant) => ({
+      id: variant.id,
+      inventory_quantity: variant.inventory_quantity,
+      manage_inventory: variant.manage_inventory,
+      allow_backorder: variant.allow_backorder,
+      options: variant.options?.map((option) => ({
+        option_id: option.option_id,
+        value: option.value,
+        option:
+          "option" in option && option.option
+            ? { title: option.option.title }
+            : undefined,
+      })),
+    })),
+  }
 }
 
 export default async function ProductGridMuse({
@@ -78,7 +157,7 @@ export default async function ProductGridMuse({
           {result.products.map((product, index) => (
             <ProductCardMuse
               key={product.id}
-              product={product}
+              product={toProductCard(product)}
               countryCode={countryCode}
               position={(page - 1) * limit + index + 1}
             />

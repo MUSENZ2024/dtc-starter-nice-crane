@@ -1,5 +1,6 @@
 "use client"
 
+import Image from "next/image"
 import { useEffect, useState } from "react"
 
 type Props = {
@@ -29,16 +30,15 @@ export default function NuptseSlideshow({ images, titles = [] }: Props) {
   return (
     <div className="relative hidden h-full w-full items-center justify-center small:flex">
       <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-[28px]">
-        {images.map((src, index) => (
-          <img
-            key={`${src}-${index}`}
-            src={src}
-            alt={titles[index] ?? `Nuptse colour ${index + 1}`}
-            className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
-              index === current ? "opacity-100" : "opacity-0"
-            }`}
-          />
-        ))}
+        <Image
+          key={`${images[current]}-${current}`}
+          src={images[current]}
+          alt={titles[current] ?? `Nuptse colour ${current + 1}`}
+          fill
+          quality={60}
+          sizes="420px"
+          className="object-cover transition-opacity duration-700"
+        />
 
         {titles[current] && (
           <div className="absolute bottom-4 left-4 right-4 rounded-[14px] bg-black/50 px-4 py-2.5 backdrop-blur-sm">

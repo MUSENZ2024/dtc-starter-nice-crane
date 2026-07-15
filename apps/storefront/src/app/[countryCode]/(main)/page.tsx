@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import Image from "next/image"
 import { HttpTypes } from "@medusajs/types"
 
 import { listProducts } from "@lib/data/products"
@@ -236,10 +237,14 @@ export default async function Home(props: Props) {
         >
           <div className="relative aspect-[0.98] overflow-hidden rounded-[34px] bg-[#0A0A0A] shadow-[0_24px_80px_rgba(0,0,0,0.12)]">
             {featuredCard.image ? (
-              <img
+              <Image
                 src={featuredCard.image}
                 alt={featuredCard.title}
-                className="h-full w-full object-cover"
+                fill
+                priority
+                quality={65}
+                sizes="(max-width: 767px) calc(100vw - 36px), 52vw"
+                className="object-cover"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#2A2A2A,#0A0A0A)] text-[clamp(90px,16vw,190px)] font-extrabold tracking-[-0.08em] text-white/10">
@@ -610,10 +615,13 @@ function ProductCard({ product }: { product: HomeCard }) {
         <LocalizedClientLink href={product.href} className="absolute inset-0">
           <div className="absolute inset-[30%] rounded-full bg-white/40 blur-[40px]" />
           {product.image ? (
-            <img
+            <Image
               src={product.image}
               alt={product.title}
-              className="relative z-[1] h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              fill
+              quality={60}
+              sizes="(max-width: 767px) calc((100vw - 46px) / 2), 25vw"
+              className="relative z-[1] object-cover transition duration-500 group-hover:scale-105"
             />
           ) : (
             <span className="relative z-[1] flex h-full items-center justify-center text-[42px] font-extrabold uppercase tracking-[-0.04em] text-black/[0.08] small:text-[64px]">

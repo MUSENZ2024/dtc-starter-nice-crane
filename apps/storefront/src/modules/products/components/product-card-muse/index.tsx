@@ -2,16 +2,48 @@
 
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
-import { getFulfilmentState } from "@lib/util/fulfilment-state"
-import { getProductPrice } from "@lib/util/get-product-price"
-import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
 import Image from "next/image"
 import { useState, useTransition } from "react"
 
+export type ProductCardMuseProduct = {
+  id: string
+  title: string
+  handle?: string | null
+  thumbnail?: string | null
+  brand?: string
+  price?: string
+  compareAt?: string
+  fulfilment: {
+    shortLabel: string
+    dotClassName: string
+    deliveryLabel: string
+  }
+  promotionalBadge?: string
+  options?: {
+    id?: string
+    title?: string | null
+  }[]
+  variants?: ProductCardMuseVariant[]
+}
+
+export type ProductCardMuseVariant = {
+  id?: string
+  inventory_quantity?: number | null
+  manage_inventory?: boolean | null
+  allow_backorder?: boolean | null
+  options?: {
+    option_id?: string | null
+    value?: string | null
+    option?: {
+      title?: string | null
+    } | null
+  }[]
+}
+
 type Props = {
-  product: HttpTypes.StoreProduct
+  product: ProductCardMuseProduct
   countryCode: string
   position: number
 }
@@ -20,8 +52,8 @@ const isSizeOption = (title?: string | null) =>
   (title ?? "").toLowerCase() === "size"
 
 const getVariantSize = (
-  variant: HttpTypes.StoreProductVariant,
-  product: HttpTypes.StoreProduct
+  variant: ProductCardMuseVariant,
+  product: ProductCardMuseProduct
 ) => {
   const sizeOptionId = product.options?.find((option) =>
     isSizeOption(option.title)
@@ -55,41 +87,12 @@ const getVariantSize = (
   return undefined
 }
 
-const variantInStock = (variant: HttpTypes.StoreProductVariant) => {
+const variantInStock = (variant: ProductCardMuseVariant) => {
   if (!variant.manage_inventory || variant.allow_backorder) {
     return true
   }
 
   return (variant.inventory_quantity ?? 0) > 0
-}
-
-const PROMOTIONAL_TAG_LABELS: Record<string, string> = {
-  sale: "On sale",
-  "on-sale": "On sale",
-  bestseller: "Bestseller",
-  "best-seller": "Bestseller",
-  "best-sellers": "Bestseller",
-}
-
-const getPromotionalBadge = (product: HttpTypes.StoreProduct) => {
-  const tags = product.tags ?? []
-
-  for (const tag of tags) {
-    const value = tag.value?.toLowerCase()
-    if (!value) {
-      continue
-    }
-
-    const match = value.match(/^(?:badge|status)[:/](.+)$/)
-    const handle = match?.[1] ?? value
-    const label = PROMOTIONAL_TAG_LABELS[handle]
-
-    if (label) {
-      return label
-    }
-  }
-
-  return undefined
 }
 
 export default function ProductCardMuse({
@@ -100,15 +103,9 @@ export default function ProductCardMuse({
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const { openDrawer, beginCartMutation, finishCartMutation } = useCartDrawer()
-  const { cheapestPrice } = getProductPrice({ product })
-  const fulfilment = getFulfilmentState(product)
-  const brand =
-    typeof product.metadata?.brand === "string" ? product.metadata.brand : undefined
-  const rrp =
-    typeof product.metadata?.rrp_nzd === "string"
-      ? product.metadata.rrp_nzd
-      : undefined
-  const promotionalBadge = getPromotionalBadge(product)
+  const fulfilment = product.fulfilment
+  const brand = product.brand
+  const promotionalBadge = product.promotionalBadge
   const sizes = getSizes(product)
   const hasSizes = sizes.length > 0
 
@@ -122,12 +119,14 @@ export default function ProductCardMuse({
       return
     }
 
+    const variantId = variant.id
+
     startTransition(async () => {
       beginCartMutation()
       openDrawer()
       try {
         await addToCart({
-          variantId: variant.id,
+          variantId,
           quantity: 1,
           countryCode,
         })
@@ -164,7 +163,8 @@ export default function ProductCardMuse({
                 src={product.thumbnail}
                 alt={product.title}
                 fill
-                priority={position <= 4}
+                priority={position <= 2}
+                quality={60}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 className="object-cover transition duration-500 group-hover:scale-105"
               />
@@ -183,8 +183,8 @@ export default function ProductCardMuse({
             handle: product.handle,
             href: product.handle ? `/products/${product.handle}` : "/store",
             image: product.thumbnail,
-            price: cheapestPrice?.calculated_price,
-            compareAt: rrp ? `$${rrp} RRP` : undefined,
+            price: product.price,
+            compareAt: product.compareAt,
             badge: fulfilment.shortLabel,
             eta: fulfilment.deliveryLabel,
           }}
@@ -251,14 +251,14 @@ export default function ProductCardMuse({
           {product.title}
         </p>
         <div className="mb-1.5 flex items-baseline gap-2">
-          {cheapestPrice && (
+          {product.price && (
             <span className="text-[15px] font-extrabold text-muse-black">
-              {cheapestPrice.calculated_price}
+              {product.price}
             </span>
           )}
-          {rrp && (
+          {product.compareAt && (
             <span className="text-[12px] text-muse-text-light line-through">
-              ${rrp} RRP
+              {product.compareAt}
             </span>
           )}
         </div>
@@ -285,7 +285,7 @@ export default function ProductCardMuse({
   )
 }
 
-function getSizes(product: HttpTypes.StoreProduct) {
+function getSizes(product: ProductCardMuseProduct) {
   const sizeValues = new Map<string, { label: string; inStock: boolean; low: boolean }>()
 
   product.variants?.forEach((variant) => {

@@ -21,7 +21,8 @@ export const listProductTags = async (
           limit: queryParams.limit ?? "100",
           fields: "id,name,value,products.id,products.status",
         },
-        cache: "no-store",
+        next: { revalidate: 300 },
+        cache: "force-cache",
       }
     )
 
