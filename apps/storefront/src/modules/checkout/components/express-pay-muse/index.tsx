@@ -1,22 +1,108 @@
 "use client"
 
-import { placeOrder } from "@lib/data/cart"
+import {
+  initiatePaymentSession,
+  placeOrder,
+  setShippingMethod,
+  updateCart,
+} from "@lib/data/cart"
+import { isStripeLike } from "@lib/constants"
 import { HttpTypes } from "@medusajs/types"
 import ErrorMessage from "@modules/checkout/components/error-message"
 import { StripeContext } from "@modules/checkout/components/payment-wrapper/stripe-wrapper"
 import { ExpressCheckoutElement, useElements, useStripe } from "@stripe/react-stripe-js"
-import { useContext, useState } from "react"
+import {
+  StripeExpressCheckoutElementConfirmEvent,
+  StripeExpressCheckoutElementOptions,
+  StripeExpressCheckoutElementShippingAddressChangeEvent,
+  StripeExpressCheckoutElementShippingRateChangeEvent,
+} from "@stripe/stripe-js"
+import { useRouter } from "next/navigation"
+import { useContext, useEffect, useMemo, useRef, useState } from "react"
 
-export default function ExpressPayMuse({ cart }: { cart: HttpTypes.StoreCart }) {
+type ExpressPayMuseProps = {
+  cart: HttpTypes.StoreCart
+  paymentMethods: { id: string }[]
+  shippingMethods: HttpTypes.StoreCartShippingOption[]
+}
+
+type ExpressShippingRate = NonNullable<
+  StripeExpressCheckoutElementOptions["shippingRates"]
+>[number]
+
+export default function ExpressPayMuse({
+  cart,
+  paymentMethods,
+  shippingMethods,
+}: ExpressPayMuseProps) {
   const hasStripeProvider = useContext(StripeContext)
+  const router = useRouter()
+  const [isStartingStripe, setIsStartingStripe] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const didStartStripe = useRef(false)
   const hasStripeSession = Boolean(
     cart.payment_collection?.payment_sessions?.some(
       (session) => session.status === "pending" && session.data?.client_secret
     )
   )
+  const defaultStripeMethod = useMemo(
+    () => paymentMethods.find((method) => isStripeLike(method.id))?.id,
+    [paymentMethods]
+  )
+  const selectedShippingMethodId =
+    cart.shipping_methods?.at(-1)?.shipping_option_id ?? shippingMethods[0]?.id
+
+  useEffect(() => {
+    if (
+      hasStripeSession ||
+      !defaultStripeMethod ||
+      didStartStripe.current ||
+      isStartingStripe
+    ) {
+      return
+    }
+
+    didStartStripe.current = true
+    setIsStartingStripe(true)
+    setError(null)
+
+    ;(async () => {
+      if (!cart.shipping_methods?.length && selectedShippingMethodId) {
+        await setShippingMethod({
+          cartId: cart.id,
+          shippingMethodId: selectedShippingMethodId,
+        })
+      }
+
+      await initiatePaymentSession(cart, {
+        provider_id: defaultStripeMethod,
+      })
+      router.refresh()
+    })()
+      .catch((err) => {
+        didStartStripe.current = false
+        setError(err instanceof Error ? err.message : String(err))
+      })
+      .finally(() => {
+        setIsStartingStripe(false)
+      })
+  }, [
+    cart,
+    defaultStripeMethod,
+    hasStripeSession,
+    isStartingStripe,
+    router,
+    selectedShippingMethodId,
+  ])
 
   if (hasStripeProvider && hasStripeSession) {
-    return <ExpressPayStripe />
+    return (
+      <ExpressPayStripe
+        cart={cart}
+        shippingMethods={shippingMethods}
+        selectedShippingMethodId={selectedShippingMethodId}
+      />
+    )
   }
 
   return (
@@ -24,16 +110,37 @@ export default function ExpressPayMuse({ cart }: { cart: HttpTypes.StoreCart }) 
       <p className="mb-3.5 text-center text-[11px] font-bold uppercase tracking-[0.14em] text-muse-text-light">
         Express checkout
       </p>
-      <ExpressCheckoutFallback />
+      {isStartingStripe || defaultStripeMethod ? (
+        <ExpressCheckoutLoading />
+      ) : (
+        <ExpressCheckoutUnavailable />
+      )}
+      <ErrorMessage error={error} data-testid="express-payment-error-message" />
     </section>
   )
 }
 
-function ExpressPayStripe() {
+function ExpressPayStripe({
+  cart,
+  shippingMethods,
+  selectedShippingMethodId,
+}: {
+  cart: HttpTypes.StoreCart
+  shippingMethods: HttpTypes.StoreCartShippingOption[]
+  selectedShippingMethodId?: string
+}) {
   const stripe = useStripe()
   const elements = useElements()
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const shippingRates = useMemo(
+    () => shippingMethods.map(toStripeShippingRate),
+    [shippingMethods]
+  )
+
+  const activeShippingRate =
+    shippingRates.find((rate) => rate.id === selectedShippingMethodId) ??
+    shippingRates[0]
 
   return (
     <section>
@@ -60,7 +167,31 @@ function ExpressPayStripe() {
             paymentMethods: {
               applePay: "always",
               googlePay: "always",
+              link: "auto",
+              klarna: "auto",
             },
+            allowedShippingCountries: ["NZ"],
+            billingAddressRequired: true,
+            emailRequired: true,
+            phoneNumberRequired: true,
+            shippingAddressRequired: true,
+            shippingRates: activeShippingRate ? [activeShippingRate] : undefined,
+          }}
+          onClick={(event) => {
+            if (!activeShippingRate) {
+              event.reject()
+              setError("Choose a delivery method before using express checkout.")
+              return
+            }
+
+            event.resolve({
+              allowedShippingCountries: ["NZ"],
+              billingAddressRequired: true,
+              emailRequired: true,
+              phoneNumberRequired: true,
+              shippingAddressRequired: true,
+              shippingRates: [activeShippingRate],
+            })
           }}
           onReady={(event) => {
             setError(null)
@@ -71,13 +202,64 @@ function ExpressPayStripe() {
               event.error?.message ||
                 "Express checkout is unavailable in this browser. Continue with the payment methods below."
             )
-            setIsReady(false)
+              setIsReady(false)
           }}
-          onConfirm={async () => {
+          onShippingAddressChange={(
+            event: StripeExpressCheckoutElementShippingAddressChangeEvent
+          ) => {
+            if (event.address.country?.toUpperCase() !== "NZ") {
+              event.reject()
+              return
+            }
+
+            event.resolve({
+              shippingRates: activeShippingRate ? [activeShippingRate] : undefined,
+            })
+          }}
+          onShippingRateChange={(
+            event: StripeExpressCheckoutElementShippingRateChangeEvent
+          ) => {
+            if (!shippingRates.some((rate) => rate.id === event.shippingRate.id)) {
+              event.reject()
+              return
+            }
+
+            event.resolve()
+          }}
+          onConfirm={async (event) => {
             setError(null)
 
             if (!stripe || !elements) {
               setError("Stripe is still loading. Please try again.")
+              event.paymentFailed({
+                message: "Stripe is still loading. Please try again.",
+              })
+              return
+            }
+
+            const shippingRate = event.shippingRate ?? activeShippingRate
+            const shippingMethodId = shippingRate?.id
+
+            if (!shippingMethodId) {
+              setError("Choose a delivery method before using express checkout.")
+              event.paymentFailed({
+                reason: "fail",
+                message: "Choose a delivery method before using express checkout.",
+              })
+              return
+            }
+
+            try {
+              await applyExpressCheckoutDetails(cart, event, shippingMethodId)
+            } catch (err) {
+              const message = err instanceof Error ? err.message : String(err)
+              setError(message)
+              event.paymentFailed({
+                reason: message.toLowerCase().includes("address")
+                  ? "invalid_shipping_address"
+                  : "fail",
+                message,
+              })
               return
             }
 
@@ -88,52 +270,118 @@ function ExpressPayStripe() {
 
             if (confirmError) {
               setError(confirmError.message || "Payment could not be confirmed.")
+              event.paymentFailed({
+                reason: "invalid_payment_data",
+                message: confirmError.message || "Payment could not be confirmed.",
+              })
               return
             }
 
             await placeOrder().catch((err) => {
-              setError(err instanceof Error ? err.message : String(err))
+              const message = err instanceof Error ? err.message : String(err)
+              setError(message)
+              event.paymentFailed({
+                reason: "fail",
+                message,
+              })
             })
           }}
         />
       </div>
-      {!isReady && <ExpressCheckoutFallback />}
+      {!isReady && <ExpressCheckoutLoading />}
       <ErrorMessage error={error} data-testid="express-payment-error-message" />
     </section>
   )
 }
 
-function ExpressCheckoutFallback() {
+async function applyExpressCheckoutDetails(
+  cart: HttpTypes.StoreCart,
+  event: StripeExpressCheckoutElementConfirmEvent,
+  shippingMethodId: string
+) {
+  const shippingAddress = event.shippingAddress
+  const billingDetails = event.billingDetails
+  const email = billingDetails?.email
+
+  if (!shippingAddress?.address?.line1 || !shippingAddress.address.city) {
+    throw new Error("Your wallet did not return a complete shipping address.")
+  }
+
+  if (!email) {
+    throw new Error("Your wallet did not return an email address.")
+  }
+
+  const shippingName = splitName(shippingAddress.name || billingDetails?.name)
+  const billingName = splitName(billingDetails?.name || shippingAddress.name)
+  const shipping = {
+    first_name: shippingName.firstName,
+    last_name: shippingName.lastName,
+    address_1: shippingAddress.address.line1,
+    address_2: shippingAddress.address.line2 ?? "",
+    city: shippingAddress.address.city,
+    province: shippingAddress.address.state ?? "",
+    postal_code: shippingAddress.address.postal_code ?? "",
+    country_code: shippingAddress.address.country.toLowerCase(),
+    phone: billingDetails?.phone ?? "",
+  }
+  const billingSource = billingDetails?.address ?? shippingAddress.address
+  const billing = {
+    first_name: billingName.firstName,
+    last_name: billingName.lastName,
+    address_1: billingSource.line1,
+    address_2: billingSource.line2 ?? "",
+    city: billingSource.city,
+    province: billingSource.state ?? "",
+    postal_code: billingSource.postal_code ?? "",
+    country_code: billingSource.country.toLowerCase(),
+    phone: billingDetails?.phone ?? "",
+  }
+
+  await updateCart({
+    email,
+    shipping_address: shipping,
+    billing_address: billing,
+  })
+  await setShippingMethod({ cartId: cart.id, shippingMethodId })
+}
+
+function splitName(name?: string) {
+  const parts = (name || "MUSE Customer").trim().split(/\s+/)
+  const firstName = parts.shift() || "MUSE"
+  const lastName = parts.join(" ") || "Customer"
+
+  return { firstName, lastName }
+}
+
+function toStripeShippingRate(
+  method: HttpTypes.StoreCartShippingOption
+): ExpressShippingRate {
+  return {
+    id: method.id,
+    amount: toStripeSubunitAmount(method.amount ?? 0),
+    displayName: method.name || method.type?.label || "Delivery",
+  }
+}
+
+function toStripeSubunitAmount(amount: number) {
+  return Math.round(amount * 100)
+}
+
+function ExpressCheckoutLoading() {
   return (
-    <div className="mb-2.5 grid grid-cols-2 gap-2.5 opacity-70">
-      <button
-        type="button"
-        disabled
-        className="flex items-center justify-center gap-2 rounded-2xl bg-muse-black py-3.5 text-sm font-bold text-white"
-      >
-        Apple Pay
-      </button>
-      <button
-        type="button"
-        disabled
-        className="flex items-center justify-center gap-2 rounded-2xl border border-muse-input bg-white py-3.5 text-sm font-bold text-muse-black"
-      >
-        Google Pay
-      </button>
-      <button
-        type="button"
-        disabled
-        className="flex items-center justify-center gap-2 rounded-2xl bg-[#B2FCE4] py-3.5 text-sm font-bold text-muse-black"
-      >
-        Afterpay · 4 payments
-      </button>
-      <button
-        type="button"
-        disabled
-        className="flex items-center justify-center gap-2 rounded-2xl bg-[#F4ABC4] py-3.5 text-sm font-bold text-muse-black"
-      >
-        Klarna · Pay later
-      </button>
+    <div className="mb-2.5 flex min-h-[114px] items-center justify-center rounded-2xl border border-muse-border bg-white">
+      <div className="flex items-center gap-2 text-[12.5px] font-bold text-muse-text-muted">
+        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muse-border border-t-muse-black" />
+        Loading express checkout...
+      </div>
+    </div>
+  )
+}
+
+function ExpressCheckoutUnavailable() {
+  return (
+    <div className="mb-2.5 rounded-2xl border border-muse-border bg-white px-4 py-5 text-center text-[12.5px] font-semibold text-muse-text-muted">
+      Express checkout is unavailable for this cart. Continue with email.
     </div>
   )
 }

@@ -125,7 +125,11 @@ export default function CheckoutPageMuse({
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-start gap-10 px-4 py-8 small:grid-cols-[1fr_420px] small:gap-20 small:px-8 small:py-12">
         <div>
           <PaymentWrapper cart={cart}>
-            <ExpressPayMuse cart={cart} />
+            <ExpressPayMuse
+              cart={cart}
+              paymentMethods={paymentMethods}
+              shippingMethods={shippingMethods}
+            />
 
             <div className="my-6 flex items-center gap-3 text-xs font-medium text-muse-text-light">
               <div className="h-px flex-1 bg-muse-border" />
