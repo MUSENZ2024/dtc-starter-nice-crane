@@ -1,12 +1,8 @@
 import type { CreateOrderDTO } from "@medusajs/framework/types"
-import {
-  createWorkflow,
-  transform,
-  WorkflowResponse,
-} from "@medusajs/framework/workflows-sdk"
-import { createOrdersStep } from "@medusajs/medusa/core-flows"
+import { createWorkflow, transform, WorkflowResponse } from "@medusajs/framework/workflows-sdk"
 import { assertLegacyOrderMissingStep } from "./steps/assert-legacy-order-missing"
 import { backdateLegacyOrderStep } from "./steps/backdate-legacy-order"
+import { createLegacyOrderStep } from "./steps/create-legacy-order"
 
 export type ImportLegacyOrderWorkflowInput = {
   source_order_id: string
@@ -19,27 +15,13 @@ export const importLegacyOrderWorkflow = createWorkflow(
   function (input: ImportLegacyOrderWorkflowInput) {
     assertLegacyOrderMissingStep({ source_order_id: input.source_order_id })
 
-    const ordersInput = transform({ input }, ({ input }) => [
-      {
-        ...input.order,
-        no_notification: true,
-        metadata: {
-          ...(input.order.metadata || {}),
-          legacy_source: "squarespace",
-          legacy_order_id: input.source_order_id,
-          legacy_created_at: input.created_at,
-        },
-      },
-    ])
-    const orders = createOrdersStep(ordersInput)
-    const backdateInput = transform({ orders, input }, ({ orders, input }) => ({
-      order_id: orders[0].id,
+    const order = createLegacyOrderStep(input)
+    const backdateInput = transform({ order, input }, ({ order, input }) => ({
+      order_id: order.id,
       created_at: input.created_at,
     }))
     backdateLegacyOrderStep(backdateInput)
 
-    return new WorkflowResponse(
-      transform({ orders }, ({ orders }) => orders[0])
-    )
+    return new WorkflowResponse(order)
   }
 )

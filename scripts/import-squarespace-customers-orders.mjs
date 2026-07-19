@@ -62,8 +62,17 @@ const splitName = (value, fallbackFirst, fallbackLast) => {
 const isoDate = (value) => {
   const text = clean(value)
   if (!text) return undefined
-  const match = text.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) ([+-]\d{2})(\d{2})$/)
-  const normalized = match ? `${match[1]}T${match[2]}${match[3]}:${match[4]}` : text
+  const numericMatch = text.match(/^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}:\d{2}) ([+-]\d{2})(\d{2})$/)
+  const namedMatch = text.match(/^([A-Z][a-z]+) (\d{1,2}), (\d{4}) at (\d{1,2}):(\d{2}):(\d{2}) (AM|PM) (NZDT|NZST)$/)
+  let normalized = numericMatch ? `${numericMatch[1]}T${numericMatch[2]}${numericMatch[3]}:${numericMatch[4]}` : text
+  if (namedMatch) {
+    const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+    const [, month, day, year, hourText, minute, second, meridiem, zone] = namedMatch
+    let hour = Number(hourText) % 12
+    if (meridiem === "PM") hour += 12
+    const offset = zone === "NZDT" ? "+13:00" : "+12:00"
+    normalized = `${year}-${String(months.indexOf(month) + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:${minute}:${second}${offset}`
+  }
   const parsed = new Date(normalized)
   if (Number.isNaN(parsed.valueOf())) throw new Error(`Invalid source date: ${value}`)
   return parsed.toISOString()
