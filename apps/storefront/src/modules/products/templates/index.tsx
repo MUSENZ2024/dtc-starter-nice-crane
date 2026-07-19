@@ -5,12 +5,12 @@ import ProductActions from "@modules/products/components/product-actions"
 import { notFound } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import Image from "next/image"
 import RecentlyViewedProducts from "@modules/products/components/recently-viewed-products"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
 import CompleteTheFit from "@modules/products/components/complete-the-fit"
 import ReviewSubmission from "@modules/products/components/review-submission"
+import PhotoReviews from "@modules/products/components/photo-reviews"
 import { getStoreReviews } from "@lib/data/reviews"
 import {
   allWrittenMuseReviews,
@@ -138,7 +138,6 @@ const ProductTemplate = async ({
         date: review.date,
         text: review.text,
       }))
-  const displayedPhotoReviews = allDisplayedPhotoReviews.slice(0, 12)
   const reviewSummary = storedReviews ?? {
     reviews: [],
     total: MUSE_REVIEW_SUMMARY.total,
@@ -365,57 +364,7 @@ const ProductTemplate = async ({
           </details>
         )}
 
-        <div className="mb-10">
-          <div className="mb-4 flex items-end justify-between gap-4">
-            <div>
-              <h2 className="text-[24px] font-black uppercase tracking-[0.02em] text-[#0A0A0A] small:text-[34px]">
-                Photo reviews
-              </h2>
-              <p className="mt-1 text-[13px] text-[#666]">
-                Showing {displayedPhotoReviews.length} of {allDisplayedPhotoReviews.length} customer photos
-              </p>
-            </div>
-            <span className="hidden text-[11px] font-bold uppercase tracking-[0.1em] text-[#999] small:block">
-              Swipe to browse
-            </span>
-          </div>
-
-          <div className="no-scrollbar -mx-[18px] flex snap-x gap-2 overflow-x-auto px-[18px] pb-3 small:mx-0 small:gap-4 small:px-0">
-            {displayedPhotoReviews.map((review) => (
-              <article
-                key={review.id}
-                className="w-[126px] shrink-0 snap-start overflow-hidden rounded-[12px] bg-[#F8F7F4] ring-1 ring-[#E8E6E0] small:w-[calc((100%_-_3rem)/4)] small:max-w-[304px] small:rounded-[14px]"
-              >
-                <div className="relative aspect-[4/3] bg-[#ECE9E2]">
-                  <Image
-                    src={review.image}
-                    alt={`Photo review from ${review.name}`}
-                    fill
-                    sizes="(min-width: 768px) 24vw, 126px"
-                    quality={45}
-                    className="object-cover"
-                  />
-                </div>
-                <div className="p-2.5 small:p-3.5">
-                  <div className="mb-1.5 flex items-center justify-between gap-2 small:mb-2 small:gap-3">
-                    <div className="text-[11px] font-black text-[#0A0A0A] small:text-[12.5px]">
-                      {review.name}
-                    </div>
-                    <div className="text-[8px] font-bold uppercase tracking-[0.04em] text-[#1F7A3A] small:text-[10px] small:tracking-[0.06em]">
-                      Verified
-                    </div>
-                  </div>
-                  <div className="mb-2 text-[10px] text-[#888] small:mb-3 small:text-[12px]">
-                    {review.date}
-                  </div>
-                  <p className="line-clamp-4 text-[10.5px] font-medium leading-4 text-[#333] small:text-[12.5px] small:leading-5">
-                    {review.text}
-                  </p>
-                </div>
-              </article>
-            ))}
-          </div>
-        </div>
+        <PhotoReviews reviews={allDisplayedPhotoReviews} />
 
         <ReviewSubmission productId={product.id} />
       </section>
