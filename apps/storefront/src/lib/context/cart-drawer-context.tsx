@@ -117,8 +117,12 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
     setOptimisticItems((current) =>
       current.filter((item) => {
         const currentQuantity = nextSnapshot.get(item.variantId) ?? 0
+        const targetQuantity = Math.max(
+          0,
+          item.baseQuantity + item.quantity
+        )
 
-        return currentQuantity < item.baseQuantity + item.quantity
+        return currentQuantity !== targetQuantity
       })
     )
   }, [])

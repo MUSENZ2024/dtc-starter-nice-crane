@@ -6,15 +6,43 @@ import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { ProductFilterParams, SortOptions } from "./products.types"
 import { getAuthHeaders } from "./cookies"
-import { PRODUCT_LIST_FIELDS } from "./product-fields"
+import { PRODUCT_CANDIDATE_FIELDS, PRODUCT_LIST_FIELDS } from "./product-fields"
 import { getRegion, retrieveRegion } from "./regions"
 
 const DEFAULT_PRODUCT_REVALIDATE_SECONDS = 60
+
+const STOREFRONT_HIDDEN_PRODUCT_HANDLES = new Set([
+  "shorts",
+  "sweatpants",
+  "sweatshirt",
+  "t-shirt",
+  "shipping-protection",
+])
+
+const STOREFRONT_HIDDEN_PRODUCT_TITLES = new Set([
+  "medusa shorts",
+  "medusa sweatpants",
+  "medusa sweatshirt",
+  "medusa t-shirt",
+  "shipping protection",
+])
 
 const isPublishedProduct = (product: HttpTypes.StoreProduct) => {
   const status = (product as HttpTypes.StoreProduct & { status?: string }).status
 
   return status ? status === "published" : true
+}
+
+const isStorefrontDiscoverableProduct = (
+  product: HttpTypes.StoreProduct
+) => {
+  const handle = product.handle?.trim().toLowerCase()
+  const title = product.title?.trim().toLowerCase()
+
+  return !(
+    (handle && STOREFRONT_HIDDEN_PRODUCT_HANDLES.has(handle)) ||
+    (title && STOREFRONT_HIDDEN_PRODUCT_TITLES.has(title))
+  )
 }
 
 const withProductStatusField = (fields?: string) => {
@@ -100,17 +128,20 @@ export const listProducts = async ({
       }
     )
     .then(({ products, count }) => {
-      const publishedProducts = products.filter(isPublishedProduct)
-      const publishedCount =
-        publishedProducts.length === products.length
+      const discoverableProducts = products.filter(
+        (product) =>
+          isPublishedProduct(product) && isStorefrontDiscoverableProduct(product)
+      )
+      const discoverableCount =
+        discoverableProducts.length === products.length
           ? count
-          : publishedProducts.length
-      const nextPage = publishedCount > offset + limit ? pageParam + 1 : null
+          : Math.max(0, count - (products.length - discoverableProducts.length))
+      const nextPage = count > offset + limit ? pageParam + 1 : null
 
       return {
         response: {
-          products: publishedProducts,
-          count: publishedCount,
+          products: discoverableProducts,
+          count: discoverableCount,
         },
         nextPage: nextPage,
         queryParams,
@@ -155,31 +186,30 @@ export const listProductsWithSort = async ({
 
   const count = firstPage.response.count
   const maxProductsToSort = Math.min(count, 120)
+  const remainingPages = Array.from(
+    { length: Math.max(0, Math.ceil(maxProductsToSort / pageSize) - 1) },
+    (_, index) => index + 2
+  )
 
-  for (
-    let pageParam = 2;
-    products.length < maxProductsToSort;
-    pageParam += 1
-  ) {
-    const {
-      response: { products: nextProducts },
-    } = await listProducts({
-      pageParam,
-      queryParams: {
-        ...queryParams,
-        fields: queryParams?.fields ?? PRODUCT_LIST_FIELDS,
-        limit: pageSize,
-      },
-      countryCode,
-      revalidateSeconds,
-    })
+  // Once the first response gives us the catalogue count, the remaining
+  // pages are independent. Fetch them together instead of paying for as many
+  // as four additional Medusa round trips in sequence.
+  const remainingProductGroups = await Promise.all(
+    remainingPages.map((nextPageParam) =>
+      listProducts({
+        pageParam: nextPageParam,
+        queryParams: {
+          ...queryParams,
+          fields: queryParams?.fields ?? PRODUCT_LIST_FIELDS,
+          limit: pageSize,
+        },
+        countryCode,
+        revalidateSeconds,
+      }).then(({ response }) => response.products)
+    )
+  )
 
-    if (!nextProducts.length) {
-      break
-    }
-
-    products.push(...nextProducts)
-  }
+  products.push(...remainingProductGroups.flat())
 
   const sortedProducts = sortProducts(products, sortBy)
 
@@ -464,6 +494,7 @@ export async function listProductsFiltered({
         page,
         queryParams: {
           ...queryParams,
+          fields: PRODUCT_CANDIDATE_FIELDS,
           limit,
         },
         sortBy,
@@ -505,6 +536,7 @@ export async function listProductsFiltered({
               pageParam: 1,
               queryParams: {
                 ...queryParams,
+                fields: PRODUCT_CANDIDATE_FIELDS,
                 tag_id: [productTagId],
                 limit: 100,
               },
@@ -521,6 +553,7 @@ export async function listProductsFiltered({
           page: 1,
           queryParams: {
             ...queryParams,
+            fields: PRODUCT_CANDIDATE_FIELDS,
             limit: 100,
           },
           sortBy: sortBy === "ships_soonest" ? "created_at" : sortBy,
@@ -534,6 +567,7 @@ export async function listProductsFiltered({
       pageParam: 1,
       queryParams: {
         collection_id: [nz_stock_collection_id],
+        fields: PRODUCT_CANDIDATE_FIELDS,
         limit: 100,
       },
       countryCode,

@@ -55,6 +55,15 @@ type TrackInfo = {
   }
 }
 
+type LookupMessageKind = "invalid" | "not-found" | "error"
+
+const isSupportedTrackingNumber = (value: string) => {
+  if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(value)) return true
+  if (/^\d{8,30}$/.test(value)) return true
+
+  return /^(?=.*\d)[A-Z0-9]{10,30}$/.test(value)
+}
+
 const STEPS = [
   {
     label: "Order placed",
@@ -159,7 +168,11 @@ const BANNER_COPY: Record<
 const includesAny = (text: string, phrases: string[]) =>
   phrases.some((phrase) => text.includes(phrase))
 
-const DELIVERED_EVENTS = ["delivered", "successfully signed", "successfully received"]
+const DELIVERED_EVENTS = [
+  "delivered",
+  "successfully signed",
+  "successfully received",
+]
 const OUT_FOR_DELIVERY_EVENTS = [
   "out for delivery",
   "with courier",
@@ -235,7 +248,10 @@ function sanitiseCarrier(name: string) {
     return "International Carrier"
   }
 
-  if (normalised.includes("nz post") || normalised.includes("new zealand post")) {
+  if (
+    normalised.includes("nz post") ||
+    normalised.includes("new zealand post")
+  ) {
     return "NZ Post"
   }
 
@@ -257,16 +273,31 @@ function estimateDelivery(state: StateKey, latestDesc: string) {
 
   if (state === "delivered" || state === "outfordelivery") {
     days = 0
-  } else if (includesAny(latest, ["available for pickup", "ready for collection"])) {
+  } else if (
+    includesAny(latest, ["available for pickup", "ready for collection"])
+  ) {
     days = 1
   } else if (includesAny(latest, NZ_LOCAL_EVENTS)) {
     // Recent MUSE shipments show the local-depot scan as the final NZ Post leg.
     days = 2
   } else if (includesAny(latest, NZ_ARRIVAL_EVENTS)) {
     days = 3
-  } else if (includesAny(latest, ["airline departure", "departed", "in transit to new zealand"])) {
+  } else if (
+    includesAny(latest, [
+      "airline departure",
+      "departed",
+      "in transit to new zealand",
+    ])
+  ) {
     days = 5
-  } else if (includesAny(latest, ["handed to carrier", "accepted", "processed", "dispatched"])) {
+  } else if (
+    includesAny(latest, [
+      "handed to carrier",
+      "accepted",
+      "processed",
+      "dispatched",
+    ])
+  ) {
     days = 7
   } else if (includesAny(latest, ["picked up", "received", "order placed"])) {
     days = 9
@@ -287,7 +318,10 @@ function formatETA(date: Date, days: number) {
   return date.toLocaleDateString("en-NZ", opts)
 }
 
-function deriveState(track: TrackInfo | undefined, events: EventItem[]): StateKey {
+function deriveState(
+  track: TrackInfo | undefined,
+  events: EventItem[]
+): StateKey {
   const rawStatus = (track?.latest_status?.status || "")
     .replace(/_/g, " ")
     .toLowerCase()
@@ -364,8 +398,7 @@ function buildTrackingData(track: TrackInfo): TrackingData {
 
   events.sort(
     (a, b) =>
-      new Date(b.rawTime || "").getTime() -
-      new Date(a.rawTime || "").getTime()
+      new Date(b.rawTime || "").getTime() - new Date(a.rawTime || "").getTime()
   )
 
   const stateKey = deriveState(track, events)
@@ -400,6 +433,7 @@ export default function TrackingClient() {
   const [data, setData] = useState<TrackingData | null>(null)
   const [loading, setLoading] = useState(false)
   const [message, setMessage] = useState("")
+  const [messageKind, setMessageKind] = useState<LookupMessageKind | null>(null)
   const [nzPostOpen, setNzPostOpen] = useState(false)
   const [orderOpen, setOrderOpen] = useState(false)
 
@@ -415,22 +449,34 @@ export default function TrackingClient() {
     const cleanTrackingNumber = trackingNumber.trim().toUpperCase()
     if (!cleanTrackingNumber) return
 
-    setLoading(true)
-    setMessage("")
     setTrackingNumber(cleanTrackingNumber)
     setSubmittedTrackingNumber(cleanTrackingNumber)
     setData(null)
 
+    if (!isSupportedTrackingNumber(cleanTrackingNumber)) {
+      setMessageKind("invalid")
+      setMessage(
+        "That tracking number format is not recognised. Check the shipping confirmation email and enter the number without spaces or punctuation."
+      )
+      return
+    }
+
+    setLoading(true)
+    setMessage("")
+    setMessageKind(null)
+
     try {
-      const response = await api("gettrackinfo", [{ number: cleanTrackingNumber }])
+      const response = await api("gettrackinfo", [
+        { number: cleanTrackingNumber },
+      ])
       const track = response?.data?.accepted?.[0]?.track_info as
         | TrackInfo
         | undefined
 
       if (!track?.tracking?.providers?.length) {
-        await api("register", [{ number: cleanTrackingNumber }])
+        setMessageKind("not-found")
         setMessage(
-          "Tracking registered - check back in 5-10 minutes for the first update."
+          "We could not find a shipment for that tracking number. Check the number in your shipping confirmation email, or contact us if it still cannot be found."
         )
         return
       }
@@ -438,15 +484,16 @@ export default function TrackingClient() {
       const nextData = buildTrackingData(track)
 
       if (!nextData.events.length) {
-        await api("register", [{ number: cleanTrackingNumber }])
+        setMessageKind("not-found")
         setMessage(
-          "Tracking registered - check back in 5-10 minutes for the first update."
+          "We found the carrier but no tracking events for this number. Check it against your shipping confirmation email, then try again or contact us."
         )
         return
       }
 
       setData(nextData)
     } catch {
+      setMessageKind("error")
       setMessage("Something went wrong. Please try again.")
     } finally {
       setLoading(false)
@@ -454,7 +501,7 @@ export default function TrackingClient() {
   }
 
   return (
-    <main className="muse-track-page">
+    <div className="muse-track-page">
       <style>{trackingStyles}</style>
 
       <div className="page-wrap">
@@ -481,9 +528,15 @@ export default function TrackingClient() {
                 autoCapitalize="characters"
                 spellCheck={false}
                 value={trackingNumber}
-                onChange={(event) =>
-                  setTrackingNumber(event.target.value.toUpperCase())
+                aria-invalid={messageKind === "invalid"}
+                aria-describedby={
+                  message ? "tracking-lookup-message" : undefined
                 }
+                onChange={(event) => {
+                  setTrackingNumber(event.target.value.toUpperCase())
+                  setMessage("")
+                  setMessageKind(null)
+                }}
               />
             </div>
             <button
@@ -498,287 +551,326 @@ export default function TrackingClient() {
         </section>
 
         {hasLookupResult && (
-        <section className="tracking-layout" id="tracking-result" aria-live="polite">
-          <div>
-            {data ? (
-              <>
-                <div className="eta-card">
+          <section
+            className="tracking-layout"
+            id="tracking-result"
+            aria-live="polite"
+          >
+            <div>
+              {data ? (
+                <>
+                  <div className="eta-card">
+                    <div className="eta-inner">
+                      <div className="eta-label">
+                        <span
+                          className={`eta-pulse ${
+                            data.stateKey === "delivered" ? "delivered" : ""
+                          }`}
+                        />
+                        <span>{data.labelText}</span>
+                      </div>
+                      <div className="eta-date">{data.date}</div>
+                    </div>
+                  </div>
+
+                  <div className={`status-banner ${data.bannerClass}`}>
+                    <div className="status-icon">{data.icon}</div>
+                    <div className="status-text-wrap">
+                      <div className="status-stage">{data.stage}</div>
+                      <div className="status-detail">{data.detail}</div>
+                    </div>
+                  </div>
+
+                  {data.showDelay && (
+                    <div className="delay-callout">
+                      <div className="delay-callout-icon">!</div>
+                      <div className="delay-callout-text">
+                        <h4>
+                          No scan in a while - but that&apos;s pretty normal
+                        </h4>
+                        <p>
+                          International transit sometimes goes quiet for a few
+                          days while the parcel moves between hubs. It&apos;s
+                          usually still on its way. Give us a shout if
+                          you&apos;re worried and we&apos;ll look into it.
+                        </p>
+                        <a
+                          href="mailto:support@musenz.com"
+                          className="btn-contact"
+                        >
+                          Get in touch
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {data.showLeg && (
+                    <div className="leg-explainer">
+                      <div className="leg-icon">NZ</div>
+                      <div className="leg-text">
+                        <h4>
+                          Two-leg journey - that&apos;s why it takes 13-16 days
+                        </h4>
+                        <p>
+                          Your order ships from our overseas warehouse to
+                          Auckland, then NZ Post delivers to you. That two-leg
+                          model is how we keep prices at half retail. The wait
+                          is the tradeoff, and it&apos;s worth it.
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="timeline-card">
+                    <div className="timeline-label">Fulfilment timeline</div>
+                    <div className="timeline">
+                      {STEPS.map((step, index) => {
+                        const isDone =
+                          index < data.activeStep || data.activeStep === 5
+                        const isActive = index === data.activeStep
+                        const className = isDone
+                          ? "done"
+                          : isActive
+                          ? "active"
+                          : "pending"
+
+                        return (
+                          <div
+                            className={`timeline-step ${className}`}
+                            key={step.label}
+                          >
+                            <div className="tl-dot-col">
+                              <div className="tl-dot">
+                                {isDone ? (
+                                  <svg
+                                    viewBox="0 0 24 24"
+                                    width="14"
+                                    height="14"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="3.5"
+                                  >
+                                    <path d="M20 6 9 17l-5-5" />
+                                  </svg>
+                                ) : (
+                                  index + 1
+                                )}
+                              </div>
+                            </div>
+                            <div className="tl-content">
+                              <div className="tl-stage">
+                                {step.label}
+                                <span className="tl-tip" data-tip={step.tip}>
+                                  ?
+                                </span>
+                              </div>
+                              {isDone && (
+                                <div className="tl-meta done">Done</div>
+                              )}
+                              {isActive && (
+                                <div className="tl-meta current">
+                                  Current stage
+                                </div>
+                              )}
+                              {!isDone && !isActive && (
+                                <div className="tl-meta">Coming up</div>
+                              )}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="eta-card lookup-loading-card">
                   <div className="eta-inner">
                     <div className="eta-label">
-                      <span
-                        className={`eta-pulse ${
-                          data.stateKey === "delivered" ? "delivered" : ""
-                        }`}
-                      />
-                      <span>{data.labelText}</span>
+                      {loading && <span className="eta-pulse" />}
+                      <span>
+                        {loading ? "Fetching tracking" : "Shipment not found"}
+                      </span>
                     </div>
-                    <div className="eta-date">{data.date}</div>
+                    <div className="eta-date">
+                      {loading
+                        ? "Checking your parcel..."
+                        : "Check the number and try again"}
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className={`status-banner ${data.bannerClass}`}>
-                  <div className="status-icon">{data.icon}</div>
-                  <div className="status-text-wrap">
-                    <div className="status-stage">{data.stage}</div>
-                    <div className="status-detail">{data.detail}</div>
+              {data && (
+                <div
+                  className={`nzpost-card ${nzPostOpen ? "card-open" : ""}`}
+                  id="nzpost-card"
+                >
+                  <button
+                    className="collapse-header"
+                    type="button"
+                    onClick={() => setNzPostOpen((open) => !open)}
+                  >
+                    <span className="collapse-header-label">
+                      Track on NZ Post
+                    </span>
+                    <span className="collapse-chevron">⌃</span>
+                  </button>
+                  <div className="collapse-body">
+                    <div className="nzpost-header">
+                      <img
+                        src="/nzpost/nz-post-logo-horizontal-red.png"
+                        alt="NZ Post"
+                        height={32}
+                      />
+                      <div className="nzpost-header-text">
+                        <div className="nzpost-header-title">
+                          Track on NZ Post
+                        </div>
+                        <div className="nzpost-header-sub">
+                          View, redirect or add delivery instructions
+                        </div>
+                      </div>
+                    </div>
+                    <div className="nzpost-actions">
+                      <NzPostButton
+                        href={nzPostHref}
+                        icon="external"
+                        label="View on NZ Post"
+                        sub="See live scans on the official NZ Post page"
+                      />
+                      <NzPostButton
+                        href={nzPostHref}
+                        icon="edit"
+                        label="Delivery Instructions"
+                        sub="Leave by door, buzz flat number, safe drop, etc."
+                      />
+                      <NzPostButton
+                        href={nzPostHref}
+                        icon="home"
+                        label="Redirect Parcel"
+                        sub="Change delivery address or send to a Post Shop"
+                      />
+                    </div>
                   </div>
                 </div>
+              )}
 
-                {data.showDelay && (
-              <div className="delay-callout">
-                <div className="delay-callout-icon">!</div>
-                <div className="delay-callout-text">
-                  <h4>No scan in a while - but that&apos;s pretty normal</h4>
+              <div className="events-card">
+                <h3>Tracking events</h3>
+                <div>
+                  {loading ? (
+                    <div className="event-message">
+                      Looking up your shipment...
+                    </div>
+                  ) : message ? (
+                    <div
+                      className="event-message"
+                      id="tracking-lookup-message"
+                      role="alert"
+                    >
+                      {message}
+                    </div>
+                  ) : data ? (
+                    data.events.map((event, index) => (
+                      <div className="event" key={`${event.time}-${index}`}>
+                        <div className="event-time">{event.time}</div>
+                        <div>
+                          <div className="event-desc">{event.desc}</div>
+                          <div className="event-loc">{event.loc}</div>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div className="event-message">
+                      Enter your tracking number above to fetch the latest
+                      scans.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <aside className="sidebar">
+              <div
+                className={`order-card ${orderOpen ? "card-open" : ""}`}
+                id="order-card"
+              >
+                <button
+                  className="collapse-header"
+                  type="button"
+                  onClick={() => setOrderOpen((open) => !open)}
+                >
+                  <span className="collapse-header-label">Your lookup</span>
+                  <span className="collapse-chevron">⌃</span>
+                </button>
+                <div className="collapse-body">
+                  <h3>Your lookup</h3>
+                  <div className="order-ref">{submittedTrackingNumber}</div>
+                  <div className="order-date">
+                    Tracking details are fetched live from the carrier.
+                  </div>
+                  {data ? (
+                    <div className="lookup-summary">
+                      <div>
+                        <span>Current stage</span>
+                        <strong>{data.stage}</strong>
+                      </div>
+                      <div>
+                        <span>{data.labelText}</span>
+                        <strong>{data.date || "Updating"}</strong>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="lookup-summary-text">
+                      {loading
+                        ? "We are checking this number with the carrier now."
+                        : "No shipment was found for this number. Check your shipping confirmation email or contact support for help."}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {data?.showDelivered && (
+                <div className="delivered-cta">
+                  <h3>Landed!</h3>
                   <p>
-                    International transit sometimes goes quiet for a few days
-                    while the parcel moves between hubs. It&apos;s usually
-                    still on its way. Give us a shout if you&apos;re worried
-                    and we&apos;ll look into it.
+                    Tag <strong>@muse.nz</strong> on Instagram when you wear it
+                    and get <strong>10% off your next order.</strong>
                   </p>
-                  <a href="mailto:support@musenz.com" className="btn-contact">
-                    Get in touch
+                  <a
+                    href="https://instagram.com/muse.nz"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-insta"
+                  >
+                    <svg viewBox="0 0 24 24">
+                      <rect x="3" y="3" width="18" height="18" rx="5" />
+                      <circle cx="12" cy="12" r="4" />
+                      <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
+                    </svg>
+                    @muse.nz
+                  </a>
+                </div>
+              )}
+
+              <div className="help-card">
+                <div className="help-card-inner">
+                  <h3>Got a question?</h3>
+                  <p>
+                    Need an update on your order? Just reply to any of our
+                    emails or send us a message on Instagram or Facebook.
+                    We&apos;ll get back to you as soon as we can.
+                  </p>
+                  <a href="mailto:support@musenz.com" className="btn-yellow">
+                    Email us
                   </a>
                 </div>
               </div>
-                )}
-
-                {data.showLeg && (
-              <div className="leg-explainer">
-                <div className="leg-icon">NZ</div>
-                <div className="leg-text">
-                  <h4>Two-leg journey - that&apos;s why it takes 13-16 days</h4>
-                  <p>
-                    Your order ships from our overseas warehouse to Auckland,
-                    then NZ Post delivers to you. That two-leg model is how we
-                    keep prices at half retail. The wait is the tradeoff, and
-                    it&apos;s worth it.
-                  </p>
-                </div>
-              </div>
-                )}
-
-                <div className="timeline-card">
-              <div className="timeline-label">Fulfilment timeline</div>
-              <div className="timeline">
-                {STEPS.map((step, index) => {
-                  const isDone = index < data.activeStep || data.activeStep === 5
-                  const isActive = index === data.activeStep
-                  const className = isDone
-                    ? "done"
-                    : isActive
-                    ? "active"
-                    : "pending"
-
-                  return (
-                    <div className={`timeline-step ${className}`} key={step.label}>
-                      <div className="tl-dot-col">
-                        <div className="tl-dot">
-                          {isDone ? (
-                            <svg
-                              viewBox="0 0 24 24"
-                              width="14"
-                              height="14"
-                              fill="none"
-                              stroke="currentColor"
-                              strokeWidth="3.5"
-                            >
-                              <path d="M20 6 9 17l-5-5" />
-                            </svg>
-                          ) : (
-                            index + 1
-                          )}
-                        </div>
-                      </div>
-                      <div className="tl-content">
-                        <div className="tl-stage">
-                          {step.label}
-                          <span className="tl-tip" data-tip={step.tip}>
-                            ?
-                          </span>
-                        </div>
-                        {isDone && <div className="tl-meta done">Done</div>}
-                        {isActive && (
-                          <div className="tl-meta current">Current stage</div>
-                        )}
-                        {!isDone && !isActive && (
-                          <div className="tl-meta">Coming up</div>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-                </div>
-              </>
-            ) : (
-              <div className="eta-card lookup-loading-card">
-                <div className="eta-inner">
-                  <div className="eta-label">
-                    <span className="eta-pulse" />
-                    <span>{loading ? "Fetching tracking" : "Tracking lookup"}</span>
-                  </div>
-                  <div className="eta-date">
-                    {loading ? "Checking your parcel..." : "No live scans yet"}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div
-              className={`nzpost-card ${nzPostOpen ? "card-open" : ""}`}
-              id="nzpost-card"
-            >
-              <button
-                className="collapse-header"
-                type="button"
-                onClick={() => setNzPostOpen((open) => !open)}
-              >
-                <span className="collapse-header-label">Track on NZ Post</span>
-                <span className="collapse-chevron">⌃</span>
-              </button>
-              <div className="collapse-body">
-                <div className="nzpost-header">
-                  <img
-                    src="/nzpost/nz-post-logo-horizontal-red.png"
-                    alt="NZ Post"
-                    height={32}
-                  />
-                  <div className="nzpost-header-text">
-                    <div className="nzpost-header-title">Track on NZ Post</div>
-                    <div className="nzpost-header-sub">
-                      View, redirect or add delivery instructions
-                    </div>
-                  </div>
-                </div>
-                <div className="nzpost-actions">
-                  <NzPostButton
-                    href={nzPostHref}
-                    icon="external"
-                    label="View on NZ Post"
-                    sub="See live scans on the official NZ Post page"
-                  />
-                  <NzPostButton
-                    href={nzPostHref}
-                    icon="edit"
-                    label="Delivery Instructions"
-                    sub="Leave by door, buzz flat number, safe drop, etc."
-                  />
-                  <NzPostButton
-                    href={nzPostHref}
-                    icon="home"
-                    label="Redirect Parcel"
-                    sub="Change delivery address or send to a Post Shop"
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="events-card">
-              <h3>Tracking events</h3>
-              <div>
-                {loading ? (
-                  <div className="event-message">Looking up your shipment...</div>
-                ) : message ? (
-                  <div className="event-message">{message}</div>
-                ) : data ? (
-                  data.events.map((event, index) => (
-                    <div className="event" key={`${event.time}-${index}`}>
-                      <div className="event-time">{event.time}</div>
-                      <div>
-                        <div className="event-desc">{event.desc}</div>
-                        <div className="event-loc">{event.loc}</div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="event-message">
-                    Enter your tracking number above to fetch the latest scans.
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <aside className="sidebar">
-            <div
-              className={`order-card ${orderOpen ? "card-open" : ""}`}
-              id="order-card"
-            >
-              <button
-                className="collapse-header"
-                type="button"
-                onClick={() => setOrderOpen((open) => !open)}
-              >
-                <span className="collapse-header-label">Your lookup</span>
-                <span className="collapse-chevron">⌃</span>
-              </button>
-              <div className="collapse-body">
-                <h3>Your lookup</h3>
-                <div className="order-ref">{submittedTrackingNumber}</div>
-                <div className="order-date">
-                  Tracking details are fetched live from the carrier.
-                </div>
-                {data ? (
-                  <div className="lookup-summary">
-                    <div>
-                      <span>Current stage</span>
-                      <strong>{data.stage}</strong>
-                    </div>
-                    <div>
-                      <span>{data.labelText}</span>
-                      <strong>{data.date || "Updating"}</strong>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="lookup-summary-text">
-                    We have registered this number. Refresh the lookup shortly
-                    and the order journey will appear here once scans are live.
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {data?.showDelivered && (
-              <div className="delivered-cta">
-                <h3>Landed!</h3>
-                <p>
-                  Tag <strong>@muse.nz</strong> on Instagram when you wear it
-                  and get <strong>10% off your next order.</strong>
-                </p>
-                <a
-                  href="https://instagram.com/muse.nz"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="btn-insta"
-                >
-                  <svg viewBox="0 0 24 24">
-                    <rect x="3" y="3" width="18" height="18" rx="5" />
-                    <circle cx="12" cy="12" r="4" />
-                    <circle cx="17.5" cy="6.5" r="1" fill="currentColor" />
-                  </svg>
-                  @muse.nz
-                </a>
-              </div>
-            )}
-
-            <div className="help-card">
-              <div className="help-card-inner">
-                <h3>Got a question?</h3>
-                <p>
-                  Need an update on your order? Just reply to any of our emails
-                  or send us a message on Instagram or Facebook. We&apos;ll get
-                  back to you as soon as we can.
-                </p>
-                <a href="mailto:support@musenz.com" className="btn-yellow">
-                  Email us
-                </a>
-              </div>
-            </div>
-          </aside>
-        </section>
+            </aside>
+          </section>
         )}
       </div>
-    </main>
+    </div>
   )
 }
 
@@ -794,7 +886,12 @@ function NzPostButton({
   sub: string
 }) {
   return (
-    <a href={href} target="_blank" rel="noopener noreferrer" className="nzpost-btn">
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="nzpost-btn"
+    >
       {icon === "external" && (
         <svg viewBox="0 0 24 24">
           <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />

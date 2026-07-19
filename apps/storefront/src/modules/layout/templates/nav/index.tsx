@@ -1,7 +1,6 @@
 import { Suspense } from "react"
 
 import { listCategories } from "@lib/data/categories"
-import { listProducts } from "@lib/data/products"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import CartDrawerWrapper from "@modules/layout/components/cart-drawer/server-wrapper"
@@ -20,10 +19,6 @@ type SearchProductLink = {
   image?: string
   keywords: string
 }
-
-const SEARCH_PRODUCT_LIMIT = 48
-const SEARCH_PRODUCT_FIELDS =
-  "id,title,handle,subtitle,thumbnail,*collection,*type,*tags,+metadata"
 
 const byRankThenName = (
   a: HttpTypes.StoreProductCategory,
@@ -46,20 +41,6 @@ const getVisibleCategoryLinks = (
       label: category.name,
       href: `/categories/${category.handle}`,
     }))
-}
-
-const searchableMetadataValue = (value: unknown): string | undefined => {
-  if (typeof value === "string") {
-    return value
-  }
-
-  if (Array.isArray(value)) {
-    return value
-      .filter((item): item is string => typeof item === "string")
-      .join(" ")
-  }
-
-  return undefined
 }
 
 function MuseAnnouncementBar() {
@@ -107,45 +88,13 @@ function MuseAnnouncementBar() {
 }
 
 export default async function Nav() {
-  const [categories, productResult] = await Promise.all([
-    listCategories().catch(() => []),
-    listProducts({
-      countryCode: "nz",
-      queryParams: {
-        fields: SEARCH_PRODUCT_FIELDS,
-        limit: SEARCH_PRODUCT_LIMIT,
-      },
-      // This powers the nav search-as-you-type index and renders on every
-      // page. Fetching it fresh (no-store) on every request and on every
-      // post-cart-mutation router.refresh() was a major source of perceived
-      // slowness; a short cache window removes that cost almost entirely.
-      revalidateSeconds: 120,
-    }).catch(() => ({ response: { products: [], count: 0 } })),
-  ])
-  const productResponse = productResult.response
+  const categories = await listCategories().catch(() => [])
 
   const categoryLinks = getVisibleCategoryLinks(categories)
-  const productLinks = productResponse.products
-    .filter((product) => product.handle)
-    .map<SearchProductLink>((product) => ({
-      title: product.title,
-      href: `/products/${product.handle}`,
-      image: product.thumbnail ?? undefined,
-      keywords: [
-        product.title,
-        product.subtitle,
-        product.handle,
-        product.collection?.title,
-        product.collection?.handle,
-        product.type?.value,
-        product.tags?.map((tag) => tag.value).join(" "),
-        searchableMetadataValue(product.metadata?.brand),
-        searchableMetadataValue(product.metadata?.brands),
-        searchableMetadataValue(product.metadata?.search_keywords),
-      ]
-        .filter(Boolean)
-        .join(" "),
-    }))
+  // Product matches are fetched only after the shopper types. Preloading a
+  // product index in the global navigation made every route and every
+  // router.refresh() pay for an unrelated catalogue request.
+  const productLinks: SearchProductLink[] = []
 
   return (
     <>
@@ -224,7 +173,7 @@ export default async function Nav() {
 
             <LocalizedClientLink
               href="/"
-              className="flex items-center justify-center transition hover:opacity-75"
+              className="flex min-h-11 items-center justify-center transition hover:opacity-75"
               aria-label="MUSE home"
               data-testid="nav-store-link"
             >
@@ -270,7 +219,7 @@ export default async function Nav() {
               <Suspense
                 fallback={
                   <button
-                    className="flex items-center gap-2 rounded-full bg-[#C8D050] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-[#0A0A0A]"
+                    className="flex min-h-11 items-center gap-2 rounded-full bg-[#C8D050] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-[#0A0A0A]"
                     type="button"
                   >
                     Bag
@@ -284,7 +233,6 @@ export default async function Nav() {
               </Suspense>
             </div>
           </div>
-
         </header>
       </div>
     </>

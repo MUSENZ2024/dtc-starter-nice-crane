@@ -2,10 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 
 import { listProducts } from "@lib/data/products"
 
-export const dynamic = "force-dynamic"
-
-const SEARCH_FIELDS =
-  "id,title,handle,subtitle,thumbnail,*collection,*type,*tags,+metadata"
+const SEARCH_FIELDS = "id,title,handle,thumbnail"
 
 export async function GET(request: NextRequest) {
   const q = request.nextUrl.searchParams.get("q")?.trim()
@@ -23,6 +20,7 @@ export async function GET(request: NextRequest) {
         limit: 8,
         q,
       },
+      revalidateSeconds: 300,
     })
 
     return NextResponse.json(
@@ -37,7 +35,7 @@ export async function GET(request: NextRequest) {
       },
       {
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control": "public, max-age=60, stale-while-revalidate=300",
         },
       }
     )

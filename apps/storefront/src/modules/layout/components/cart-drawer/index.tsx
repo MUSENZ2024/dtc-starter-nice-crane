@@ -3,7 +3,7 @@
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import {
   addToCart,
-  applyPromotions,
+  addPromotionCode,
   deleteLineItem,
   updateLineItem,
 } from "@lib/data/cart"
@@ -18,7 +18,7 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import AddonsSection from "@modules/cart/components/addons-section-muse"
 import PaymentBadges from "@modules/common/components/payment-badges"
 import { useRouter } from "next/navigation"
-import { FormEvent, useEffect, useState, useTransition } from "react"
+import { FormEvent, useEffect, useRef, useState, useTransition } from "react"
 import { createPortal } from "react-dom"
 
 const FREE_SHIPPING_THRESHOLD = 200
@@ -97,13 +97,89 @@ export default function CartDrawer({
   const [mounted, setMounted] = useState(false)
   const [discountOpen, setDiscountOpen] = useState(false)
   const [discountCode, setDiscountCode] = useState("")
+  const [discountError, setDiscountError] = useState("")
+  const [cartError, setCartError] = useState("")
+  const [quantityOverrides, setQuantityOverrides] = useState<
+    Record<string, number>
+  >({})
   const [savedToast, setSavedToast] = useState<SavedToast | null>(null)
   const [isPending, startTransition] = useTransition()
+  const drawerRef = useRef<HTMLElement>(null)
+  const returnFocusRef = useRef<HTMLElement | null>(null)
+  const wasOpenRef = useRef(false)
   const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!isOpen) {
+      document.body.style.overflow = ""
+      if (wasOpenRef.current) {
+        window.requestAnimationFrame(() => returnFocusRef.current?.focus())
+      }
+      wasOpenRef.current = false
+      return
+    }
+
+    wasOpenRef.current = true
+    returnFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null
+    document.body.style.overflow = "hidden"
+
+    const drawer = drawerRef.current
+    if (!drawer) return
+
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(",")
+    const getFocusable = () =>
+      Array.from(drawer.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => element.offsetParent !== null
+      )
+
+    window.requestAnimationFrame(() =>
+      drawer.querySelector<HTMLElement>('[aria-label="Close cart"]')?.focus()
+    )
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        closeDrawer()
+        return
+      }
+      if (event.key !== "Tab") return
+
+      const items = getFocusable()
+      if (!items.length) {
+        event.preventDefault()
+        return
+      }
+
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      document.body.style.overflow = ""
+    }
+  }, [closeDrawer, isOpen])
 
   useEffect(() => {
     registerCartSnapshot(
@@ -113,6 +189,17 @@ export default function CartDrawer({
       }))
     )
   }, [cart, registerCartSnapshot])
+
+  useEffect(() => {
+    setQuantityOverrides((current) =>
+      Object.fromEntries(
+        Object.entries(current).filter(([lineId, quantity]) => {
+          const line = cart?.items?.find((item) => item.id === lineId)
+          return Boolean(line && line.quantity !== quantity)
+        })
+      )
+    )
+  }, [cart])
 
   const cartItems = cart?.items ?? []
   const optimisticByVariant = new Map(
@@ -124,32 +211,52 @@ export default function CartDrawer({
       .filter((variantId): variantId is string => Boolean(variantId))
   )
   const pendingOnlyItems = optimisticItems.filter(
-    (item) => !cartVariantIds.has(item.variantId)
+    (item) =>
+      !cartVariantIds.has(item.variantId) &&
+      item.baseQuantity + item.quantity > 0
   )
   const getVisibleQuantity = (item: HttpTypes.StoreCartLineItem) => {
+    const overriddenQuantity = quantityOverrides[item.id]
+
+    if (typeof overriddenQuantity === "number") {
+      return overriddenQuantity
+    }
+
     const variantId = getCartItemVariantId(item)
     const optimisticItem = variantId ? optimisticByVariant.get(variantId) : null
 
     return optimisticItem
-      ? Math.max(item.quantity, optimisticItem.baseQuantity + optimisticItem.quantity)
+      ? Math.max(0, optimisticItem.baseQuantity + optimisticItem.quantity)
       : item.quantity
   }
-  const pendingSubtotal = optimisticItems.reduce((sum, item) => {
+  const optimisticSubtotalDelta = optimisticItems.reduce((sum, item) => {
     const matchingCartItem = cartItems.find(
       (cartItem) => getCartItemVariantId(cartItem) === item.variantId
     )
     const realQuantity = matchingCartItem?.quantity ?? 0
-    const missingQuantity = Math.max(
-      0,
-      item.baseQuantity + item.quantity - realQuantity
-    )
+    const targetQuantity = Math.max(0, item.baseQuantity + item.quantity)
 
-    return sum + item.unitPrice * missingQuantity
+    return sum + item.unitPrice * (targetQuantity - realQuantity)
   }, 0)
-  const subtotal = (cart?.subtotal ?? cart?.item_subtotal ?? 0) + pendingSubtotal
+  const quantityOverrideDelta = cartItems.reduce((sum, item) => {
+    const overriddenQuantity = quantityOverrides[item.id]
+
+    if (typeof overriddenQuantity !== "number") {
+      return sum
+    }
+
+    return sum + (overriddenQuantity - item.quantity) * (item.unit_price ?? 0)
+  }, 0)
+  const subtotal =
+    (cart?.subtotal ?? cart?.item_subtotal ?? 0) +
+    optimisticSubtotalDelta +
+    quantityOverrideDelta
   const itemCount =
     cartItems.reduce((acc, item) => acc + getVisibleQuantity(item), 0) +
-    pendingOnlyItems.reduce((acc, item) => acc + item.quantity, 0)
+    pendingOnlyItems.reduce(
+      (acc, item) => acc + Math.max(0, item.baseQuantity + item.quantity),
+      0
+    )
   const freeShippingGap = Math.max(0, FREE_SHIPPING_THRESHOLD - subtotal)
   const progress = Math.min(100, (subtotal / FREE_SHIPPING_THRESHOLD) * 100)
   const shippingUnlocked = freeShippingGap === 0
@@ -178,10 +285,22 @@ export default function CartDrawer({
     }
   }
 
-  function mutateCart(action: () => Promise<void>) {
+  function mutateCart(
+    action: () => Promise<void>,
+    onError?: () => void
+  ) {
     startTransition(async () => {
-      await action()
-      router.refresh()
+      setCartError("")
+
+      try {
+        await action()
+      } catch (error) {
+        console.error("[cart:mutation-failed]", error)
+        onError?.()
+        setCartError("Your bag could not be updated. Please try again.")
+      } finally {
+        router.refresh()
+      }
     })
   }
 
@@ -225,15 +344,24 @@ export default function CartDrawer({
 
   function handleQty(lineId: string, delta: number, currentQty: number) {
     const nextQty = currentQty + delta
+    setQuantityOverrides((current) => ({ ...current, [lineId]: nextQty }))
 
-    mutateCart(async () => {
-      if (nextQty < 1) {
-        await deleteLineItem(lineId)
-        return
-      }
+    mutateCart(
+      async () => {
+        if (nextQty < 1) {
+          await deleteLineItem(lineId)
+          return
+        }
 
-      await updateLineItem({ lineId, quantity: nextQty })
-    })
+        await updateLineItem({ lineId, quantity: nextQty })
+      },
+      () =>
+        setQuantityOverrides((current) => {
+          const next = { ...current }
+          delete next[lineId]
+          return next
+        })
+    )
   }
 
   function handleDiscount(event: FormEvent<HTMLFormElement>) {
@@ -244,10 +372,18 @@ export default function CartDrawer({
       return
     }
 
-    mutateCart(async () => {
-      await applyPromotions([code])
+    setDiscountError("")
+    startTransition(async () => {
+      const result = await addPromotionCode(code)
+
+      if (!result.success) {
+        setDiscountError(result.error)
+        return
+      }
+
       setDiscountCode("")
       setDiscountOpen(false)
+      router.refresh()
     })
   }
 
@@ -256,7 +392,7 @@ export default function CartDrawer({
       <button
         type="button"
         onClick={openDrawer}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full bg-muse-yellow text-muse-black transition hover:-translate-y-px hover:bg-white large:h-auto large:w-auto large:gap-2 large:px-5 large:py-2 large:text-[12px] large:font-black large:uppercase large:tracking-[0.14em]"
+        className="relative flex h-11 w-11 items-center justify-center rounded-full bg-muse-yellow text-muse-black transition hover:-translate-y-px hover:bg-white large:h-auto large:w-auto large:gap-2 large:px-5 large:py-2 large:text-[12px] large:font-black large:uppercase large:tracking-[0.14em]"
         aria-label={`Open cart with ${itemCount} ${itemCount === 1 ? "item" : "items"}`}
         data-testid="nav-cart-link"
       >
@@ -277,9 +413,12 @@ export default function CartDrawer({
         <span className="hidden large:inline">Bag</span>
         <span
           className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[9px] font-black text-muse-black large:static large:h-5 large:w-5 large:bg-muse-black large:text-[11px] large:font-extrabold large:text-muse-yellow"
-          aria-live="polite"
+          aria-hidden="true"
         >
           {itemCount}
+        </span>
+        <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+          {itemCount} {itemCount === 1 ? "item" : "items"} in cart
         </span>
       </button>
 
@@ -295,9 +434,12 @@ export default function CartDrawer({
               />
 
               <aside
+                ref={drawerRef}
                 role="dialog"
                 aria-label="Shopping cart"
                 aria-modal="true"
+                aria-hidden={!isOpen}
+                inert={!isOpen}
                 className={`fixed bottom-0 right-0 top-0 z-[160] flex w-[480px] max-w-full flex-col bg-muse-cream shadow-2xl transition-transform duration-300 ease-out ${
                   isOpen ? "translate-x-0" : "translate-x-full"
                 }`}
@@ -312,7 +454,7 @@ export default function CartDrawer({
           <button
             type="button"
             onClick={closeDrawer}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muse-cream-deep p-0 text-xl leading-[1] text-muse-text-muted transition hover:bg-muse-border"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muse-cream-deep p-0 text-xl leading-[1] text-muse-text-muted transition hover:bg-muse-border"
             aria-label="Close cart"
           >
             x
@@ -327,6 +469,15 @@ export default function CartDrawer({
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muse-black/20 border-t-muse-black" />
             Adding to your bag...
           </div>
+        )}
+
+        {cartError && (
+          <p
+            role="alert"
+            className="border-b border-[#E7B7A5] bg-[#FDF4EF] px-6 py-3 text-[12.5px] font-semibold text-[#A33A12]"
+          >
+            {cartError}
+          </p>
         )}
 
         {!isEmpty && (
@@ -404,12 +555,12 @@ export default function CartDrawer({
                       </button>
                     </div>
                     <div className="flex items-center justify-between gap-3">
-                      <div className="flex h-[34px] items-center overflow-hidden rounded-full border border-muse-input bg-white">
+                      <div className="flex h-11 items-center overflow-hidden rounded-full border border-muse-input bg-white">
                         <button
                           type="button"
                           onClick={() => handleQty(item.id, -1, visibleQuantity)}
                           disabled={isPending || isCartMutating}
-                          className="flex w-[34px] items-center justify-center text-lg text-muse-text-muted transition hover:text-muse-black disabled:opacity-50"
+                          className="flex h-11 w-11 items-center justify-center text-lg text-muse-text-muted transition hover:text-muse-black disabled:opacity-50"
                           aria-label="Decrease quantity"
                         >
                           -
@@ -421,7 +572,7 @@ export default function CartDrawer({
                           type="button"
                           onClick={() => handleQty(item.id, 1, visibleQuantity)}
                           disabled={isPending || isCartMutating}
-                          className="flex w-[34px] items-center justify-center text-lg text-muse-text-muted transition hover:text-muse-black disabled:opacity-50"
+                          className="flex h-11 w-11 items-center justify-center text-lg text-muse-text-muted transition hover:text-muse-black disabled:opacity-50"
                           aria-label="Increase quantity"
                         >
                           +
@@ -438,7 +589,7 @@ export default function CartDrawer({
                     type="button"
                     onClick={() => mutateCart(() => deleteLineItem(item.id))}
                     disabled={isPending}
-                    className="self-start p-1 text-base text-muse-text-light transition hover:text-muse-orange disabled:opacity-50"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center self-start text-base text-muse-text-light transition hover:text-muse-orange disabled:opacity-50"
                     aria-label="Remove item"
                   >
                     x
@@ -612,24 +763,40 @@ export default function CartDrawer({
                   </button>
                 </p>
                 {discountOpen && (
-                  <form className="mt-2.5 flex gap-2" onSubmit={handleDiscount}>
-                    <input
-                      name="code"
-                      type="text"
-                      value={discountCode}
-                      onChange={(event) => setDiscountCode(event.target.value)}
-                      placeholder="Discount code"
-                      className="flex-1 rounded-full border border-muse-input bg-white px-4 py-3 text-[12.5px] uppercase tracking-wider outline-none transition placeholder:normal-case placeholder:tracking-normal placeholder:text-muse-text-light focus:border-muse-black"
-                      maxLength={24}
-                    />
-                    <button
-                      type="submit"
-                      disabled={isPending}
-                      className="whitespace-nowrap rounded-full bg-muse-black px-5 py-3 text-[11.5px] font-bold uppercase tracking-wider text-muse-cream transition hover:bg-muse-orange disabled:opacity-50"
-                    >
-                      Apply
-                    </button>
-                  </form>
+                  <div>
+                    <form className="mt-2.5 flex gap-2" onSubmit={handleDiscount}>
+                      <input
+                        name="code"
+                        type="text"
+                        value={discountCode}
+                        onChange={(event) => {
+                          setDiscountCode(event.target.value)
+                          setDiscountError("")
+                        }}
+                        aria-invalid={Boolean(discountError)}
+                        aria-describedby={discountError ? "drawer-discount-error" : undefined}
+                        placeholder="Discount code"
+                        className="flex-1 rounded-full border border-muse-input bg-white px-4 py-3 text-[12.5px] uppercase tracking-wider outline-none transition placeholder:normal-case placeholder:tracking-normal placeholder:text-muse-text-light focus:border-muse-black"
+                        maxLength={24}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isPending}
+                        className="whitespace-nowrap rounded-full bg-muse-black px-5 py-3 text-[11.5px] font-bold uppercase tracking-wider text-muse-cream transition hover:bg-muse-orange disabled:opacity-50"
+                      >
+                        {isPending ? "Checking..." : "Apply"}
+                      </button>
+                    </form>
+                    {discountError && (
+                      <p
+                        id="drawer-discount-error"
+                        role="alert"
+                        className="mt-2 text-[12px] font-semibold text-[#A33A12]"
+                      >
+                        {discountError}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
 

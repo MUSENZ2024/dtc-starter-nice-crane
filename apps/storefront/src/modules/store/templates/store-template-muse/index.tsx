@@ -144,7 +144,7 @@ type Props = {
 const splitParam = (value?: string) => value?.split(",").filter(Boolean)
 
 const getCategoryTreeIds = (
-  category: HttpTypes.StoreProductCategory,
+  category: HttpTypes.StoreProductCategory
 ): string[] => [
   category.id,
   ...(category.category_children ?? []).flatMap(getCategoryTreeIds),
@@ -152,7 +152,7 @@ const getCategoryTreeIds = (
 
 const resolveTagIds = (
   handles: string[] | undefined,
-  tags: StoreProductTag[],
+  tags: StoreProductTag[]
 ) => {
   if (!handles?.length) {
     return undefined
@@ -167,7 +167,7 @@ const resolveTagIds = (
 
 const resolveColourTagIds = (
   colours: string[] | undefined,
-  tags: StoreProductTag[],
+  tags: StoreProductTag[]
 ) => {
   if (!colours?.length) {
     return undefined
@@ -178,8 +178,8 @@ const resolveColourTagIds = (
       colour
         .trim()
         .toLowerCase()
-        .replace(/[\s_]+/g, "-"),
-    ),
+        .replace(/[\s_]+/g, "-")
+    )
   )
   const ids = tags
     .filter((tag) => {
@@ -190,7 +190,7 @@ const resolveColourTagIds = (
             colour
               .trim()
               .toLowerCase()
-              .replace(/[\s_]+/g, "-"),
+              .replace(/[\s_]+/g, "-")
           )
         : false
     })
@@ -201,7 +201,7 @@ const resolveColourTagIds = (
 
 const resolveTagProductIds = (
   tagIds: string[] | undefined,
-  tags: StoreProductTag[],
+  tags: StoreProductTag[]
 ) => {
   if (!tagIds?.length) {
     return undefined
@@ -213,7 +213,7 @@ const resolveTagProductIds = (
       tags
         .find((tag) => tag.id === tagId)
         ?.products?.map((product) => product.id) ?? [],
-    ]),
+    ])
   )
 
   return Object.values(tagProductIds).some((productIds) => productIds.length)
@@ -252,11 +252,20 @@ export default function StoreTemplateMuse({
   pageVariant = "store",
   category,
 }: Props) {
+  const rawPage = searchParams.page
+  const parsedPage = rawPage && /^\d+$/.test(rawPage) ? Number(rawPage) : 1
+  const invalidPageParam = Boolean(
+    rawPage &&
+      (!/^\d+$/.test(rawPage) ||
+        !Number.isSafeInteger(parsedPage) ||
+        parsedPage < 1 ||
+        parsedPage > 250)
+  )
   const isClearance = pageVariant === "clearance"
   const isCategory = pageVariant === "category" && Boolean(category)
   const childCategories = categories.filter(
     (category) =>
-      category.parent_category_id || !category.category_children?.length,
+      category.parent_category_id || !category.category_children?.length
   )
   const filterCategories = childCategories.length ? childCategories : categories
   const visibleFilterCategories =
@@ -271,7 +280,7 @@ export default function StoreTemplateMuse({
   const activeLineParents = new Set(
     activeLineHandles
       .map((handle) => lines.find((line) => line.value === handle)?.brand)
-      .filter(Boolean),
+      .filter(Boolean)
   )
   const activeTagHandles = [
     ...activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
@@ -282,13 +291,13 @@ export default function StoreTemplateMuse({
   const activeColourHandles = splitParam(searchParams.colour)
   const activeColourTagIds = resolveColourTagIds(
     activeColourHandles,
-    productTags,
+    productTags
   )
   const activeTagIds = resolveTagIds(activeTagHandles, productTags)
   const activeTagFilterGroups = [
     resolveTagIds(
       activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
-      productTags,
+      productTags
     ),
     resolveTagIds(activeLineHandles, productTags),
     resolveTagIds(splitParam(searchParams.badge), productTags),
@@ -297,9 +306,9 @@ export default function StoreTemplateMuse({
   const stockFilter = isClearance
     ? "nz-stock"
     : searchParams.stock === "nz-stock" ||
-        searchParams.stock === "standard-delivery"
-      ? searchParams.stock
-      : undefined
+      searchParams.stock === "standard-delivery"
+    ? searchParams.stock
+    : undefined
   const stockCollectionIds = getStockCollectionIds({
     stock: stockFilter,
     nzStockCollectionId,
@@ -312,14 +321,14 @@ export default function StoreTemplateMuse({
 
   const filters: ProductFilterParams = {
     sortBy: (searchParams.sortBy as SortOptions) ?? "created_at",
-    page: searchParams.page ? parseInt(searchParams.page) : 1,
+    page: parsedPage,
     limit: searchParams.grid === "dense" ? 20 : 12,
     q: searchParams.q,
     stock: isClearance
       ? "nz-stock"
       : stockCollectionIds
-        ? undefined
-        : stockFilter,
+      ? undefined
+      : stockFilter,
     nz_stock_collection_id: nzStockCollectionId,
     tag_id: activeTagIds,
     tag_filter_groups: activeTagFilterGroups.length
@@ -358,11 +367,11 @@ export default function StoreTemplateMuse({
   const basePath = isClearance
     ? "clearance"
     : isCategory && category
-      ? `categories/${category.handle}`
-      : "store"
+    ? `categories/${category.handle}`
+    : "store"
 
   return (
-    <main className="min-h-screen bg-muse-cream font-inter text-muse-black">
+    <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
       <div className="mx-auto max-w-[1400px] px-[18px] pt-5 text-[12px] font-medium tracking-[0.03em] text-muse-text-light small:px-8">
         <a
           href={`/${countryCode}`}
@@ -436,6 +445,8 @@ export default function StoreTemplateMuse({
             countryCode={countryCode}
             filters={filters}
             searchParams={searchParams}
+            basePath={basePath}
+            invalidPageParam={invalidPageParam}
             categories={visibleFilterCategories}
             tagLabels={tagLabels}
             gridView={gridView}
@@ -464,7 +475,7 @@ export default function StoreTemplateMuse({
         categories={visibleFilterCategories}
         searchParams={searchParams}
       />
-    </main>
+    </div>
   )
 }
 

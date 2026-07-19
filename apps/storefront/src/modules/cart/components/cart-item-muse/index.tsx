@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useEffect, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
 import { deleteLineItem, updateLineItem } from "@lib/data/cart"
+import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { convertToLocale } from "@lib/util/money"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -43,26 +44,65 @@ const getEditHref = (item: HttpTypes.StoreCartLineItem) => {
 
 export default function CartItemMuse({ item, currencyCode }: Props) {
   const router = useRouter()
+  const {
+    beginCartMutation,
+    finishCartMutation,
+    removeOptimisticItem,
+  } = useCartDrawer()
   const [isPending, startTransition] = useTransition()
   const [removing, setRemoving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [displayQuantity, setDisplayQuantity] = useState(item.quantity)
   const brand = item.variant?.product?.metadata?.brand as string | undefined
   const fulfilment = getFulfilmentState(item)
   const variantLabel = getVariantLabel(item)
   const unitPrice = item.unit_price ?? 0
-  const lineTotal = unitPrice * item.quantity
+  const lineTotal = unitPrice * displayQuantity
+  const variantId = item.variant_id ?? item.variant?.id
+
+  useEffect(() => {
+    setDisplayQuantity(item.quantity)
+  }, [item.quantity])
 
   function handleQtyChange(delta: number) {
-    const next = item.quantity + delta
+    const next = displayQuantity + delta
 
     if (next < 1) {
       handleRemove()
       return
     }
 
+    setError(null)
+    setDisplayQuantity(next)
+    if (variantId) {
+      beginCartMutation({
+        variantId,
+        productTitle: item.product_title ?? item.title ?? "MUSE item",
+        productHandle: item.product_handle,
+        variantTitle: variantLabel,
+        thumbnail: item.thumbnail,
+        quantity: delta,
+        unitPrice,
+        currencyCode,
+        fulfilmentShortLabel: fulfilment.shortLabel,
+        fulfilmentDotClassName: fulfilment.dotClassName,
+      })
+    }
     startTransition(async () => {
-      await updateLineItem({ lineId: item.id, quantity: next })
-      router.refresh()
+      try {
+        await updateLineItem({ lineId: item.id, quantity: next })
+        router.refresh()
+      } catch (err) {
+        setDisplayQuantity(item.quantity)
+        if (variantId) {
+          removeOptimisticItem(variantId)
+        }
+        setError(
+          err instanceof Error ? err.message : "Could not update quantity"
+        )
+      } finally {
+        finishCartMutation()
+      }
     })
   }
 
@@ -145,24 +185,24 @@ export default function CartItemMuse({ item, currencyCode }: Props) {
         )}
 
         <div className="mt-auto flex flex-wrap items-center justify-between gap-4 pt-2.5">
-          <div className="flex h-[38px] items-center overflow-hidden rounded-full border border-muse-input bg-white">
+          <div className="flex h-11 items-center overflow-hidden rounded-full border border-muse-input bg-white">
             <button
               type="button"
               onClick={() => handleQtyChange(-1)}
               disabled={isPending}
-              className="flex h-9 w-[38px] flex-shrink-0 items-center justify-center text-[18px] text-muse-text-muted transition hover:bg-muse-cream-deep hover:text-muse-black disabled:opacity-50"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center text-[18px] text-muse-text-muted transition hover:bg-muse-cream-deep hover:text-muse-black disabled:opacity-50"
               aria-label="Decrease quantity"
             >
               −
             </button>
             <span className="w-9 text-center text-[14px] font-bold text-muse-black">
-              {item.quantity}
+              {displayQuantity}
             </span>
             <button
               type="button"
               onClick={() => handleQtyChange(1)}
               disabled={isPending}
-              className="flex h-9 w-[38px] flex-shrink-0 items-center justify-center text-[18px] text-muse-text-muted transition hover:bg-muse-cream-deep hover:text-muse-black disabled:opacity-50"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center text-[18px] text-muse-text-muted transition hover:bg-muse-cream-deep hover:text-muse-black disabled:opacity-50"
               aria-label="Increase quantity"
             >
               +
@@ -185,7 +225,7 @@ export default function CartItemMuse({ item, currencyCode }: Props) {
         onClick={handleRemove}
         disabled={isPending || removing}
         aria-label="Remove item"
-        className="absolute right-0 top-[22px] flex h-[30px] w-[30px] items-center justify-center rounded-full text-[18px] text-muse-text-light transition hover:bg-muse-orange-soft hover:text-muse-orange disabled:opacity-40"
+        className="absolute right-0 top-[16px] flex h-11 w-11 items-center justify-center rounded-full text-[18px] text-muse-text-light transition hover:bg-muse-orange-soft hover:text-muse-orange disabled:opacity-40"
       >
         ×
       </button>

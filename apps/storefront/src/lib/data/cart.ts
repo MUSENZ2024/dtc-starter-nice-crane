@@ -34,10 +34,6 @@ export async function retrieveCart(cartId?: string, fields?: string) {
     ...(await getAuthHeaders()),
   }
 
-  const next = {
-    ...(await getCacheOptions("carts")),
-  }
-
   return await sdk.client
     .fetch<HttpTypes.StoreCartResponse>(`/store/carts/${id}`, {
       method: "GET",
@@ -45,8 +41,9 @@ export async function retrieveCart(cartId?: string, fields?: string) {
         fields,
       },
       headers,
-      next,
-      cache: "force-cache",
+      // Carts are customer-specific, rapidly changing state. Caching this
+      // response allowed the drawer, header, and full cart page to disagree.
+      cache: "no-store",
     })
     .then(({ cart }: { cart: HttpTypes.StoreCart }) => cart)
     .catch(() => null)
@@ -381,11 +378,19 @@ export async function initiatePaymentSession(
     .catch(medusaError)
 }
 
-export async function applyPromotions(codes: string[]) {
+export type PromotionActionResult =
+  | { success: true }
+  | { success: false; error: string }
+
+const PROMOTION_ERROR = "Code not recognised. Check it and try again."
+
+export async function addPromotionCode(
+  code: string
+): Promise<PromotionActionResult> {
   const cartId = await getCartId()
 
   if (!cartId) {
-    throw new Error("No existing cart found")
+    return { success: false, error: "Your bag could not be found. Refresh and try again." }
   }
 
   const headers = {
@@ -393,15 +398,63 @@ export async function applyPromotions(codes: string[]) {
   }
 
   try {
-    await sdk.store.cart.update(cartId, { promo_codes: codes }, {}, headers)
+    await sdk.store.cart.addPromotions(
+      cartId,
+      { promo_codes: [code.trim()] },
+      {},
+      headers
+    )
     await revalidateCartState()
+    return { success: true }
   } catch (error) {
     if (isRecoverableStaleCartError(error)) {
       await resetCartState()
-      return
+      return {
+        success: false,
+        error: "Your bag changed in another session. Refresh and try again.",
+      }
     }
 
-    medusaError(error)
+    console.warn("[cart:promotion-rejected]", {
+      cartId,
+      codeLength: code.trim().length,
+      message: getErrorMessage(error),
+    })
+    return { success: false, error: PROMOTION_ERROR }
+  }
+}
+
+export async function removePromotionCode(
+  code: string
+): Promise<PromotionActionResult> {
+  const cartId = await getCartId()
+
+  if (!cartId) {
+    return { success: false, error: "Your bag could not be found. Refresh and try again." }
+  }
+
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  try {
+    await sdk.store.cart.removePromotions(
+      cartId,
+      { promo_codes: [code] },
+      {},
+      headers
+    )
+    await revalidateCartState()
+    return { success: true }
+  } catch (error) {
+    console.warn("[cart:promotion-remove-failed]", {
+      cartId,
+      message: getErrorMessage(error),
+    })
+    return {
+      success: false,
+      error: "That code could not be removed. Refresh and try again.",
+    }
   }
 }
 
@@ -453,11 +506,8 @@ export async function submitPromotionForm(
   formData: FormData
 ) {
   const code = formData.get("code") as string
-  try {
-    await applyPromotions([code])
-  } catch (e: any) {
-    return e.message
-  }
+  const result = await addPromotionCode(code)
+  return result.success ? undefined : result.error
 }
 
 // TODO: Pass a POJO instead of a form entity here

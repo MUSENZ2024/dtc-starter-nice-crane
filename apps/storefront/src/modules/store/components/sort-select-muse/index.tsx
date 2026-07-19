@@ -2,7 +2,7 @@
 
 import { SortOptions } from "@lib/data/products.types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useRef, useState } from "react"
+import { useEffect, useRef, useState, useTransition } from "react"
 
 const SORT_OPTIONS: { value: SortOptions; label: string }[] = [
   { value: "best_sellers", label: "Best sellers" },
@@ -12,11 +12,16 @@ const SORT_OPTIONS: { value: SortOptions; label: string }[] = [
   { value: "ships_soonest", label: "Ships soonest" },
 ]
 
-export default function SortSelectMuse({ currentSort }: { currentSort: string }) {
+export default function SortSelectMuse({
+  currentSort,
+}: {
+  currentSort: string
+}) {
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
   const [open, setOpen] = useState(false)
+  const [isPending, startTransition] = useTransition()
   const menuRef = useRef<HTMLDivElement>(null)
   const current =
     SORT_OPTIONS.find((option) => option.value === currentSort) ??
@@ -39,11 +44,13 @@ export default function SortSelectMuse({ currentSort }: { currentSort: string })
     next.set("sortBy", value)
     next.delete("page")
     setOpen(false)
-    router.push(`${pathname}?${next.toString()}`, { scroll: false })
+    startTransition(() =>
+      router.push(`${pathname}?${next.toString()}`, { scroll: false })
+    )
   }
 
   return (
-    <div ref={menuRef} className="relative flex-shrink-0">
+    <div ref={menuRef} className="relative flex-shrink-0" aria-busy={isPending}>
       <button
         type="button"
         onClick={() => setOpen((value) => !value)}
@@ -51,7 +58,7 @@ export default function SortSelectMuse({ currentSort }: { currentSort: string })
         aria-haspopup="listbox"
         aria-expanded={open}
       >
-        <span>{current.label}</span>
+        <span>{isPending ? "Updating..." : current.label}</span>
         <span className="text-[10px] text-muse-text-muted">▾</span>
       </button>
 

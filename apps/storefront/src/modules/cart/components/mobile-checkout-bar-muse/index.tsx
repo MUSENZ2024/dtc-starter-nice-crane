@@ -13,7 +13,7 @@ export default function MobileCheckoutBar({ total, currencyCode }: Props) {
   })
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-[90] flex flex-col gap-2 border-t border-muse-border bg-muse-cream px-[18px] pb-[18px] pt-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] lg:hidden">
+    <div className="muse-mobile-cart-bar fixed inset-x-0 bottom-0 z-[90] flex flex-col gap-2 border-t border-muse-border bg-muse-cream px-[18px] pt-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] lg:hidden">
       <div className="flex items-baseline justify-between">
         <span className="text-[12.5px] text-muse-text-muted">
           Total (incl. GST)

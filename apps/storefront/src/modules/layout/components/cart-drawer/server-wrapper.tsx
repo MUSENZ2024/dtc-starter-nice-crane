@@ -1,4 +1,5 @@
 import { retrieveCart } from "@lib/data/cart"
+import { PRODUCT_CANDIDATE_FIELDS } from "@lib/data/product-fields"
 import { listProducts } from "@lib/data/products"
 import { getRecommendedProducts } from "@lib/util/product-recommendations"
 import { HttpTypes } from "@medusajs/types"
@@ -16,7 +17,7 @@ export default async function CartDrawerWrapper() {
   const addonProducts = cart?.items?.length
     ? await listProducts({
         countryCode,
-        queryParams: { limit: 24 },
+        queryParams: { fields: PRODUCT_CANDIDATE_FIELDS, limit: 8 },
         // Drawer recommendations don't need live-to-the-second catalogue
         // data. This wrapper re-renders on every cart mutation (add,
         // update, remove), so fetching fresh every time was a major source

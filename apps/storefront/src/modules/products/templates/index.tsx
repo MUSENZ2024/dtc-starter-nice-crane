@@ -11,7 +11,7 @@ import { getProductPrice } from "@lib/util/get-product-price"
 import CompleteTheFit from "@modules/products/components/complete-the-fit"
 import ReviewSubmission from "@modules/products/components/review-submission"
 import PhotoReviews from "@modules/products/components/photo-reviews"
-import { getStoreReviews } from "@lib/data/reviews"
+import { getStoreReviewsWithin } from "@lib/data/reviews"
 import {
   allWrittenMuseReviews,
   getProductTextReviews,
@@ -114,7 +114,9 @@ const ProductTemplate = async ({
   const { cheapestPrice } = getProductPrice({ product })
   const fulfilment = getFulfilmentState(product)
   const textReviews = getProductTextReviews(product)
-  const storedReviews = await getStoreReviews()
+  // Reviews are below the purchase controls and have a complete local
+  // fallback. Do not make the primary PDP wait on a slow reviews service.
+  const storedReviews = await getStoreReviewsWithin()
   const storedWrittenReviews = storedReviews?.reviews.filter((review) => !review.image_url) ?? null
   const featuredWrittenReviews = storedWrittenReviews?.slice(0, 4) ?? null
   const storedPhotoReviews = storedReviews?.reviews.filter((review) => review.image_url) ?? null
@@ -138,8 +140,8 @@ const ProductTemplate = async ({
         date: review.date,
         text: review.text,
       }))
-  const reviewSummary = storedReviews ?? {
-    reviews: [],
+  const reviewSummary = {
+    reviews: storedReviews?.reviews ?? [],
     total: MUSE_REVIEW_SUMMARY.total,
     average: MUSE_REVIEW_SUMMARY.average,
     distribution: MUSE_REVIEW_SUMMARY.distribution,
@@ -151,7 +153,7 @@ const ProductTemplate = async ({
       : null
 
   return (
-    <div className="bg-[#F4F2ED] text-[#1A1A1A]" data-testid="product-container">
+    <div className="min-w-0 overflow-x-clip bg-[#F4F2ED] text-[#1A1A1A]" data-testid="product-container">
       <div className="mx-auto max-w-[1320px] px-[18px] pt-4 text-xs font-medium tracking-[0.03em] text-[#999] small:px-8 small:pt-5">
         <LocalizedClientLink href="/" className="hover:text-[#C1440E]">
           Home
@@ -164,16 +166,20 @@ const ProductTemplate = async ({
         <span>{product.title}</span>
       </div>
 
-      <section className="mx-auto grid max-w-[1320px] gap-7 px-[18px] py-4 pb-20 small:grid-cols-[1.15fr_1fr] small:gap-14 small:px-8 small:py-6 small:pb-[72px]">
-        <div className="small:sticky small:top-28 small:self-start">
-          <ImageGallery images={images} fulfilment={fulfilment} />
+      <section className="mx-auto grid min-w-0 max-w-[1320px] gap-7 px-[18px] py-4 pb-20 small:grid-cols-[1.15fr_1fr] small:gap-14 small:px-8 small:py-6 small:pb-[72px]">
+        <div className="min-w-0 small:sticky small:top-28 small:self-start">
+          <ImageGallery
+            images={images}
+            fulfilment={fulfilment}
+            productTitle={product.title}
+          />
         </div>
         <ProductActions product={product} region={region} />
       </section>
 
       <section id="reviews" className="mx-auto max-w-[1320px] border-t border-[#E8E6E0] px-[18px] py-12 small:px-8 small:py-16">
         <div className="mb-10 flex flex-col gap-8 small:flex-row small:items-start small:justify-between">
-          <div className="flex gap-7">
+          <div className="flex min-w-0 flex-col gap-5 small:flex-row small:gap-7">
             <div>
               <div className="text-[64px] font-black leading-[0.9] tracking-[-0.04em] text-[#0A0A0A]">
                 {reviewSummary.average.toFixed(1)}
@@ -185,7 +191,7 @@ const ProductTemplate = async ({
                 {reviewSummary.total} verified reviews
               </div>
             </div>
-            <div className="min-w-[260px] pt-1">
+            <div className="w-full min-w-0 pt-1 small:min-w-[260px]">
               {[
                 ...reviewSummary.distribution.map(({ rating, count }) => [
                   `${rating}★`,
@@ -369,7 +375,26 @@ const ProductTemplate = async ({
         <ReviewSubmission productId={product.id} />
       </section>
 
-      <CompleteTheFit product={product} countryCode={_countryCode} />
+      <React.Suspense
+        fallback={
+          <section
+            className="mx-auto max-w-[1320px] px-[18px] pt-6 small:px-8"
+            aria-label="Loading recommendations"
+          >
+            <div className="h-9 w-56 animate-pulse rounded bg-[#E8E6E0]" />
+            <div className="mt-6 grid grid-cols-2 gap-2.5 small:grid-cols-4 small:gap-4">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="aspect-[4/5] animate-pulse rounded-[16px] bg-[#E8E6E0]"
+                />
+              ))}
+            </div>
+          </section>
+        }
+      >
+        <CompleteTheFit product={product} countryCode={_countryCode} />
+      </React.Suspense>
 
       <RecentlyViewedProducts
         product={{

@@ -1,6 +1,6 @@
 "use client"
 
-import { applyPromotions } from "@lib/data/cart"
+import { addPromotionCode } from "@lib/data/cart"
 import {
   getCartFulfilmentSummary,
   getFulfilmentState,
@@ -8,6 +8,7 @@ import {
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import { getShippingProtectionItem } from "@modules/checkout/components/step-delivery"
+import { MUSE_REVIEW_SUMMARY } from "@modules/products/data/reviews"
 import { useRouter } from "next/navigation"
 import { FormEvent, useState, useTransition } from "react"
 
@@ -37,6 +38,7 @@ export default function CheckoutSummaryMuse({
   const displayTotal = cart.total ?? 0
   const discountTotal = cart.discount_total ?? 0
   const [code, setCode] = useState("")
+  const [discountError, setDiscountError] = useState("")
   const [isPending, startTransition] = useTransition()
   const router = useRouter()
 
@@ -48,8 +50,15 @@ export default function CheckoutSummaryMuse({
       return
     }
 
+    setDiscountError("")
     startTransition(async () => {
-      await applyPromotions([nextCode])
+      const result = await addPromotionCode(nextCode)
+
+      if (!result.success) {
+        setDiscountError(result.error)
+        return
+      }
+
       setCode("")
       router.refresh()
     })
@@ -147,7 +156,12 @@ export default function CheckoutSummaryMuse({
             <input
               type="text"
               value={code}
-              onChange={(event) => setCode(event.target.value)}
+              onChange={(event) => {
+                setCode(event.target.value)
+                setDiscountError("")
+              }}
+              aria-invalid={Boolean(discountError)}
+              aria-describedby={discountError ? "checkout-discount-error" : undefined}
               placeholder="Discount code"
               className="min-w-0 flex-1 rounded-full border border-muse-input bg-white px-4 py-3 text-[12.5px] uppercase tracking-wider outline-none transition placeholder:normal-case placeholder:tracking-normal focus:border-muse-black"
             />
@@ -159,6 +173,15 @@ export default function CheckoutSummaryMuse({
               Apply
             </button>
           </form>
+          {discountError && (
+            <p
+              id="checkout-discount-error"
+              role="alert"
+              className="mt-2 text-[11.5px] font-semibold text-[#A33A12]"
+            >
+              {discountError}
+            </p>
+          )}
           <p className="mt-2 text-[11.5px] leading-relaxed text-muse-text-light">
             Codes are applied before payment and reflected in the total below.
           </p>
@@ -230,7 +253,10 @@ export default function CheckoutSummaryMuse({
         <div className="mt-1 flex items-center gap-2 border-t border-muse-border pt-2">
           <span className="text-sm tracking-wide text-muse-orange">★★★★★</span>
           <span className="text-[12px] text-muse-text-muted">
-            <strong className="text-muse-black">4.9</strong> from verified reviews
+            <strong className="text-muse-black">
+              {MUSE_REVIEW_SUMMARY.average.toFixed(1)}
+            </strong>{" "}
+            from {MUSE_REVIEW_SUMMARY.total} verified reviews
           </span>
         </div>
         <div className="flex items-center gap-1.5 text-[11.5px] text-muse-text-muted">

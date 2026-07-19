@@ -9,6 +9,7 @@ import ProductCardMuse, {
 import ActiveFilterChips from "@modules/store/components/active-filter-chips"
 import LoadMoreMuse from "@modules/store/components/load-more-muse"
 import SortSelectMuse from "@modules/store/components/sort-select-muse"
+import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
 type Props = {
   countryCode: string
@@ -19,6 +20,8 @@ type Props = {
   gridView?: "standard" | "dense"
   emptyTitle?: string
   emptyDescription?: string
+  basePath: string
+  invalidPageParam?: boolean
 }
 
 const PROMOTIONAL_TAG_LABELS: Record<string, string> = {
@@ -50,7 +53,9 @@ const getPromotionalBadge = (product: HttpTypes.StoreProduct) => {
   return undefined
 }
 
-const toProductCard = (product: HttpTypes.StoreProduct): ProductCardMuseProduct => {
+const toProductCard = (
+  product: HttpTypes.StoreProduct
+): ProductCardMuseProduct => {
   const fulfilment = getFulfilmentState(product)
   const { cheapestPrice } = getProductPrice({ product })
   const rrp =
@@ -106,24 +111,69 @@ export default async function ProductGridMuse({
   gridView = "standard",
   emptyTitle = "No styles match your filters",
   emptyDescription = "Try removing a filter or clearing all.",
+  basePath,
+  invalidPageParam = false,
 }: Props) {
-  const result = await listProductsFiltered({
-    countryCode,
-    filters,
-  }).catch(() => ({ products: [], total: 0, hasMore: false }))
-
   const page = filters.page ?? 1
   const limit = filters.limit ?? 12
+  const result = invalidPageParam
+    ? { products: [], total: 0, hasMore: false }
+    : await listProductsFiltered({
+        countryCode,
+        filters,
+      }).catch(() => ({ products: [], total: 0, hasMore: false }))
+  const totalPages = Math.ceil(result.total / limit)
+  const isOutOfRange =
+    invalidPageParam || (result.total > 0 && page > Math.max(1, totalPages))
   const showing = Math.min(result.products.length, result.total)
   const categoryLabels = Object.fromEntries(
     categories.map((category) => [category.id, category.name])
   )
+  const recoveryParams = new URLSearchParams()
+
+  Object.entries(searchParams).forEach(([key, value]) => {
+    if (key !== "page" && value) recoveryParams.set(key, value)
+  })
+
+  const recoveryHref = `/${basePath}${
+    recoveryParams.size ? `?${recoveryParams.toString()}` : ""
+  }`
+
+  if (isOutOfRange) {
+    return (
+      <div className="min-w-0 pb-24 small:pb-0">
+        <div
+          className="rounded-[22px] bg-muse-cream-warm px-6 py-24 text-center"
+          role="alert"
+        >
+          <h2 className="mb-2 text-[20px] font-black tracking-tight">
+            That catalogue page does not exist
+          </h2>
+          <p className="mx-auto max-w-md text-[14px] leading-6 text-muse-text-muted">
+            The range may have changed, or the page number in this link is no
+            longer available.
+          </p>
+          <LocalizedClientLink
+            href={recoveryHref}
+            className="mt-6 inline-flex rounded-full bg-muse-black px-6 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-muse-cream transition hover:bg-muse-orange"
+          >
+            Back to the first page
+          </LocalizedClientLink>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-w-0 pb-24 small:pb-0">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div className="flex flex-1 flex-wrap items-center gap-2">
-          <span className="whitespace-nowrap text-[13px] font-medium text-muse-text-muted">
+          <span
+            className="whitespace-nowrap text-[13px] font-medium text-muse-text-muted"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+          >
             <strong className="text-muse-black">{showing}</strong> of{" "}
             {result.total} styles
           </span>
@@ -143,9 +193,7 @@ export default async function ProductGridMuse({
           <p className="mb-2 text-[17px] font-black tracking-tight">
             {emptyTitle}
           </p>
-          <p className="text-[14px] text-muse-text-muted">
-            {emptyDescription}
-          </p>
+          <p className="text-[14px] text-muse-text-muted">{emptyDescription}</p>
         </div>
       ) : (
         <div

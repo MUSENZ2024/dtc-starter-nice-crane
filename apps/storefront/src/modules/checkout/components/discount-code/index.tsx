@@ -3,7 +3,7 @@
 import { Badge, Heading, Input, Label, Text } from "@modules/common/components/ui"
 import React from "react"
 
-import { applyPromotions } from "@lib/data/cart"
+import { addPromotionCode, removePromotionCode } from "@lib/data/cart"
 import { convertToLocale } from "@lib/util/money"
 import { HttpTypes } from "@medusajs/types"
 import Trash from "@modules/common/icons/trash"
@@ -19,17 +19,16 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   const [errorMessage, setErrorMessage] = React.useState("")
 
   const { promotions = [] } = cart
-  const removePromotionCode = async (code: string) => {
-    const validPromotions = promotions.filter(
-      (promotion) => promotion.code !== code
-    )
+  const handleRemovePromotionCode = async (code: string) => {
+    setErrorMessage("")
+    const result = await removePromotionCode(code)
 
-    await applyPromotions(
-      validPromotions.filter((p) => p.code !== undefined).map((p) => p.code!)
-    )
+    if (!result.success) {
+      setErrorMessage(result.error)
+    }
   }
 
-  const addPromotionCode = async (formData: FormData) => {
+  const handleAddPromotionCode = async (formData: FormData) => {
     setErrorMessage("")
 
     const code = formData.get("code")
@@ -37,15 +36,11 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
       return
     }
     const input = document.getElementById("promotion-input") as HTMLInputElement
-    const codes = promotions
-      .filter((p) => p.code !== undefined)
-      .map((p) => p.code!)
-    codes.push(code.toString())
+    const result = await addPromotionCode(code.toString())
 
-    try {
-      await applyPromotions(codes)
-    } catch (e) {
-      setErrorMessage(e instanceof Error ? e.message : String(e))
+    if (!result.success) {
+      setErrorMessage(result.error)
+      return
     }
 
     if (input) {
@@ -56,7 +51,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
   return (
     <div className="w-full bg-white flex flex-col">
       <div className="txt-medium">
-        <form action={(a) => addPromotionCode(a)} className="w-full mb-5">
+        <form action={(a) => handleAddPromotionCode(a)} className="w-full mb-5">
           <Label className="flex gap-x-1 my-2 items-center">
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -152,7 +147,7 @@ const DiscountCode: React.FC<DiscountCodeProps> = ({ cart }) => {
                             return
                           }
 
-                          removePromotionCode(promotion.code)
+                          handleRemovePromotionCode(promotion.code)
                         }}
                         data-testid="remove-discount-button"
                       >

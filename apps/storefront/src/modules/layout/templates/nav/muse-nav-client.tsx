@@ -1,6 +1,7 @@
 "use client"
 
 import {
+  useCallback,
   useEffect,
   useMemo,
   useRef,
@@ -11,7 +12,7 @@ import {
 import { createPortal } from "react-dom"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 
 type Props = {
   categoryLinks: { label: string; href: string }[]
@@ -96,7 +97,8 @@ const helpSuggestions: SuggestionLink[] = [
     title: "Shipping times",
     subtitle: "NZ Stock vs Standard Delivery",
     href: "/faq#shipping",
-    keywords: "shipping delivery fast shipping nz stock standard delivery dispatch how long",
+    keywords:
+      "shipping delivery fast shipping nz stock standard delivery dispatch how long",
   },
   {
     title: "Returns and exchanges",
@@ -116,11 +118,7 @@ const normalize = (value: string) => value.trim().toLowerCase()
 
 const expandQuery = (query: string) => {
   const normalized = normalize(query)
-  const terms = new Set(
-    normalized
-      .split(/\s+/)
-      .filter(Boolean)
-  )
+  const terms = new Set(normalized.split(/\s+/).filter(Boolean))
 
   Object.entries(synonymMap).forEach(([trigger, synonyms]) => {
     if (normalized.includes(trigger)) {
@@ -165,11 +163,18 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   >([])
   const [isProductSearchLoading, setIsProductSearchLoading] = useState(false)
   const searchTouchStartY = useRef<number | null>(null)
+  const searchRequestId = useRef(0)
+  const menuTriggerRef = useRef<HTMLButtonElement>(null)
+  const mobileSearchTriggerRef = useRef<HTMLButtonElement>(null)
+  const menuDialogRef = useRef<HTMLElement>(null)
+  const searchDialogRef = useRef<HTMLDivElement>(null)
+  const menuReturnFocusRef = useRef<HTMLElement | null>(null)
+  const searchReturnFocusRef = useRef<HTMLElement | null>(null)
   const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
   const { countryCode } = useParams()
-  const country = Array.isArray(countryCode) ? countryCode[0] : countryCode ?? "nz"
+  const country = Array.isArray(countryCode)
+    ? countryCode[0]
+    : countryCode ?? "nz"
 
   const collectionSuggestions = useMemo(
     () => [
@@ -218,8 +223,59 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
     searchResults.products.length +
       searchResults.collections.length +
       searchResults.help.length >
-      0 ||
-    isProductSearchLoading
+      0 || isProductSearchLoading
+  const searchStatus = isProductSearchLoading
+    ? `Searching for ${query.trim()}`
+    : query.trim().length >= 2
+    ? `${searchResults.products.length} product ${
+        searchResults.products.length === 1 ? "result" : "results"
+      } found for ${query.trim()}`
+    : "Search suggestions ready"
+
+  const restoreFocus = useCallback((target: HTMLElement | null) => {
+    window.requestAnimationFrame(() => target?.focus())
+  }, [])
+
+  const openMenu = useCallback((trigger: HTMLElement) => {
+    menuReturnFocusRef.current = trigger
+    setSearchOpen(false)
+    setMenuOpen(true)
+  }, [])
+
+  const closeMenu = useCallback(() => {
+    setMenuOpen(false)
+    restoreFocus(menuReturnFocusRef.current)
+  }, [restoreFocus])
+
+  const openSearch = useCallback((trigger?: HTMLElement | null) => {
+    const nav = document.getElementById("muse-nav")
+    if (nav) {
+      nav.style.transform = ""
+    }
+    searchReturnFocusRef.current =
+      trigger ??
+      (document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null)
+    setMenuOpen(false)
+    setSearchOpen(true)
+  }, [])
+
+  const closeSearch = useCallback(() => {
+    setSearchOpen(false)
+    restoreFocus(searchReturnFocusRef.current)
+  }, [restoreFocus])
+
+  const toggleSearch = useCallback(
+    (trigger?: HTMLElement | null) => {
+      if (searchOpen) {
+        closeSearch()
+      } else {
+        openSearch(trigger)
+      }
+    },
+    [closeSearch, openSearch, searchOpen]
+  )
 
   useEffect(() => {
     if (!searchOpen) {
@@ -229,12 +285,16 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
     const trimmedQuery = query.trim()
 
     if (trimmedQuery.length < 2) {
+      searchRequestId.current += 1
       setLiveProductLinks([])
       setIsProductSearchLoading(false)
       return
     }
 
     const controller = new AbortController()
+    const requestId = searchRequestId.current + 1
+    searchRequestId.current = requestId
+    setLiveProductLinks([])
     setIsProductSearchLoading(true)
 
     const timeout = window.setTimeout(async () => {
@@ -245,11 +305,11 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
 
       try {
         const response = await fetch(`/api/search?${params.toString()}`, {
-          cache: "no-store",
+          cache: "default",
           signal: controller.signal,
         })
 
-        if (!response.ok) {
+        if (!response.ok || requestId !== searchRequestId.current) {
           setLiveProductLinks([])
           return
         }
@@ -258,13 +318,21 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
           products?: LiveSearchProductLink[]
         }
 
-        setLiveProductLinks(payload.products ?? [])
-      } catch (error) {
-        if (!controller.signal.aborted) {
+        if (requestId === searchRequestId.current) {
+          setLiveProductLinks(payload.products ?? [])
+        }
+      } catch (_error) {
+        if (
+          !controller.signal.aborted &&
+          requestId === searchRequestId.current
+        ) {
           setLiveProductLinks([])
         }
       } finally {
-        if (!controller.signal.aborted) {
+        if (
+          !controller.signal.aborted &&
+          requestId === searchRequestId.current
+        ) {
           setIsProductSearchLoading(false)
         }
       }
@@ -287,6 +355,10 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
     }
 
     let index = 0
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      return
+    }
+
     const interval = setInterval(() => {
       items[index].style.opacity = "0"
       index = (index + 1) % items.length
@@ -329,8 +401,14 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
 
   useEffect(() => {
     const desktopButton = document.getElementById("search-btn-desktop")
+    desktopButton?.setAttribute("aria-expanded", String(searchOpen))
+    desktopButton?.setAttribute("aria-controls", "search-bar")
     const onDesktopSearchClick = () => {
-      setSearchOpen((open) => !open)
+      if (searchOpen) {
+        closeSearch()
+      } else {
+        openSearch(desktopButton)
+      }
     }
 
     desktopButton?.addEventListener("click", onDesktopSearchClick)
@@ -338,7 +416,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
     return () => {
       desktopButton?.removeEventListener("click", onDesktopSearchClick)
     }
-  }, [])
+  }, [closeSearch, openSearch, searchOpen])
 
   useEffect(() => {
     if (!searchOpen) {
@@ -362,55 +440,69 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   }, [searchOpen])
 
   useEffect(() => {
-    if (!searchOpen) {
+    const dialog = searchOpen
+      ? searchDialogRef.current
+      : menuOpen
+      ? menuDialogRef.current
+      : null
+    if (!dialog) {
       return
     }
 
-    const next = new URLSearchParams(searchParams.toString())
-    const trimmedQuery = query.trim()
-    const timeout = window.setTimeout(() => {
-      if (trimmedQuery.length >= 2) {
-        next.set("q", trimmedQuery)
-        next.delete("page")
-        router.replace(`${localizeHref("/store", countryCode)}?${next.toString()}`, {
-          scroll: false,
-        })
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(",")
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(focusableSelector)
+      ).filter((element) => element.offsetParent !== null)
+
+    window.requestAnimationFrame(() => {
+      const preferred = searchOpen
+        ? dialog.querySelector<HTMLElement>("#search-input")
+        : dialog.querySelector<HTMLElement>('[aria-label="Close menu"]')
+      ;(preferred ?? focusable()[0])?.focus()
+    })
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        if (searchOpen) {
+          closeSearch()
+        } else {
+          closeMenu()
+        }
+        return
       }
 
-      if (
-        trimmedQuery.length === 0 &&
-        pathname.endsWith("/store") &&
-        searchParams.has("q")
-      ) {
-        next.delete("q")
-        next.delete("page")
-        router.replace(`${pathname}?${next.toString()}`, { scroll: false })
+      if (event.key !== "Tab") {
+        return
       }
-    }, 300)
 
-    return () => window.clearTimeout(timeout)
-  }, [countryCode, pathname, query, router, searchOpen, searchParams])
+      const items = focusable()
+      if (!items.length) {
+        event.preventDefault()
+        return
+      }
 
-  function openSearch() {
-    const nav = document.getElementById("muse-nav")
-    if (nav) {
-      nav.style.transform = ""
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
     }
-    setSearchOpen(true)
-    window.setTimeout(() => document.getElementById("search-input")?.focus(), 50)
-  }
 
-  function closeSearch() {
-    setSearchOpen(false)
-  }
-
-  function toggleSearch() {
-    if (searchOpen) {
-      closeSearch()
-    } else {
-      openSearch()
-    }
-  }
+    document.addEventListener("keydown", handleKeyDown)
+    return () => document.removeEventListener("keydown", handleKeyDown)
+  }, [closeMenu, closeSearch, menuOpen, searchOpen])
 
   function submitSearch() {
     const trimmedQuery = query.trim()
@@ -455,10 +547,12 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   return (
     <>
       <button
-        className="flex flex-col gap-[5px] p-2 large:hidden"
+        ref={menuTriggerRef}
+        className="flex h-11 w-11 flex-col items-center justify-center gap-[5px] large:hidden"
         aria-label="Open menu"
         aria-expanded={menuOpen}
-        onClick={() => setMenuOpen(true)}
+        aria-controls="mobile-menu-dialog"
+        onClick={(event) => openMenu(event.currentTarget)}
         type="button"
       >
         <span className="block h-[1.5px] w-5 rounded bg-white" />
@@ -467,9 +561,12 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
       </button>
 
       <button
-        className="flex p-[7px] text-white/50 transition hover:text-white large:hidden"
+        ref={mobileSearchTriggerRef}
+        className="flex h-11 w-11 items-center justify-center text-white/70 transition hover:text-white large:hidden"
         aria-label="Search"
-        onClick={toggleSearch}
+        aria-expanded={searchOpen}
+        aria-controls="search-bar"
+        onClick={(event) => toggleSearch(event.currentTarget)}
         type="button"
       >
         <svg
@@ -492,13 +589,17 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
           <button
             type="button"
             className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm"
-            onClick={() => setMenuOpen(false)}
+            onClick={closeMenu}
             aria-label="Close menu backdrop"
           />
 
           <aside
+            ref={menuDialogRef}
+            id="mobile-menu-dialog"
             className="absolute bottom-0 left-0 top-0 flex h-dvh w-[min(340px,90vw)] flex-col bg-[#0A0A0A] text-white shadow-2xl"
-            aria-label="Mobile menu"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-menu-title"
           >
             <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-5">
               <img
@@ -506,10 +607,13 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                 alt="MUSE"
                 className="h-[22px] w-auto"
               />
+              <h2 id="mobile-menu-title" className="sr-only">
+                Mobile menu
+              </h2>
               <button
-                onClick={() => setMenuOpen(false)}
+                onClick={closeMenu}
                 aria-label="Close menu"
-                className="flex items-center justify-center p-2 text-white/50 transition hover:text-white"
+                className="flex h-11 w-11 items-center justify-center text-white/70 transition hover:text-white"
                 type="button"
               >
                 <svg
@@ -532,7 +636,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                 <LocalizedClientLink
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={closeMenu}
                   className={`rounded-[12px] px-4 py-[15px] text-[22px] font-black transition hover:bg-white/[0.05] ${
                     link.accent === "red" ? "text-[#C1440E]" : "text-white"
                   }`}
@@ -547,7 +651,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                 <LocalizedClientLink
                   key={link.href}
                   href={link.href}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={closeMenu}
                   className="rounded-[12px] px-4 py-[13px] text-[13px] font-black uppercase tracking-[0.1em] text-white/50 transition hover:bg-white/[0.05] hover:text-white"
                 >
                   {link.label}
@@ -558,15 +662,15 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                 <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#C8D050]">
                   Backed by our guarantee
                 </p>
-                <p className="text-[12px] leading-[1.6] text-white/40">
+                <p className="text-[12px] leading-[1.6] text-white/70">
                   30-day money-back - inspected before dispatch - Auckland-based
                 </p>
               </div>
             </nav>
 
             <div className="flex items-center justify-between border-t border-white/[0.08] px-6 py-4">
-              <span className="text-[12px] text-white/25">NZ - NZD</span>
-              <span className="text-[12px] text-white/25">© 2026 MUSE NZ</span>
+              <span className="text-[12px] text-white/65">NZ - NZD</span>
+              <span className="text-[12px] text-white/65">© 2026 MUSE NZ</span>
             </div>
           </aside>
         </div>
@@ -574,212 +678,223 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
 
       {mounted &&
         createPortal(
-        <>
-          <button
-            type="button"
-            aria-label="Close search"
-            className="fixed inset-x-0 bottom-0 z-[9998] bg-black/25 transition-opacity duration-300"
-            style={{
-              position: "fixed",
-              display: "block",
-              top: `${searchPanelTop}px`,
-              left: 0,
-              width: "100vw",
-              height: `calc(100dvh - ${searchPanelTop}px)`,
-              zIndex: 9998,
-              opacity: searchOpen ? 1 : 0,
-              pointerEvents: searchOpen ? "auto" : "none",
-            }}
-            onClick={closeSearch}
-          />
-
-          <div
-            id="search-bar"
-            className={`fixed inset-x-0 z-[9999] overflow-hidden rounded-b-[24px] border-t border-white/[0.08] bg-[#0A0A0A] px-4 text-white shadow-2xl ring-1 ring-white/[0.06] large:px-6 ${
-              searchOpen
-                ? "h-[75vh] opacity-100 small:!h-[412px]"
-                : "h-0 opacity-0 small:!h-0"
-            }`}
-            style={{
-              position: "fixed",
-              top: `${searchPanelTop}px`,
-              right: 0,
-              left: 0,
-              zIndex: 9999,
-              pointerEvents: searchOpen ? "auto" : "none",
-            }}
-            onTouchStart={(event) => {
-              searchTouchStartY.current = event.touches[0]?.clientY ?? null
-            }}
-            onTouchEnd={handleSearchTouchEnd}
-          >
-            <div className="mx-auto max-w-[1440px] py-3">
-              <div className="flex items-center gap-3 rounded-full border border-white/[0.12] bg-white/[0.04] px-4 py-3">
-                <svg
-                  width="17"
-                  height="17"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="rgba(255,255,255,0.45)"
-                  strokeWidth="2"
-                  aria-hidden="true"
-                >
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="M21 21l-4.35-4.35" />
-                </svg>
-                <input
-                  id="search-input"
-                  type="search"
-                  value={query}
-                  onChange={(event) => setQuery(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") {
-                      event.preventDefault()
-                      submitSearch()
-                    }
-
-                    if (event.key === "Escape") {
-                      closeSearch()
-                    }
-                  }}
-                  placeholder="Search Nuptse, 9060, Birks, NZ Stock..."
-                  className="h-7 flex-1 bg-transparent text-[16px] text-white outline-none placeholder:text-white/35 small:text-sm"
-                  aria-label="Search products, collections and help"
-                />
-                {query && (
-                  <button
-                    className="text-[10px] font-black uppercase tracking-[0.1em] text-white/40 transition hover:text-white"
-                    type="button"
-                    onClick={() => setQuery("")}
-                  >
-                    Clear
-                  </button>
-                )}
-              <button
-                className="text-[10px] font-black uppercase tracking-[0.1em] text-white/40 transition hover:text-white"
-                type="button"
-                onClick={closeSearch}
-              >
-                Cancel
-              </button>
-            </div>
+          <>
+            <button
+              type="button"
+              aria-label="Close search"
+              aria-hidden={!searchOpen}
+              tabIndex={searchOpen ? 0 : -1}
+              className="fixed inset-x-0 bottom-0 z-[9998] bg-black/25 transition-opacity duration-300"
+              style={{
+                position: "fixed",
+                display: "block",
+                top: `${searchPanelTop}px`,
+                left: 0,
+                // 100vw includes the desktop scrollbar. At a 390px test
+                // viewport that made this closed backdrop 407px wide and
+                // leaked horizontal overflow into every page, including PDPs.
+                width: "100%",
+                height: `calc(100dvh - ${searchPanelTop}px)`,
+                zIndex: 9998,
+                opacity: searchOpen ? 1 : 0,
+                pointerEvents: searchOpen ? "auto" : "none",
+              }}
+              onClick={closeSearch}
+            />
 
             <div
-              className="max-h-[calc(75vh-76px)] overflow-y-auto py-4 small:max-h-[336px]"
+              ref={searchDialogRef}
+              id="search-bar"
+              className={`fixed inset-x-0 z-[9999] overflow-hidden rounded-b-[24px] border-t border-white/[0.08] bg-[#0A0A0A] px-4 text-white shadow-2xl ring-1 ring-white/[0.06] large:px-6 ${
+                searchOpen
+                  ? "h-[75vh] opacity-100 small:!h-[412px]"
+                  : "h-0 opacity-0 small:!h-0"
+              }`}
+              style={{
+                position: "fixed",
+                top: `${searchPanelTop}px`,
+                right: 0,
+                left: 0,
+                zIndex: 9999,
+                pointerEvents: searchOpen ? "auto" : "none",
+              }}
+              onTouchStart={(event) => {
+                searchTouchStartY.current = event.touches[0]?.clientY ?? null
+              }}
+              onTouchEnd={handleSearchTouchEnd}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="search-dialog-title"
+              aria-hidden={!searchOpen}
+              inert={!searchOpen}
             >
-            {hasExactResults ? (
-              <div className="grid gap-5 large:grid-cols-[1.1fr_0.9fr_0.9fr]">
-                <SuggestionGroup title="Products">
-                  {searchResults.products.length ? (
-                    searchResults.products.map((product) => (
-                      <a
-                        key={product.href}
-                        href={localizeHref(product.href, countryCode)}
-                        className="flex items-center gap-3 rounded-[10px] px-2 py-2 transition hover:bg-white/[0.06]"
-                        onClick={closeSearch}
-                      >
-                        <span className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-[8px] bg-white/[0.06]">
-                          {product.image ? (
-                            <img
-                              src={product.image}
-                              alt=""
-                              className="h-full w-full object-cover"
-                            />
-                          ) : null}
-                        </span>
-                        <span className="min-w-0">
-                          <span className="block truncate text-[13px] font-bold">
-                            {product.title}
-                          </span>
-                          <span className="mt-0.5 block text-[11px] text-white/40">
-                            View product
-                          </span>
-                        </span>
-                      </a>
-                    ))
-                  ) : isProductSearchLoading ? (
-                    <EmptyGroupText text="Searching products..." />
-                  ) : (
-                    <EmptyGroupText text="No product title matched yet." />
-                  )}
-                </SuggestionGroup>
-
-                <SuggestionGroup title="Collections / Drop Pages">
-                  {searchResults.collections.length ? (
-                    searchResults.collections.map((item) => (
-                      <SearchSuggestionLink
-                        key={item.href}
-                        item={item}
-                        countryCode={countryCode}
-                        onClick={closeSearch}
-                      />
-                    ))
-                  ) : (
-                    <EmptyGroupText text="Try NZ Stock, Clearance or a brand." />
-                  )}
-                </SuggestionGroup>
-
-                <SuggestionGroup title="FAQ / Help Answers">
-                  {searchResults.help.length ? (
-                    searchResults.help.map((item) => (
-                      <SearchSuggestionLink
-                        key={item.href}
-                        item={item}
-                        countryCode={countryCode}
-                        onClick={closeSearch}
-                      />
-                    ))
-                  ) : (
-                    <EmptyGroupText text="Shipping and returns help lives here." />
-                  )}
-                </SuggestionGroup>
-              </div>
-            ) : (
-              <div className="rounded-[14px] border border-white/[0.08] bg-white/[0.04] p-5">
-                <p className="text-[20px] font-black">No exact match</p>
-                <p className="mt-2 text-[13px] leading-6 text-white/55">
-                  Try: Nuptse, New Balance, NZ Stock
+              <div className="mx-auto max-w-[1440px] py-3">
+                <h2 id="search-dialog-title" className="sr-only">
+                  Search MUSE
+                </h2>
+                <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                  {searchStatus}
                 </p>
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {["Nuptse", "New Balance", "NZ Stock"].map((term) => (
-                    <button
-                      key={term}
-                      type="button"
-                      onClick={() => setQuery(term)}
-                      className="rounded-full border border-white/[0.12] px-3 py-2 text-[12px] font-bold text-white/75 transition hover:border-[#C8D050] hover:text-white"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                  <a
-                    href="mailto:support@musenz.com?subject=Shoe%20request"
-                    className="rounded-full bg-[#C8D050] px-3 py-2 text-[12px] font-black text-[#0A0A0A] transition hover:opacity-85"
+                <div className="flex min-h-12 items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] pl-4 pr-1">
+                  <svg
+                    width="17"
+                    height="17"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="rgba(255,255,255,0.45)"
+                    strokeWidth="2"
+                    aria-hidden="true"
                   >
-                    Shoe request / contact
-                  </a>
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M21 21l-4.35-4.35" />
+                  </svg>
+                  <input
+                    id="search-input"
+                    type="search"
+                    value={query}
+                    onChange={(event) => setQuery(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault()
+                        submitSearch()
+                      }
+                    }}
+                    placeholder="Search Nuptse, 9060, Birks, NZ Stock..."
+                    className="h-12 min-w-0 flex-1 bg-transparent text-[16px] text-white outline-none placeholder:text-white/45 small:text-sm"
+                    aria-label="Search products, collections and help"
+                  />
+                  {query && (
+                    <button
+                      className="flex min-h-11 items-center px-2 text-[10px] font-black uppercase tracking-[0.1em] text-white/70 transition hover:text-white"
+                      type="button"
+                      onClick={() => setQuery("")}
+                    >
+                      Clear
+                    </button>
+                  )}
+                  <button
+                    className="flex min-h-11 items-center px-2 text-[10px] font-black uppercase tracking-[0.1em] text-white/70 transition hover:text-white"
+                    type="button"
+                    onClick={closeSearch}
+                  >
+                    Cancel
+                  </button>
+                </div>
+
+                <div className="max-h-[calc(75vh-76px)] overflow-y-auto py-4 small:max-h-[336px]">
+                  {hasExactResults ? (
+                    <div className="grid gap-5 large:grid-cols-[1.1fr_0.9fr_0.9fr]">
+                      <SuggestionGroup title="Products">
+                        {searchResults.products.length ? (
+                          searchResults.products.map((product) => (
+                            <a
+                              key={product.href}
+                              href={localizeHref(product.href, countryCode)}
+                              className="flex items-center gap-3 rounded-[10px] px-2 py-2 transition hover:bg-white/[0.06]"
+                              onClick={closeSearch}
+                            >
+                              <span className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-[8px] bg-white/[0.06]">
+                                {product.image ? (
+                                  <img
+                                    src={product.image}
+                                    alt={`${product.title} product result`}
+                                    className="h-full w-full object-cover"
+                                  />
+                                ) : null}
+                              </span>
+                              <span className="min-w-0">
+                                <span className="block truncate text-[13px] font-bold">
+                                  {product.title}
+                                </span>
+                                <span className="mt-0.5 block text-[11px] text-white/70">
+                                  View product
+                                </span>
+                              </span>
+                            </a>
+                          ))
+                        ) : isProductSearchLoading ? (
+                          <EmptyGroupText text="Searching products..." />
+                        ) : (
+                          <EmptyGroupText text="No product title matched yet." />
+                        )}
+                      </SuggestionGroup>
+
+                      <SuggestionGroup title="Collections / Drop Pages">
+                        {searchResults.collections.length ? (
+                          searchResults.collections.map((item) => (
+                            <SearchSuggestionLink
+                              key={item.href}
+                              item={item}
+                              countryCode={countryCode}
+                              onClick={closeSearch}
+                            />
+                          ))
+                        ) : (
+                          <EmptyGroupText text="Try NZ Stock, Clearance or a brand." />
+                        )}
+                      </SuggestionGroup>
+
+                      <SuggestionGroup title="FAQ / Help Answers">
+                        {searchResults.help.length ? (
+                          searchResults.help.map((item) => (
+                            <SearchSuggestionLink
+                              key={item.href}
+                              item={item}
+                              countryCode={countryCode}
+                              onClick={closeSearch}
+                            />
+                          ))
+                        ) : (
+                          <EmptyGroupText text="Shipping and returns help lives here." />
+                        )}
+                      </SuggestionGroup>
+                    </div>
+                  ) : (
+                    <div className="rounded-[14px] border border-white/[0.08] bg-white/[0.04] p-5">
+                      <p className="text-[20px] font-black">No exact match</p>
+                      <p className="mt-2 text-[13px] leading-6 text-white/55">
+                        Try: Nuptse, New Balance, NZ Stock
+                      </p>
+                      <div className="mt-4 flex flex-wrap gap-2">
+                        {["Nuptse", "New Balance", "NZ Stock"].map((term) => (
+                          <button
+                            key={term}
+                            type="button"
+                            onClick={() => setQuery(term)}
+                            className="rounded-full border border-white/[0.12] px-3 py-2 text-[12px] font-bold text-white/75 transition hover:border-[#C8D050] hover:text-white"
+                          >
+                            {term}
+                          </button>
+                        ))}
+                        <a
+                          href="mailto:support@musenz.com?subject=Shoe%20request"
+                          className="rounded-full bg-[#C8D050] px-3 py-2 text-[12px] font-black text-[#0A0A0A] transition hover:opacity-85"
+                        >
+                          Shoe request / contact
+                        </a>
+                      </div>
+                    </div>
+                  )}
+
+                  {query.trim().length >= 2 && (
+                    <a
+                      href={localizeHref(
+                        `/store?q=${encodeURIComponent(query.trim())}`,
+                        countryCode
+                      )}
+                      className="mt-4 flex items-center justify-between rounded-[12px] border border-white/[0.08] px-4 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-[#C8D050] transition hover:bg-white/[0.05]"
+                      onClick={closeSearch}
+                    >
+                      View all results for "{query.trim()}"
+                      <span aria-hidden="true">-&gt;</span>
+                    </a>
+                  )}
                 </div>
               </div>
-            )}
-
-            {query.trim().length >= 2 && (
-              <a
-                href={localizeHref(
-                  `/store?q=${encodeURIComponent(query.trim())}`,
-                  countryCode
-                )}
-                className="mt-4 flex items-center justify-between rounded-[12px] border border-white/[0.08] px-4 py-3 text-[12px] font-black uppercase tracking-[0.08em] text-[#C8D050] transition hover:bg-white/[0.05]"
-                onClick={closeSearch}
-              >
-                View all results for "{query.trim()}"
-                <span aria-hidden="true">-&gt;</span>
-              </a>
-            )}
-              </div>
             </div>
-          </div>
-        </>,
-        document.body
-      )}
+          </>,
+          document.body
+        )}
     </>
   )
 }
@@ -793,7 +908,7 @@ function SuggestionGroup({
 }) {
   return (
     <section>
-      <h3 className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/35">
+      <h3 className="mb-2 text-[10px] font-black uppercase tracking-[0.14em] text-white/70">
         {title}
       </h3>
       <div className="space-y-1">{children}</div>
@@ -820,7 +935,7 @@ function SearchSuggestionLink({
     >
       <span>
         <span className="block text-[13px] font-bold">{item.title}</span>
-        <span className="mt-0.5 block text-[11px] text-white/40">
+        <span className="mt-0.5 block text-[11px] text-white/70">
           {item.subtitle}
         </span>
       </span>
@@ -836,5 +951,5 @@ function SearchSuggestionLink({
 }
 
 function EmptyGroupText({ text }: { text: string }) {
-  return <p className="px-2 py-2 text-[12px] text-white/35">{text}</p>
+  return <p className="px-2 py-2 text-[12px] text-white/70">{text}</p>
 }

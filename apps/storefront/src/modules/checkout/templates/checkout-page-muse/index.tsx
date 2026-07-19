@@ -96,7 +96,7 @@ export default function CheckoutPageMuse({
 
       <div className="border-b border-muse-border bg-muse-cream-warm px-4 py-4 small:hidden">
         <details className="group">
-          <summary className="flex cursor-pointer items-center justify-between">
+          <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-[13px] font-semibold text-muse-black">
               <svg className="h-4 w-4 stroke-muse-orange" viewBox="0 0 24 24" fill="none" strokeWidth="2">
                 <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
@@ -123,7 +123,7 @@ export default function CheckoutPageMuse({
       </div>
 
       <div className="mx-auto grid max-w-[1200px] grid-cols-1 items-start gap-10 px-4 py-8 small:grid-cols-[1fr_420px] small:gap-20 small:px-8 small:py-12">
-        <div>
+        <div className="min-w-0">
           <PaymentWrapper cart={cart}>
             <ExpressPayMuse
               cart={cart}

@@ -123,12 +123,39 @@ export async function middleware(request: NextRequest) {
   const cacheIdCookie = request.cookies.get("_medusa_cache_id")
   const cacheId = cacheIdCookie?.value || crypto.randomUUID()
 
+  // MUSE currently has a single shopper-facing market. Avoid making the
+  // first request wait on Medusa's region endpoint when the URL already uses
+  // that market (or when `/` only needs the default-country redirect).
+  // Unknown/non-default country paths still use the region lookup below.
+  const firstPathSegment = request.nextUrl.pathname
+    .split("/")[1]
+    ?.toLowerCase()
+  const defaultCountry = DEFAULT_REGION.toLowerCase()
+
+  if (request.nextUrl.pathname === "/") {
+    return NextResponse.redirect(
+      `${request.nextUrl.origin}/${defaultCountry}${request.nextUrl.search}`,
+      307
+    )
+  }
+
+  if (firstPathSegment === defaultCountry) {
+    if (!cacheIdCookie) {
+      const response = NextResponse.next()
+      response.cookies.set("_medusa_cache_id", cacheId, {
+        maxAge: 60 * 60 * 24,
+      })
+      return response
+    }
+
+    return NextResponse.next()
+  }
+
   const regionMap = await getRegionMap(cacheId)
   const countryCode = await getCountryCode(request, regionMap)
 
   // if the country code is available, use it, otherwise use the default region
   const country = countryCode || DEFAULT_REGION
-  const firstPathSegment = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
   const urlHasCountry = firstPathSegment === country.toLowerCase()
 
   if (urlHasCountry) {

@@ -20,20 +20,50 @@
 }
 
 :root {
-  --muse-black: #0A0A0A;
-  --muse-cream: #F4F2ED;
-  --muse-cream-warm: #F8F7F4;
-  --muse-cream-deep: #ECE9E2;
-  --muse-yellow: #C8D050;
-  --muse-yellow-deep: #B6C043;
-  --muse-orange: #C1440E;
-  --muse-orange-soft: #FDF4EF;
-  --muse-green: #1F7A3A;
-  --muse-border: #E8E6E0;
-  --muse-input: #D5D2CC;
-  --muse-text: #1A1A1A;
+  --muse-black: #0a0a0a;
+  --muse-cream: #f4f2ed;
+  --muse-cream-warm: #f8f7f4;
+  --muse-cream-deep: #ece9e2;
+  --muse-yellow: #c8d050;
+  --muse-yellow-deep: #b6c043;
+  --muse-orange: #c1440e;
+  --muse-orange-soft: #fdf4ef;
+  --muse-green: #1f7a3a;
+  --muse-border: #e8e6e0;
+  --muse-input: #d5d2cc;
+  --muse-text: #1a1a1a;
   --muse-text-muted: #666666;
-  --muse-text-light: #999999;
+  --muse-text-light: #666666;
+}
+
+html,
+body {
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+:where(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+  outline: 2px solid var(--muse-orange);
+  outline-offset: 3px;
+}
+
+.muse-mobile-cart-bar {
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html:focus-within {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
 /* MUSE FAQ, privacy policy, and terms pages */
@@ -334,9 +364,15 @@
 .muse-static-page .section-head,
 .muse-static-page .faq-q {
   display: flex;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  color: inherit;
   cursor: pointer;
+  font: inherit;
   align-items: center;
   gap: 14px;
+  text-align: left;
   user-select: none;
 }
 

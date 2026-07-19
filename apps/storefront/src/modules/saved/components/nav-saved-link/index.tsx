@@ -11,7 +11,7 @@ export default function NavSavedLink() {
   return (
     <LocalizedClientLink
       href="/saved"
-      className={`relative flex h-9 w-9 items-center justify-center rounded-full transition ${
+      className={`relative flex h-11 w-11 items-center justify-center rounded-full transition ${
         hasItems
           ? "bg-[#C8D050] text-[#0A0A0A]"
           : "text-white/65 hover:text-[#C8D050]"

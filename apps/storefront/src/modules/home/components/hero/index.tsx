@@ -1,4 +1,5 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link";
+import { MUSE_REVIEW_SUMMARY } from "@modules/products/data/reviews";
 
 const Hero = () => {
   return (
@@ -7,7 +8,9 @@ const Hero = () => {
       <div className="content-container relative grid min-h-[76vh] gap-10 py-10 small:grid-cols-[1.02fr_0.98fr] small:items-center small:py-20">
         <div>
           <div className="mb-6 inline-flex rounded-full border border-black/10 bg-white/70 px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-black/60 backdrop-blur">
-            4.9 rated · Auckland pickup · 30-day money back
+            {MUSE_REVIEW_SUMMARY.average.toFixed(1)} from{" "}
+            {MUSE_REVIEW_SUMMARY.total} verified reviews · Auckland pickup ·
+            30-day money back
           </div>
           <h1 className="max-w-3xl text-[48px] font-black leading-[0.95] tracking-[-0.05em] text-[#0A0A0A] small:text-[86px]">
             The winter pieces people keep asking for.

@@ -1,7 +1,7 @@
 "use client"
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
-import { useCallback, useState } from "react"
+import { useCallback, useState, useTransition } from "react"
 
 import { HttpTypes } from "@medusajs/types"
 
@@ -33,8 +33,14 @@ export default function FilterRailMuse({
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
+  const [isPending, startTransition] = useTransition()
   const [activeShoeGroup, setActiveShoeGroup] = useState(
-    shoeSizeGroups[0]?.label ?? "",
+    shoeSizeGroups[0]?.label ?? ""
+  )
+  const navigate = useCallback(
+    (href: string) =>
+      startTransition(() => router.push(href, { scroll: false })),
+    [router]
   )
 
   const setParam = useCallback(
@@ -48,9 +54,9 @@ export default function FilterRailMuse({
       }
 
       next.delete("page")
-      router.push(`${pathname}?${next.toString()}`, { scroll: false })
+      navigate(`${pathname}?${next.toString()}`)
     },
-    [params, pathname, router],
+    [navigate, params, pathname]
   )
 
   const toggleMulti = useCallback(
@@ -62,7 +68,7 @@ export default function FilterRailMuse({
 
       setParam(key, next.length ? next.join(",") : null)
     },
-    [params, setParam],
+    [params, setParam]
   )
 
   const toggleBrand = useCallback(
@@ -95,9 +101,9 @@ export default function FilterRailMuse({
       }
 
       next.delete("page")
-      router.push(`${pathname}?${next.toString()}`, { scroll: false })
+      navigate(`${pathname}?${next.toString()}`)
     },
-    [lines, params, pathname, router],
+    [lines, navigate, params, pathname]
   )
 
   const toggleLine = useCallback(
@@ -121,9 +127,9 @@ export default function FilterRailMuse({
       }
 
       next.delete("page")
-      router.push(`${pathname}?${next.toString()}`, { scroll: false })
+      navigate(`${pathname}?${next.toString()}`)
     },
-    [params, pathname, router],
+    [navigate, params, pathname]
   )
 
   const activeStock = params.get("stock")
@@ -136,13 +142,13 @@ export default function FilterRailMuse({
   const maxPrice = params.get("maxPrice")
   const hasFilters = Boolean(
     activeStock ||
-    activeBrands.length ||
-    activeLines.length ||
-    activeBadges.length ||
-    activeSizes.length ||
-    activeColours.length ||
-    activeCats.length ||
-    maxPrice,
+      activeBrands.length ||
+      activeLines.length ||
+      activeBadges.length ||
+      activeSizes.length ||
+      activeColours.length ||
+      activeCats.length ||
+      maxPrice
   )
 
   const clearAll = () => {
@@ -160,14 +166,20 @@ export default function FilterRailMuse({
       "minPrice",
     ].forEach((key) => next.delete(key))
     next.delete("page")
-    router.push(`${pathname}?${next.toString()}`, { scroll: false })
+    navigate(`${pathname}?${next.toString()}`)
   }
 
   return (
-    <div className="sticky top-[88px] overflow-hidden rounded-[20px] border border-muse-border bg-muse-cream-warm">
+    <div
+      className="sticky top-[88px] overflow-hidden rounded-[20px] border border-muse-border bg-muse-cream-warm"
+      aria-busy={isPending}
+    >
       <div className="flex items-center justify-between border-b border-muse-border px-5 py-4">
         <span className="text-[13px] font-extrabold uppercase tracking-[0.1em]">
-          Filter
+          {isPending ? "Updating..." : "Filter"}
+        </span>
+        <span className="sr-only" role="status" aria-live="polite">
+          {isPending ? "Updating products" : ""}
         </span>
         {hasFilters && (
           <button
@@ -231,11 +243,11 @@ export default function FilterRailMuse({
         <div className="flex flex-col gap-1.5">
           {brands.map((brand) => {
             const brandLines = lines.filter(
-              (line) => line.brand === brand.value,
+              (line) => line.brand === brand.value
             )
             const brandActive = activeBrands.includes(brand.value)
             const hasActiveLine = brandLines.some((line) =>
-              activeLines.includes(line.value),
+              activeLines.includes(line.value)
             )
             const expanded = brandActive || hasActiveLine
 

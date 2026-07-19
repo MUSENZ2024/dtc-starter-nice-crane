@@ -142,7 +142,7 @@ export default async function SplitPayConfirmedPage({ searchParams }: Props) {
   })
 
   return (
-    <main className="min-h-screen bg-muse-cream font-inter text-muse-black">
+    <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
       <header className="sticky top-0 z-50 flex h-[60px] items-center justify-between bg-muse-black px-[18px] small:h-16 small:px-8">
         <LocalizedClientLink href="/" className="flex items-center">
           <img
@@ -479,6 +479,6 @@ export default async function SplitPayConfirmedPage({ searchParams }: Props) {
           </LocalizedClientLink>
         </aside>
       </section>
-    </main>
+    </div>
   )
 }

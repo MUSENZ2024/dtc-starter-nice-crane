@@ -8,9 +8,10 @@ import { useMemo, useState } from "react"
 type ImageGalleryProps = {
   images: HttpTypes.StoreProductImage[]
   fulfilment: FulfilmentState
+  productTitle: string
 }
 
-const ImageGallery = ({ images, fulfilment }: ImageGalleryProps) => {
+const ImageGallery = ({ images, fulfilment, productTitle }: ImageGalleryProps) => {
   const galleryImages = useMemo(
     () =>
       images.length > 0
@@ -48,7 +49,7 @@ const ImageGallery = ({ images, fulfilment }: ImageGalleryProps) => {
             src={activeImage.url}
             priority
             className="absolute inset-0"
-            alt={`Product image ${activeIndex + 1}`}
+            alt={`${productTitle}, photo ${activeIndex + 1} of ${galleryImages.length}`}
             fill
             sizes="(max-width: 900px) 100vw, 720px"
             style={{ objectFit: "cover" }}
@@ -70,16 +71,16 @@ const ImageGallery = ({ images, fulfilment }: ImageGalleryProps) => {
             <button
               type="button"
               onClick={showPrevious}
-              className="absolute left-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
-              aria-label="Previous product photo"
+              className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
+              aria-label={`Previous photo of ${productTitle}`}
             >
               ‹
             </button>
             <button
               type="button"
               onClick={showNext}
-              className="absolute right-4 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
-              aria-label="Next product photo"
+              className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
+              aria-label={`Next photo of ${productTitle}`}
             >
               ›
             </button>
@@ -89,7 +90,9 @@ const ImageGallery = ({ images, fulfilment }: ImageGalleryProps) => {
           {galleryImages.map((image, index) => (
             <button
               key={image.id}
-              aria-label={`View image ${index + 1}`}
+              type="button"
+              aria-label={`View photo ${index + 1} of ${productTitle}`}
+              aria-current={index === activeIndex ? "true" : undefined}
               onClick={() => setActiveIndex(index)}
               className={`h-[7px] rounded-full transition-all ${
                 index === activeIndex ? "w-5 bg-[#0A0A0A]" : "w-[7px] bg-black/15"
@@ -103,7 +106,10 @@ const ImageGallery = ({ images, fulfilment }: ImageGalleryProps) => {
         {thumbSlots.map((image, index) => (
           <button
             key={image.id}
+            type="button"
             onClick={() => setActiveIndex(index)}
+            aria-label={`View photo ${index + 1} of ${productTitle}`}
+            aria-current={index === activeIndex ? "true" : undefined}
             className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-[14px] border-2 bg-gradient-to-br from-[#ECE9E2] to-[#F8F7F4] text-xl font-black text-black/10 transition hover:-translate-y-0.5 ${
               index === activeIndex ? "border-[#0A0A0A]" : "border-transparent"
             }`}
@@ -111,7 +117,7 @@ const ImageGallery = ({ images, fulfilment }: ImageGalleryProps) => {
             {image.url ? (
               <Image
                 src={image.url}
-                alt={`Product thumbnail ${index + 1}`}
+                alt=""
                 fill
                 sizes="120px"
                 style={{ objectFit: "cover" }}

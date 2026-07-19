@@ -8,6 +8,7 @@ import { HttpTypes } from "@medusajs/types"
 import PaymentBadges from "@modules/common/components/payment-badges"
 import StripePaymentMessaging from "@modules/products/components/stripe-payment-messaging"
 import SavedToggle from "@modules/saved/components/saved-toggle"
+import { MUSE_REVIEW_SUMMARY } from "@modules/products/data/reviews"
 import {
   useParams,
   usePathname,
@@ -121,26 +122,6 @@ const variantIsPurchasable = (variant?: HttpTypes.StoreProductVariant) => {
   return getVariantStockQuantity(variant) > 0
 }
 
-const findFirstPurchasableOptionValue = (
-  product: HttpTypes.StoreProduct,
-  optionId: string
-) => {
-  const variant = product.variants?.find((candidate) =>
-    variantIsPurchasable(candidate)
-  )
-  const option = variant?.options?.find((candidate) => {
-    const candidateOptionId =
-      candidate.option_id ??
-      ("option" in candidate
-        ? (candidate.option as { id?: string } | undefined)?.id
-        : undefined)
-
-    return candidateOptionId === optionId
-  })
-
-  return option?.value
-}
-
 const makeDefaultOptions = (product: HttpTypes.StoreProduct) => {
   const next: Record<string, string> = {}
   const titleColour = getProductColourFromTitle(
@@ -165,11 +146,8 @@ const makeDefaultOptions = (product: HttpTypes.StoreProduct) => {
     }
 
     if (isSizeOption(option.title)) {
-      next[option.id] =
-        findFirstPurchasableOptionValue(product, option.id) ??
-        values.find((value) => value.toLowerCase() === "s") ??
-        values.find((value) => value.toLowerCase() === "m") ??
-        values[0]
+      // A size must be an intentional shopper choice. Preselecting the first
+      // purchasable value silently added XXS on multi-size products.
       continue
     }
 
@@ -563,6 +541,9 @@ export default function ProductActions({
   const [addedToCart, setAddedToCart] = useState(false)
   const [sizeGuideOpen, setSizeGuideOpen] = useState(false)
   const addedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sizeSelectionRef = useRef<HTMLDivElement | null>(null)
+  const sizeGuideDialogRef = useRef<HTMLElement | null>(null)
+  const sizeGuideReturnFocusRef = useRef<HTMLElement | null>(null)
 
   const colourOption = useMemo(
     () => product.options?.find((option) => isColourOption(option.title)),
@@ -595,6 +576,67 @@ export default function ProductActions({
     }
   }, [])
 
+  useEffect(() => {
+    if (!sizeGuideOpen) return
+
+    document.body.style.overflow = "hidden"
+    const dialog = sizeGuideDialogRef.current
+    if (!dialog) return
+
+    const focusableSelector = [
+      "a[href]",
+      "button:not([disabled])",
+      "input:not([disabled])",
+      "select:not([disabled])",
+      '[tabindex]:not([tabindex="-1"])',
+    ].join(",")
+    const getFocusable = () =>
+      Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector)).filter(
+        (element) => element.offsetParent !== null
+      )
+
+    window.requestAnimationFrame(() =>
+      dialog.querySelector<HTMLElement>('[aria-label="Close size guide"]')?.focus()
+    )
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault()
+        setSizeGuideOpen(false)
+        return
+      }
+      if (event.key !== "Tab") return
+
+      const items = getFocusable()
+      if (!items.length) {
+        event.preventDefault()
+        return
+      }
+
+      const first = items[0]
+      const last = items[items.length - 1]
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault()
+        last.focus()
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault()
+        first.focus()
+      }
+    }
+
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown)
+      document.body.style.overflow = ""
+      window.requestAnimationFrame(() => sizeGuideReturnFocusRef.current?.focus())
+    }
+  }, [sizeGuideOpen])
+
+  const openSizeGuide = (trigger: HTMLElement) => {
+    sizeGuideReturnFocusRef.current = trigger
+    setSizeGuideOpen(true)
+  }
+
   const selectedVariant = useMemo(() => {
     if (!product.variants?.length) {
       return undefined
@@ -624,6 +666,7 @@ export default function ProductActions({
 
   const currentColour = colourOption?.id ? options[colourOption.id] : undefined
   const currentSize = sizeOption?.id ? options[sizeOption.id] : undefined
+  const needsSizeSelection = Boolean(sizeOption?.id && !currentSize)
   const inStock = getInStock(selectedVariant)
   const selectedStockQuantity = getVariantStockQuantity(selectedVariant)
   const useNorthFacePufferSizing = isNorthFacePufferJacket(product)
@@ -882,6 +925,32 @@ export default function ProductActions({
     !selectedVariant || !inStock || !isValidVariant || !!disabled
   const fulfilment = getFulfilmentState(product)
 
+  const promptForSize = () => {
+    sizeSelectionRef.current?.scrollIntoView({
+      behavior: "smooth",
+      block: "center",
+    })
+    sizeSelectionRef.current?.focus({ preventScroll: true })
+  }
+
+  const handlePrimaryAction = () => {
+    if (needsSizeSelection) {
+      promptForSize()
+      return
+    }
+
+    void handleAddToCart()
+  }
+
+  const handleSecondaryAction = () => {
+    if (needsSizeSelection) {
+      promptForSize()
+      return
+    }
+
+    void (isEditingLine ? handleAddToCart() : handleBuyNow())
+  }
+
   return (
     <div className="pb-4 small:pt-1">
       <div
@@ -904,9 +973,11 @@ export default function ProductActions({
 
       <div className="mb-5 flex flex-wrap items-center gap-2.5 text-[13px] text-[#666]">
         <span className="text-sm tracking-[1px] text-[#C1440E]">★★★★★</span>
-        <strong className="text-[#0A0A0A]">4.9</strong>
+        <strong className="text-[#0A0A0A]">
+          {MUSE_REVIEW_SUMMARY.average.toFixed(1)}
+        </strong>
         <a href="#reviews" className="font-semibold underline">
-          47 verified reviews
+          {MUSE_REVIEW_SUMMARY.total} verified reviews
         </a>
         <span className="opacity-40">·</span>
         <span>247 sold this season</span>
@@ -918,7 +989,7 @@ export default function ProductActions({
         </span>
         {showSalePrice && (
           <>
-            <span className="text-lg font-medium text-[#999] line-through">
+            <span className="text-lg font-medium text-[#666] line-through">
               {selectedPrice.original_price}
             </span>
             <span className="rounded-full bg-[#C1440E] px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.04em] text-white">
@@ -997,15 +1068,20 @@ export default function ProductActions({
       )}
 
       {sizeOption && (
-        <div className="mb-5">
+        <div
+          ref={sizeSelectionRef}
+          tabIndex={-1}
+          aria-describedby={needsSizeSelection ? "size-selection-prompt" : undefined}
+          className="mb-5 scroll-mt-28 rounded-2xl outline-none focus-visible:ring-2 focus-visible:ring-[#C1440E] focus-visible:ring-offset-4"
+        >
           <div className="mb-3 flex items-baseline justify-between">
             <span className="text-xs font-bold uppercase tracking-[0.12em]">
               Size
             </span>
             <button
               type="button"
-              onClick={() => setSizeGuideOpen(true)}
-              className="text-[13px] font-semibold text-[#C1440E] hover:underline"
+              onClick={(event) => openSizeGuide(event.currentTarget)}
+              className="min-h-11 px-2 text-[13px] font-semibold text-[#C1440E] hover:underline"
             >
               {sizeGuideLabel}
             </button>
@@ -1054,6 +1130,15 @@ export default function ProductActions({
               )
             })}
           </div>
+          {needsSizeSelection && (
+            <p
+              id="size-selection-prompt"
+              role="status"
+              className="mt-2 text-[12.5px] font-bold text-[#C1440E]"
+            >
+              Choose a size to continue.
+            </p>
+          )}
           {useNikeJordanSizing && (
             <p className="mt-2 text-[12.5px] font-semibold text-[#666]">
               Sizes are shown as US Men's / US Women's.
@@ -1082,8 +1167,8 @@ export default function ProductActions({
             </span>
             <button
               type="button"
-              onClick={() => setSizeGuideOpen(true)}
-              className="font-semibold text-[#C1440E]"
+              onClick={(event) => openSizeGuide(event.currentTarget)}
+              className="min-h-11 px-2 font-semibold text-[#C1440E]"
             >
               View chart →
             </button>
@@ -1107,8 +1192,8 @@ export default function ProductActions({
           </p>
 
           <div className="mt-3 rounded-[14px] bg-[#F8F7F4] p-4">
-            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#999]">
-              What 47 buyers say about fit
+            <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#666]">
+              What {MUSE_REVIEW_SUMMARY.total} buyers say about fit
             </div>
             <div className="mb-2 flex h-2 overflow-hidden rounded-full">
               <span
@@ -1146,8 +1231,9 @@ export default function ProductActions({
       <div className="mb-4 flex flex-col gap-2">
         <button
           type="button"
-          disabled={disabledCta || isAdding}
-          onClick={handleAddToCart}
+          disabled={(disabledCta && !needsSizeSelection) || isAdding}
+          aria-disabled={disabledCta || isAdding}
+          onClick={handlePrimaryAction}
           className={`flex items-center justify-center gap-2.5 rounded-full px-6 py-[19px] text-[13px] font-extrabold uppercase tracking-[0.1em] transition hover:-translate-y-0.5 disabled:cursor-not-allowed ${
             addedToCart
               ? "bg-muse-green text-white"
@@ -1166,6 +1252,8 @@ export default function ProductActions({
               : disabledCta
               ? selectedVariant && !inStock
                 ? "Sold out"
+                : needsSizeSelection
+                ? "Choose a size"
                 : "Select options"
               : isEditingLine
               ? "Update bag"
@@ -1175,8 +1263,9 @@ export default function ProductActions({
         </button>
         <button
           type="button"
-          disabled={disabledCta || isAdding}
-          onClick={isEditingLine ? handleAddToCart : handleBuyNow}
+          disabled={(disabledCta && !needsSizeSelection) || isAdding}
+          aria-disabled={disabledCta || isAdding}
+          onClick={handleSecondaryAction}
           className="rounded-full bg-[#C8D050] px-6 py-[19px] text-center text-[13px] font-extrabold uppercase tracking-[0.1em] text-[#0A0A0A] transition hover:bg-[#B6C043] disabled:cursor-not-allowed disabled:opacity-50"
         >
           {isEditingLine ? "Update bag" : "Buy now — checkout in 30s"}
@@ -1299,7 +1388,7 @@ export default function ProductActions({
                   ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
                   : useAdidasSizing
                   ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
-                  : "Based on 47 verified reviews, 73% got their usual size."}
+                  : `Based on ${MUSE_REVIEW_SUMMARY.total} verified reviews, 73% got their usual size.`}
               </p>
             </>
           )}
@@ -1325,19 +1414,20 @@ export default function ProductActions({
         </AccordionItem>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 z-50 flex items-center gap-3 border-t border-[#E8E6E0] bg-white px-[18px] py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] small:hidden">
+      <div className="muse-mobile-cart-bar fixed inset-x-0 bottom-0 z-50 flex items-center gap-3 border-t border-[#E8E6E0] bg-white px-[18px] pt-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] small:hidden">
         <div className="shrink-0">
           <div className="text-lg font-black tracking-[-0.02em]">
             {priceLabel}
           </div>
           <div className="text-[11px] text-[#666]">
-            {currentColour ?? "Colour"} · Size {currentSize ?? "-"}
+            {currentColour ?? "Colour"} · {currentSize ? `Size ${currentSize}` : "Choose a size"}
           </div>
         </div>
         <button
           type="button"
-          disabled={disabledCta || isAdding}
-          onClick={handleAddToCart}
+          disabled={(disabledCta && !needsSizeSelection) || isAdding}
+          aria-disabled={disabledCta || isAdding}
+          onClick={handlePrimaryAction}
           className={`flex-1 rounded-full px-4 py-4 text-xs font-extrabold uppercase tracking-[0.1em] disabled:bg-[#999] ${
             addedToCart
               ? "bg-muse-green text-white"
@@ -1356,6 +1446,8 @@ export default function ProductActions({
             ? "✓ Added"
             : selectedVariant && !inStock
             ? "Sold out"
+            : needsSizeSelection
+            ? "Choose a size"
             : "Add to bag →"}
         </button>
       </div>
@@ -1364,19 +1456,27 @@ export default function ProductActions({
         <>
           <button
             type="button"
-            aria-label="Close size guide"
+            aria-hidden="true"
+            tabIndex={-1}
             className="fixed inset-0 z-[70] bg-black/45"
             onClick={() => setSizeGuideOpen(false)}
           />
-          <aside className="fixed bottom-0 right-0 top-0 z-[80] flex w-full max-w-[680px] flex-col bg-[#F4F2ED] shadow-2xl">
+          <aside
+            ref={sizeGuideDialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="size-guide-title"
+            className="fixed bottom-0 right-0 top-0 z-[80] flex w-full max-w-[680px] flex-col bg-[#F4F2ED] shadow-2xl"
+          >
             <div className="flex items-center justify-between border-b border-[#E8E6E0] px-7 py-6">
-              <h3 className="text-lg font-black tracking-[-0.02em]">
+              <h2 id="size-guide-title" className="text-lg font-black tracking-[-0.02em]">
                 Size guide
-              </h3>
+              </h2>
               <button
                 type="button"
                 onClick={() => setSizeGuideOpen(false)}
-                className="text-2xl text-[#666]"
+                aria-label="Close size guide"
+                className="flex h-11 w-11 items-center justify-center text-2xl text-[#666]"
               >
                 x
               </button>
@@ -1416,7 +1516,7 @@ export default function ProductActions({
                   ? "Based on fit feedback, 1% sized down, 53% got their usual size, and 56% sized up."
                   : useBirkenstockSizing
                   ? "Based on fit feedback, 92% of buyers got their usual size and 8% sized up."
-                  : "Based on 47 verified reviews, 73% of buyers got their usual size."}
+                  : `Based on ${MUSE_REVIEW_SUMMARY.total} verified reviews, 73% of buyers got their usual size.`}
               </div>
               <div className="mb-5 grid gap-2 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
                 <p>

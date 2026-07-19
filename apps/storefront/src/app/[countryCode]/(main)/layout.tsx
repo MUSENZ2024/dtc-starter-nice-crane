@@ -1,4 +1,5 @@
 import { Metadata } from "next"
+import { Suspense } from "react"
 
 import { CartDrawerProvider } from "@lib/context/cart-drawer-context"
 import { SavedItemsProvider } from "@lib/context/saved-items-context"
@@ -15,7 +16,7 @@ export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
 }
 
-export default async function PageLayout(props: { children: React.ReactNode }) {
+async function PersonalizedLayoutChrome() {
   const [customer, cart] = await Promise.all([retrieveCustomer(), retrieveCart()])
   let shippingOptions: StoreCartShippingOption[] = []
 
@@ -26,20 +27,30 @@ export default async function PageLayout(props: { children: React.ReactNode }) {
   }
 
   return (
+    <>
+      {customer && cart && (
+        <CartMismatchBanner customer={customer} cart={cart} />
+      )}
+
+      {cart && (
+        <FreeShippingPriceNudge
+          variant="popup"
+          cart={cart}
+          shippingOptions={shippingOptions}
+        />
+      )}
+    </>
+  )
+}
+
+export default function PageLayout(props: { children: React.ReactNode }) {
+  return (
     <CartDrawerProvider>
       <SavedItemsProvider>
         <Nav />
-        {customer && cart && (
-          <CartMismatchBanner customer={customer} cart={cart} />
-        )}
-
-        {cart && (
-          <FreeShippingPriceNudge
-            variant="popup"
-            cart={cart}
-            shippingOptions={shippingOptions}
-          />
-        )}
+        <Suspense fallback={null}>
+          <PersonalizedLayoutChrome />
+        </Suspense>
         {props.children}
         <Footer />
       </SavedItemsProvider>

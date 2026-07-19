@@ -1,4 +1,5 @@
 import { retrieveCart } from "@lib/data/cart"
+import { PRODUCT_CANDIDATE_FIELDS } from "@lib/data/product-fields"
 import { listProducts } from "@lib/data/products"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getRecommendedProducts } from "@lib/util/product-recommendations"
@@ -17,7 +18,8 @@ export default async function CompleteTheFit({ product, countryCode }: Props) {
   const [productsResponse, cart] = await Promise.all([
     listProducts({
       countryCode,
-      queryParams: { limit: 48 },
+      queryParams: { fields: PRODUCT_CANDIDATE_FIELDS, limit: 8 },
+      revalidateSeconds: 300,
     }).catch(() => null),
     retrieveCart().catch(() => null),
   ])

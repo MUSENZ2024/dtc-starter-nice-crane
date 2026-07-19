@@ -11,7 +11,7 @@ import {
   getCacheTag,
   getCartId,
   removeAuthToken,
-  removeCartId,
+  setCartId,
   setAuthToken,
 } from "./cookies"
 
@@ -19,7 +19,11 @@ export const retrieveCustomer =
   async (): Promise<HttpTypes.StoreCustomer | null> => {
     const authHeaders = await getAuthHeaders()
 
-    if (!authHeaders) return null
+    // `getAuthHeaders` returns an empty object for guests. The previous
+    // truthiness check still sent `/customers/me` for every anonymous page,
+    // adding a guaranteed 401 round trip to global layout, checkout and cart
+    // renders.
+    if (!("authorization" in authHeaders)) return null
 
     const headers = {
       ...authHeaders,
@@ -341,8 +345,6 @@ export async function signout(countryCode: string) {
   const customerCacheTag = await getCacheTag("customers")
   revalidateTag(customerCacheTag)
 
-  await removeCartId()
-
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)
 
@@ -359,6 +361,10 @@ export async function transferCart() {
   const headers = await getAuthHeaders()
 
   await sdk.store.cart.transferCart(cartId, {}, headers)
+
+  // The anonymous cart is transferred in place. Reassert the same cookie so
+  // account transitions never replace the shopper's active cart identity.
+  await setCartId(cartId)
 
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)

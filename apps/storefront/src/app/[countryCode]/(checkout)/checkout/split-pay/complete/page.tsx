@@ -37,7 +37,7 @@ export default async function SplitPayCompletePage({ searchParams }: Props) {
   const subscriptionId = getParam(params, "subscription_id")
 
   return (
-    <main className="min-h-screen bg-muse-cream px-4 py-12 font-inter text-muse-black">
+    <div className="min-h-screen bg-muse-cream px-4 py-12 font-inter text-muse-black">
       <div className="mx-auto max-w-[680px] rounded-[24px] border border-muse-border bg-white p-6 shadow-[0_12px_40px_rgba(0,0,0,0.06)] small:p-8">
         <p className="mb-3 text-[12px] font-extrabold uppercase tracking-[0.12em] text-muse-orange">
           Test Split Pay schedule created
@@ -89,6 +89,6 @@ export default async function SplitPayCompletePage({ searchParams }: Props) {
           Back to checkout
         </LocalizedClientLink>
       </div>
-    </main>
+    </div>
   )
 }

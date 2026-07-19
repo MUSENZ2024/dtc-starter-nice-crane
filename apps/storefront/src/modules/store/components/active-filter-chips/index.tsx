@@ -1,6 +1,7 @@
 "use client"
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
+import { useTransition } from "react"
 
 const FILTER_KEYS = [
   "stock",
@@ -31,6 +32,7 @@ export default function ActiveFilterChips({
   const router = useRouter()
   const pathname = usePathname()
   const params = useSearchParams()
+  const [isPending, startTransition] = useTransition()
 
   const chips = FILTER_KEYS.flatMap((key) => {
     const value = searchParams[key]
@@ -61,7 +63,9 @@ export default function ActiveFilterChips({
     }
 
     next.delete("page")
-    router.push(`${pathname}?${next.toString()}`, { scroll: false })
+    startTransition(() =>
+      router.push(`${pathname}?${next.toString()}`, { scroll: false })
+    )
   }
 
   const clearAll = () => {
@@ -69,11 +73,16 @@ export default function ActiveFilterChips({
 
     FILTER_KEYS.forEach((key) => next.delete(key))
     next.delete("page")
-    router.push(`${pathname}?${next.toString()}`, { scroll: false })
+    startTransition(() =>
+      router.push(`${pathname}?${next.toString()}`, { scroll: false })
+    )
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5">
+    <div className="flex flex-wrap items-center gap-1.5" aria-busy={isPending}>
+      <span className="sr-only" role="status" aria-live="polite">
+        {isPending ? "Updating products" : ""}
+      </span>
       {chips.map(({ key, value }) => (
         <button
           key={`${key}-${value}`}

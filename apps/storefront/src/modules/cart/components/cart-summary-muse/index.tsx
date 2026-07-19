@@ -3,7 +3,7 @@
 import { FormEvent, useState, useTransition } from "react"
 import { useRouter } from "next/navigation"
 import { HttpTypes } from "@medusajs/types"
-import { applyPromotions } from "@lib/data/cart"
+import { addPromotionCode } from "@lib/data/cart"
 import { convertToLocale } from "@lib/util/money"
 import PaymentBadges from "@modules/common/components/payment-badges"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
@@ -24,6 +24,7 @@ export default function CartSummaryMuse({ cart }: Props) {
   const router = useRouter()
   const [discountOpen, setDiscountOpen] = useState(false)
   const [discountCode, setDiscountCode] = useState("")
+  const [discountError, setDiscountError] = useState("")
   const [isPending, startTransition] = useTransition()
   const subtotal = cart.subtotal ?? cart.item_subtotal ?? 0
   const shippingFree = subtotal >= FREE_SHIPPING_THRESHOLD
@@ -42,8 +43,15 @@ export default function CartSummaryMuse({ cart }: Props) {
 
     if (!discountCode.trim()) return
 
+    setDiscountError("")
     startTransition(async () => {
-      await applyPromotions([discountCode.trim()])
+      const result = await addPromotionCode(discountCode.trim())
+
+      if (!result.success) {
+        setDiscountError(result.error)
+        return
+      }
+
       setDiscountOpen(false)
       setDiscountCode("")
       router.refresh()
@@ -73,9 +81,12 @@ export default function CartSummaryMuse({ cart }: Props) {
               <input
                 type="text"
                 value={discountCode}
-                onChange={(event) =>
+                onChange={(event) => {
                   setDiscountCode(event.target.value.toUpperCase())
-                }
+                  setDiscountError("")
+                }}
+                aria-invalid={Boolean(discountError)}
+                aria-describedby={discountError ? "cart-discount-error" : undefined}
                 placeholder="Discount code"
                 maxLength={24}
                 className="flex-1 rounded-full border border-muse-input bg-white px-[14px] py-[11px] font-inter text-[12.5px] uppercase tracking-[0.04em] outline-none transition placeholder:normal-case placeholder:tracking-normal placeholder:text-[#bbb] focus:border-muse-black"
@@ -88,6 +99,15 @@ export default function CartSummaryMuse({ cart }: Props) {
                 Apply
               </button>
             </form>
+          )}
+          {discountOpen && discountError && (
+            <p
+              id="cart-discount-error"
+              role="alert"
+              className="mt-2 text-[12px] font-semibold text-[#A33A12]"
+            >
+              {discountError}
+            </p>
           )}
         </div>
 

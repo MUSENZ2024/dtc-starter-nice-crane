@@ -92,7 +92,12 @@ export default async function Footer() {
                 aria-label="TikTok"
                 className="text-white opacity-65 transition hover:opacity-100"
               >
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <svg
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="currentColor"
+                >
                   <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1V9.01a6.33 6.33 0 0 0-.79-.05 6.34 6.34 0 0 0-6.34 6.34 6.34 6.34 0 0 0 6.34 6.34 6.34 6.34 0 0 0 6.33-6.34V8.69a8.19 8.19 0 0 0 4.78 1.52V6.76a4.85 4.85 0 0 1-1.01-.07z" />
                 </svg>
               </a>
@@ -105,16 +110,28 @@ export default async function Footer() {
                 Shop
               </p>
               <div className="flex flex-col gap-[11px] text-[13.5px] text-white/55">
-                <LocalizedClientLink href="/store" className="transition hover:text-white">
+                <LocalizedClientLink
+                  href="/store"
+                  className="transition hover:text-white"
+                >
                   Shop All
                 </LocalizedClientLink>
-                <LocalizedClientLink href="/categories/footwear" className="transition hover:text-white">
+                <LocalizedClientLink
+                  href="/categories/footwear"
+                  className="transition hover:text-white"
+                >
                   Footwear
                 </LocalizedClientLink>
-                <LocalizedClientLink href="/categories/outerwear" className="transition hover:text-white">
+                <LocalizedClientLink
+                  href="/categories/outerwear"
+                  className="transition hover:text-white"
+                >
                   Outerwear
                 </LocalizedClientLink>
-                <LocalizedClientLink href="/store?tag=clearance" className="text-[#C1440E] transition hover:opacity-80">
+                <LocalizedClientLink
+                  href="/clearance"
+                  className="text-[#C1440E] transition hover:opacity-80"
+                >
                   Clearance
                 </LocalizedClientLink>
               </div>
@@ -125,13 +142,22 @@ export default async function Footer() {
                 Support
               </p>
               <div className="flex flex-col gap-[11px] text-[13.5px] text-white/55">
-                <LocalizedClientLink href="/track" className="transition hover:text-white">
+                <LocalizedClientLink
+                  href="/track"
+                  className="transition hover:text-white"
+                >
                   Track order
                 </LocalizedClientLink>
-                <LocalizedClientLink href="/faq" className="transition hover:text-white">
+                <LocalizedClientLink
+                  href="/faq"
+                  className="transition hover:text-white"
+                >
                   FAQ / Help
                 </LocalizedClientLink>
-                <a href="mailto:support@musenz.com" className="transition hover:text-white">
+                <a
+                  href="mailto:support@musenz.com"
+                  className="transition hover:text-white"
+                >
                   support@musenz.com
                 </a>
                 <span className="text-[11.5px] text-white/30">
@@ -146,10 +172,16 @@ export default async function Footer() {
                 Company
               </p>
               <div className="flex flex-col gap-[11px] text-[13.5px] text-white/55">
-                <LocalizedClientLink href="/privacy" className="transition hover:text-white">
+                <LocalizedClientLink
+                  href="/privacy"
+                  className="transition hover:text-white"
+                >
                   Privacy Policy
                 </LocalizedClientLink>
-                <LocalizedClientLink href="/terms" className="transition hover:text-white">
+                <LocalizedClientLink
+                  href="/terms"
+                  className="transition hover:text-white"
+                >
                   Terms of Service
                 </LocalizedClientLink>
               </div>

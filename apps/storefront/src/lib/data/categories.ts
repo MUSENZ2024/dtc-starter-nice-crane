@@ -3,7 +3,8 @@ import { HttpTypes } from "@medusajs/types"
 
 const CATEGORY_LIST_FIELDS =
   "*category_children, products.id, products.status, *parent_category, *parent_category.parent_category"
-const CATEGORY_DETAIL_FIELDS = "*category_children, products.id, products.status"
+const CATEGORY_DETAIL_FIELDS =
+  "*category_children, products.id, products.status"
 
 const hideDraftCategoryProducts = (
   categories: HttpTypes.StoreProductCategory[]
@@ -34,7 +35,9 @@ export const listCategories = async (query?: Record<string, unknown>) => {
         cache: "force-cache",
       }
     )
-    .then(({ product_categories }) => hideDraftCategoryProducts(product_categories))
+    .then(({ product_categories }) =>
+      hideDraftCategoryProducts(product_categories)
+    )
 }
 
 export const getCategoryByHandle = async (categoryHandle: string[]) => {
@@ -48,8 +51,12 @@ export const getCategoryByHandle = async (categoryHandle: string[]) => {
           fields: CATEGORY_DETAIL_FIELDS,
           handle,
         },
-        cache: "no-store",
+        next: { revalidate: 300 },
+        cache: "force-cache",
       }
     )
-    .then(({ product_categories }) => hideDraftCategoryProducts(product_categories)[0])
+    .then(
+      ({ product_categories }) =>
+        hideDraftCategoryProducts(product_categories)[0]
+    )
 }

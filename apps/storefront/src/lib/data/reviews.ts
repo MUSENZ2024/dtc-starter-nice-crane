@@ -34,3 +34,22 @@ export async function getStoreReviews(): Promise<StoreReviewSummary | null> {
     return null
   }
 }
+
+export async function getStoreReviewsWithin(
+  timeoutMs = 350
+): Promise<StoreReviewSummary | null> {
+  let timeout: ReturnType<typeof setTimeout> | undefined
+
+  try {
+    return await Promise.race([
+      getStoreReviews(),
+      new Promise<null>((resolve) => {
+        timeout = setTimeout(() => resolve(null), timeoutMs)
+      }),
+    ])
+  } finally {
+    if (timeout) {
+      clearTimeout(timeout)
+    }
+  }
+}

@@ -158,27 +158,30 @@ export default async function Home(props: Props) {
     eta: deliveryLabel,
   }
 
-  const products = await listProducts({
-    countryCode,
-    queryParams: {
-      limit: 4,
-      q: "puffer",
-      fields: "id,title,handle,thumbnail,*images,*variants.calculated_price",
-    },
-  })
-    .then(({ response }) => response.products)
-    .catch(() => [])
-
-  const nuptseProducts = await listProducts({
-    countryCode,
-    queryParams: {
-      limit: 12,
-      q: "nuptse",
-      fields: "id,title,handle,thumbnail,*images",
-    },
-  })
-    .then(({ response }) => response.products)
-    .catch(() => [])
+  const [products, nuptseProducts] = await Promise.all([
+    listProducts({
+      countryCode,
+      queryParams: {
+        limit: 4,
+        q: "puffer",
+        fields: "id,title,handle,thumbnail,*images,*variants.calculated_price",
+      },
+      revalidateSeconds: 300,
+    })
+      .then(({ response }) => response.products)
+      .catch(() => []),
+    listProducts({
+      countryCode,
+      queryParams: {
+        limit: 12,
+        q: "nuptse",
+        fields: "id,title,handle,thumbnail",
+      },
+      revalidateSeconds: 300,
+    })
+      .then(({ response }) => response.products)
+      .catch(() => []),
+  ])
 
   const nuptseSlides = nuptseProducts
     .flatMap((product) => {
@@ -205,7 +208,7 @@ export default async function Home(props: Props) {
   ].slice(0, 4)
 
   return (
-    <main className="bg-[#F4F2ED] text-[#0A0A0A]">
+    <div className="bg-[#F4F2ED] text-[#0A0A0A]">
       <section className="mx-auto grid max-w-[1320px] gap-9 px-[18px] py-10 small:grid-cols-[0.9fr_1.1fr] small:gap-14 small:px-8 small:py-16">
         <div className="flex flex-col justify-center">
           <p className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#999]">
@@ -284,8 +287,8 @@ export default async function Home(props: Props) {
       <section className="mx-auto mb-14 max-w-[1320px] px-[18px] small:mb-20 small:px-8">
         <div className="grid grid-cols-2 gap-6 rounded-[20px] bg-[#0A0A0A] px-[18px] py-6 text-center text-[#F4F2ED] small:grid-cols-4 small:gap-4 small:rounded-[28px] small:p-8">
           {[
-            ["57★", "verified reviews"],
-            ["4.9★", "verified rating"],
+            [`${MUSE_REVIEW_SUMMARY.total}★`, "verified reviews"],
+            [`${MUSE_REVIEW_SUMMARY.average.toFixed(1)}★`, "verified rating"],
             ["13-16", "days to your door"],
             ["30-day", "money back"],
           ].map(([value, label]) => (
@@ -574,7 +577,7 @@ export default async function Home(props: Props) {
           </p>
         </div>
       </section>
-    </main>
+    </div>
   )
 }
 

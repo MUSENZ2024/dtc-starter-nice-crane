@@ -1,4 +1,7 @@
+"use client"
+
 import { HttpTypes } from "@medusajs/types"
+import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import AddonsSection from "@modules/cart/components/addons-section-muse"
 import CartItemMuse from "@modules/cart/components/cart-item-muse"
 import CartSummaryMuse from "@modules/cart/components/cart-summary-muse"
@@ -21,13 +24,57 @@ export default function CartTemplateMuse({
   customer,
   addonProducts,
 }: Props) {
-  const items = cart?.items ?? []
+  const { optimisticItems } = useCartDrawer()
+  const serverItems = cart?.items ?? []
+  const optimisticByVariant = new Map(
+    optimisticItems.map((item) => [item.variantId, item])
+  )
+  const items = serverItems
+    .map((item) => {
+      const variantId = item.variant_id ?? item.variant?.id
+      const optimisticItem = variantId
+        ? optimisticByVariant.get(variantId)
+        : undefined
+
+      if (!optimisticItem) {
+        return item
+      }
+
+      return {
+        ...item,
+        quantity: Math.max(
+          0,
+          optimisticItem.baseQuantity + optimisticItem.quantity
+        ),
+      }
+    })
+    .filter((item) => item.quantity > 0)
+  const optimisticTotalDelta = optimisticItems.reduce((sum, item) => {
+    const serverItem = serverItems.find(
+      (line) => (line.variant_id ?? line.variant?.id) === item.variantId
+    )
+    const serverQuantity = serverItem?.quantity ?? 0
+    const targetQuantity = Math.max(0, item.baseQuantity + item.quantity)
+
+    return sum + item.unitPrice * (targetQuantity - serverQuantity)
+  }, 0)
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0)
-  const subtotal = cart?.subtotal ?? cart?.item_subtotal ?? 0
+  const subtotal =
+    (cart?.subtotal ?? cart?.item_subtotal ?? 0) + optimisticTotalDelta
+  const displayCart = cart
+    ? {
+        ...cart,
+        items,
+        subtotal,
+        item_subtotal:
+          (cart.item_subtotal ?? cart.subtotal ?? 0) + optimisticTotalDelta,
+        total: (cart.total ?? 0) + optimisticTotalDelta,
+      }
+    : null
   const isEmpty = items.length === 0
 
   return (
-    <main className="min-h-screen bg-muse-cream font-inter text-muse-black">
+    <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
       <div className="border-b border-white/10 bg-muse-black px-4 py-2.5 text-center text-[12px] font-medium tracking-[0.02em] text-muse-cream">
         Free NZ delivery over $200 · 30-day money back{" "}
         <LocalizedClientLink
@@ -82,13 +129,13 @@ export default function CartTemplateMuse({
                   ))}
                 </div>
 
-                {cart && addonProducts.length > 0 && (
+                {displayCart && addonProducts.length > 0 && (
                   <AddonsSection
                     products={addonProducts}
-                    currencyCode={cart.currency_code}
+                    currencyCode={displayCart.currency_code}
                     countryCode={
-                      cart.shipping_address?.country_code?.toLowerCase() ??
-                      cart.region?.countries?.[0]?.iso_2?.toLowerCase() ??
+                      displayCart.shipping_address?.country_code?.toLowerCase() ??
+                      displayCart.region?.countries?.[0]?.iso_2?.toLowerCase() ??
                       "nz"
                     }
                   />
@@ -102,9 +149,9 @@ export default function CartTemplateMuse({
                 </LocalizedClientLink>
               </div>
 
-              {cart && (
+              {displayCart && (
                 <aside className="hidden lg:sticky lg:top-[88px] lg:block">
-                <CartSummaryMuse cart={cart} />
+                <CartSummaryMuse cart={displayCart} />
                 </aside>
               )}
             </div>
@@ -112,12 +159,12 @@ export default function CartTemplateMuse({
         )}
       </div>
 
-      {cart && !isEmpty && (
+      {displayCart && !isEmpty && (
         <MobileCheckoutBar
-          total={cart.total ?? 0}
-          currencyCode={cart.currency_code}
+          total={displayCart.total ?? 0}
+          currencyCode={displayCart.currency_code}
         />
       )}
-    </main>
+    </div>
   )
 }

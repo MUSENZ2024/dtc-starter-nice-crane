@@ -267,11 +267,11 @@ export function MuseRegisterForm() {
         </PendingButton>
         <p className="text-center text-[11.5px] leading-[1.6] text-muse-text-light">
           By creating an account you agree to our{" "}
-          <LocalizedClientLink href="/content/terms-of-use" className="text-muse-text-muted underline">
+          <LocalizedClientLink href="/terms" className="text-muse-text-muted underline">
             Terms of Service
           </LocalizedClientLink>{" "}
           and{" "}
-          <LocalizedClientLink href="/content/privacy-policy" className="text-muse-text-muted underline">
+          <LocalizedClientLink href="/privacy" className="text-muse-text-muted underline">
             Privacy Policy
           </LocalizedClientLink>
           .
