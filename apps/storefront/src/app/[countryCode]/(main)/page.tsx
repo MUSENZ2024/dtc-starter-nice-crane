@@ -37,6 +37,7 @@ type HomeCard = {
   badge: string
   href: string
   image?: string | null
+  hoverImage?: string | null
   placeholder: string
   eta: string
 }
@@ -110,6 +111,14 @@ const NZ_STOCK_PLACEHOLDERS = [
 const getPrimaryImage = (product?: HttpTypes.StoreProduct | null) =>
   product?.thumbnail || product?.images?.[0]?.url || null
 
+const getHoverImage = (product?: HttpTypes.StoreProduct | null) => {
+  const primaryImage = getPrimaryImage(product)
+
+  return product?.images?.find(
+    (image) => image.url && image.url !== primaryImage
+  )?.url || null
+}
+
 const getCardFromProduct = (
   product: HttpTypes.StoreProduct,
   index: number,
@@ -129,6 +138,7 @@ const getCardFromProduct = (
     badge: index === 1 ? "NZ Stock" : "Standard",
     href: `/products/${product.handle}`,
     image: getPrimaryImage(product),
+    hoverImage: getHoverImage(product),
     placeholder: String(index + 1).padStart(2, "0"),
     eta: index === 1 ? "Ships in 1-3 days" : deliveryLabel,
   }
@@ -615,14 +625,31 @@ function ProductCard({ product }: { product: HomeCard }) {
         <LocalizedClientLink href={product.href} className="absolute inset-0">
           <div className="absolute inset-[30%] rounded-full bg-white/40 blur-[40px]" />
           {product.image ? (
-            <Image
-              src={product.image}
-              alt={product.title}
-              fill
-              quality={60}
-              sizes="(max-width: 767px) calc((100vw - 46px) / 2), 25vw"
-              className="relative z-[1] object-cover transition duration-500 group-hover:scale-105"
-            />
+            <>
+              <Image
+                src={product.image}
+                alt={product.title}
+                fill
+                quality={60}
+                sizes="(max-width: 767px) calc((100vw - 46px) / 2), 25vw"
+                className={`relative z-[1] object-cover transition duration-500 ${
+                  product.hoverImage
+                    ? "motion-safe:group-hover:opacity-0"
+                    : "motion-safe:group-hover:scale-105"
+                }`}
+              />
+              {product.hoverImage && (
+                <Image
+                  src={product.hoverImage}
+                  alt=""
+                  aria-hidden="true"
+                  fill
+                  quality={60}
+                  sizes="(max-width: 767px) calc((100vw - 46px) / 2), 25vw"
+                  className="pointer-events-none relative z-[1] object-cover opacity-0 transition duration-500 motion-safe:group-hover:scale-105 motion-safe:group-hover:opacity-100"
+                />
+              )}
+            </>
           ) : (
             <span className="relative z-[1] flex h-full items-center justify-center text-[42px] font-extrabold uppercase tracking-[-0.04em] text-black/[0.08] small:text-[64px]">
               {product.placeholder}

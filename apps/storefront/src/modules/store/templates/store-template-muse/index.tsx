@@ -137,14 +137,22 @@ type Props = {
   nzStockCollectionId?: string
   standardCollectionId?: string
   clearanceCollectionId?: string
-  pageVariant?: "store" | "clearance"
+  pageVariant?: "store" | "clearance" | "category"
+  category?: HttpTypes.StoreProductCategory
 }
 
 const splitParam = (value?: string) => value?.split(",").filter(Boolean)
 
+const getCategoryTreeIds = (
+  category: HttpTypes.StoreProductCategory,
+): string[] => [
+  category.id,
+  ...(category.category_children ?? []).flatMap(getCategoryTreeIds),
+]
+
 const resolveTagIds = (
   handles: string[] | undefined,
-  tags: StoreProductTag[]
+  tags: StoreProductTag[],
 ) => {
   if (!handles?.length) {
     return undefined
@@ -159,21 +167,31 @@ const resolveTagIds = (
 
 const resolveColourTagIds = (
   colours: string[] | undefined,
-  tags: StoreProductTag[]
+  tags: StoreProductTag[],
 ) => {
   if (!colours?.length) {
     return undefined
   }
 
   const selected = new Set(
-    colours.map((colour) => colour.trim().toLowerCase().replace(/[\s_]+/g, "-"))
+    colours.map((colour) =>
+      colour
+        .trim()
+        .toLowerCase()
+        .replace(/[\s_]+/g, "-"),
+    ),
   )
   const ids = tags
     .filter((tag) => {
       const colour = tag.value.match(/^(?:colour|color)[:/](.+)$/i)?.[1]
 
       return colour
-        ? selected.has(colour.trim().toLowerCase().replace(/[\s_]+/g, "-"))
+        ? selected.has(
+            colour
+              .trim()
+              .toLowerCase()
+              .replace(/[\s_]+/g, "-"),
+          )
         : false
     })
     .map((tag) => tag.id)
@@ -183,7 +201,7 @@ const resolveColourTagIds = (
 
 const resolveTagProductIds = (
   tagIds: string[] | undefined,
-  tags: StoreProductTag[]
+  tags: StoreProductTag[],
 ) => {
   if (!tagIds?.length) {
     return undefined
@@ -195,7 +213,7 @@ const resolveTagProductIds = (
       tags
         .find((tag) => tag.id === tagId)
         ?.products?.map((product) => product.id) ?? [],
-    ])
+    ]),
   )
 
   return Object.values(tagProductIds).some((productIds) => productIds.length)
@@ -232,13 +250,19 @@ export default function StoreTemplateMuse({
   standardCollectionId,
   clearanceCollectionId,
   pageVariant = "store",
+  category,
 }: Props) {
   const isClearance = pageVariant === "clearance"
+  const isCategory = pageVariant === "category" && Boolean(category)
   const childCategories = categories.filter(
     (category) =>
-      category.parent_category_id || !category.category_children?.length
+      category.parent_category_id || !category.category_children?.length,
   )
   const filterCategories = childCategories.length ? childCategories : categories
+  const visibleFilterCategories =
+    isCategory && category?.category_children?.length
+      ? category.category_children
+      : filterCategories
   const { brands, lines, badges, tagLabels } =
     buildDynamicTagFilters(productTags)
 
@@ -247,7 +271,7 @@ export default function StoreTemplateMuse({
   const activeLineParents = new Set(
     activeLineHandles
       .map((handle) => lines.find((line) => line.value === handle)?.brand)
-      .filter(Boolean)
+      .filter(Boolean),
   )
   const activeTagHandles = [
     ...activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
@@ -256,21 +280,23 @@ export default function StoreTemplateMuse({
     ...(isClearance && !clearanceCollectionId ? ["clearance"] : []),
   ]
   const activeColourHandles = splitParam(searchParams.colour)
-  const activeColourTagIds = resolveColourTagIds(activeColourHandles, productTags)
+  const activeColourTagIds = resolveColourTagIds(
+    activeColourHandles,
+    productTags,
+  )
   const activeTagIds = resolveTagIds(activeTagHandles, productTags)
   const activeTagFilterGroups = [
     resolveTagIds(
       activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
-      productTags
+      productTags,
     ),
     resolveTagIds(activeLineHandles, productTags),
     resolveTagIds(splitParam(searchParams.badge), productTags),
   ].filter((group): group is string[] => Boolean(group?.length))
   const activeTagProductIds = resolveTagProductIds(activeTagIds, productTags)
-  const stockFilter =
-    isClearance
-      ? "nz-stock"
-      : searchParams.stock === "nz-stock" ||
+  const stockFilter = isClearance
+    ? "nz-stock"
+    : searchParams.stock === "nz-stock" ||
         searchParams.stock === "standard-delivery"
       ? searchParams.stock
       : undefined
@@ -289,7 +315,11 @@ export default function StoreTemplateMuse({
     page: searchParams.page ? parseInt(searchParams.page) : 1,
     limit: searchParams.grid === "dense" ? 20 : 12,
     q: searchParams.q,
-    stock: isClearance ? "nz-stock" : stockCollectionIds ? undefined : stockFilter,
+    stock: isClearance
+      ? "nz-stock"
+      : stockCollectionIds
+        ? undefined
+        : stockFilter,
     nz_stock_collection_id: nzStockCollectionId,
     tag_id: activeTagIds,
     tag_filter_groups: activeTagFilterGroups.length
@@ -297,7 +327,9 @@ export default function StoreTemplateMuse({
       : undefined,
     colour_tag_id: activeColourTagIds,
     tag_product_ids: activeTagProductIds,
-    category_id: splitParam(searchParams.cat),
+    category_id:
+      splitParam(searchParams.cat) ??
+      (isCategory && category ? getCategoryTreeIds(category) : undefined),
     collection_id: collectionIds?.length ? collectionIds : undefined,
     sizes: splitParam(searchParams.size),
     colours: activeColourHandles,
@@ -312,8 +344,10 @@ export default function StoreTemplateMuse({
 
   const activeFilterCount = [
     isClearance ? undefined : searchParams.stock,
-    activeBrandHandles.length + activeLineHandles.length + (splitParam(searchParams.badge)?.length ?? 0),
-    filters.category_id?.length,
+    activeBrandHandles.length +
+      activeLineHandles.length +
+      (splitParam(searchParams.badge)?.length ?? 0),
+    splitParam(searchParams.cat)?.length,
     filters.sizes?.length,
     filters.colours?.length,
     filters.priceMax,
@@ -321,7 +355,11 @@ export default function StoreTemplateMuse({
     searchParams.q,
   ].filter(Boolean).length
   const gridView = searchParams.grid === "dense" ? "dense" : "standard"
-  const basePath = isClearance ? "clearance" : "store"
+  const basePath = isClearance
+    ? "clearance"
+    : isCategory && category
+      ? `categories/${category.handle}`
+      : "store"
 
   return (
     <main className="min-h-screen bg-muse-cream font-inter text-muse-black">
@@ -333,21 +371,26 @@ export default function StoreTemplateMuse({
           Home
         </a>
         <span className="mx-2 opacity-60">/</span>
-        {isClearance ? "Clearance" : "Shop All"}
+        {isClearance ? "Clearance" : isCategory ? category?.name : "Shop All"}
       </div>
 
       <section className="mx-auto max-w-[1400px] px-[18px] pb-6 pt-7 small:px-8 small:pb-8">
         {isClearance ? (
-          <ClearanceHero countryCode={countryCode} searchParams={searchParams} />
+          <ClearanceHero
+            countryCode={countryCode}
+            searchParams={searchParams}
+          />
+        ) : isCategory && category ? (
+          <CategoryHero category={category} searchParams={searchParams} />
         ) : (
           <>
             <h1 className="text-[clamp(36px,5vw,56px)] font-black leading-none tracking-[-0.04em]">
               Shop All
             </h1>
             <p className="mt-3 max-w-[590px] text-[15px] leading-[1.65] text-muse-text-muted">
-              Retro footwear and outerwear, curated for NZ. Filter by NZ Stock for
-              fast shipping, or Standard Delivery for our full overseas range. Every
-              item is inspected before dispatch.
+              Retro footwear and outerwear, curated for NZ. Filter by NZ Stock
+              for fast shipping, or Standard Delivery for our full overseas
+              range. Every item is inspected before dispatch.
             </p>
             <CategoryTiles
               countryCode={countryCode}
@@ -384,7 +427,7 @@ export default function StoreTemplateMuse({
             apparelSizes={APPAREL_SIZES}
             shoeSizeGroups={SHOE_SIZE_GROUPS}
             colours={COLOURS}
-            categories={filterCategories}
+            categories={visibleFilterCategories}
             searchParams={searchParams}
           />
         </aside>
@@ -393,7 +436,7 @@ export default function StoreTemplateMuse({
             countryCode={countryCode}
             filters={filters}
             searchParams={searchParams}
-            categories={filterCategories}
+            categories={visibleFilterCategories}
             tagLabels={tagLabels}
             gridView={gridView}
             emptyTitle={
@@ -418,10 +461,100 @@ export default function StoreTemplateMuse({
         apparelSizes={APPAREL_SIZES}
         shoeSizeGroups={SHOE_SIZE_GROUPS}
         colours={COLOURS}
-        categories={filterCategories}
+        categories={visibleFilterCategories}
         searchParams={searchParams}
       />
     </main>
+  )
+}
+
+function CategoryHero({
+  category,
+  searchParams,
+}: {
+  category: HttpTypes.StoreProductCategory
+  searchParams: StoreSearchParams
+}) {
+  const children = category.category_children ?? []
+  const description =
+    category.description ||
+    `Explore ${category.name.toLowerCase()} selected for New Zealand, with tracked delivery and clear fulfilment estimates.`
+
+  const hrefFor = (categoryId?: string) => {
+    const params = new URLSearchParams()
+
+    Object.entries(searchParams).forEach(([key, value]) => {
+      if (value && key !== "cat" && key !== "page") {
+        params.set(key, value)
+      }
+    })
+
+    if (categoryId) {
+      params.set("cat", categoryId)
+    }
+
+    const query = params.toString()
+    const path = `/categories/${category.handle}`
+
+    return query ? `${path}?${query}` : path
+  }
+
+  return (
+    <div className="relative overflow-hidden rounded-[22px] bg-muse-black px-7 py-9 text-muse-cream small:grid small:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)] small:items-end small:gap-12 small:rounded-[28px] small:px-14 small:py-12">
+      <div className="relative z-[1]">
+        <p className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muse-yellow before:block before:h-px before:w-5 before:bg-muse-yellow">
+          Shop the category
+        </p>
+        <h1 className="text-[clamp(40px,5.5vw,64px)] font-black leading-[0.97] tracking-[-0.04em]">
+          {category.name}
+        </h1>
+        <p className="mt-4 max-w-[500px] text-[14px] leading-[1.65] text-white/65 small:text-[15px]">
+          {description}
+        </p>
+        <div className="mt-7 flex flex-wrap gap-7">
+          <div>
+            <p className="text-[18px] font-black">Tracked</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white/45">
+              Every delivery
+            </p>
+          </div>
+          <div>
+            <p className="text-[18px] font-black">30 days</p>
+            <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-white/45">
+              Eligible returns
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {!!children.length && (
+        <div className="relative z-[1] mt-8 grid grid-cols-2 gap-2.5 small:mt-0">
+          {children.slice(0, 4).map((child, index) => {
+            const active = searchParams.cat?.split(",").includes(child.id)
+
+            return (
+              <LocalizedClientLink
+                key={child.id}
+                href={hrefFor(child.id)}
+                className={`flex min-h-[104px] flex-col justify-between rounded-[16px] border p-4 transition hover:border-muse-yellow/60 hover:bg-white/10 ${
+                  active
+                    ? "border-muse-yellow bg-white/10"
+                    : "border-white/10 bg-white/[0.05]"
+                }`}
+              >
+                <span className="text-[11px] font-semibold text-white/45">
+                  {String(index + 1).padStart(2, "0")}
+                </span>
+                <span className="flex items-end justify-between gap-2 text-[13px] font-bold">
+                  {child.name}
+                  <span className="text-muse-yellow">↗</span>
+                </span>
+              </LocalizedClientLink>
+            )
+          })}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -434,7 +567,7 @@ function GridToggle({
   countryCode: string
   searchParams: StoreSearchParams
   view: "standard" | "dense"
-  basePath: "store" | "clearance"
+  basePath: string
 }) {
   const hrefFor = (nextView: "standard" | "dense") => {
     const params = new URLSearchParams()
@@ -461,7 +594,9 @@ function GridToggle({
         href={hrefFor("standard")}
         aria-label="Standard product grid"
         className={`flex h-8 w-9 items-center justify-center rounded-full transition ${
-          view === "standard" ? "bg-white text-muse-black" : "text-muse-text-muted"
+          view === "standard"
+            ? "bg-white text-muse-black"
+            : "text-muse-text-muted"
         }`}
       >
         <GridIcon />
@@ -488,7 +623,7 @@ function CategoryTiles({
   countryCode: string
   categories: HttpTypes.StoreProductCategory[]
   searchParams: StoreSearchParams
-  basePath?: "store" | "clearance"
+  basePath?: string
 }) {
   const activeCats = splitParam(searchParams.cat) ?? []
 
@@ -570,7 +705,9 @@ function hrefWithParams({
   })
 
   const query = params.toString()
-  return query ? `/${countryCode}/clearance?${query}` : `/${countryCode}/clearance`
+  return query
+    ? `/${countryCode}/clearance?${query}`
+    : `/${countryCode}/clearance`
 }
 
 function ClearanceHero({
@@ -593,7 +730,10 @@ function ClearanceHero({
     ["NZ Stock only", "Held locally and ready to move."],
     ["Auckland dispatch", "Most orders ship in 1-3 business days."],
     ["Genuine markdowns", "Selected past drops, final sizes, and slow movers."],
-    ["Most styles will not restock", "Ends when sold out, without fake countdowns."],
+    [
+      "Most styles will not restock",
+      "Ends when sold out, without fake countdowns.",
+    ],
   ]
 
   return (
@@ -607,8 +747,8 @@ function ClearanceHero({
         </h1>
         <p className="mt-4 max-w-[650px] text-[15px] leading-[1.7] text-muse-text-muted small:text-[16px]">
           Selected NZ-stock footwear and apparel, priced to clear and ready to
-          ship from Auckland in 1-3 days. Genuine markdowns on final sizes,
-          past drops, and limited leftover stock.
+          ship from Auckland in 1-3 days. Genuine markdowns on final sizes, past
+          drops, and limited leftover stock.
         </p>
         <div className="mt-6 flex flex-wrap gap-2.5">
           {chips.map((chip) => (

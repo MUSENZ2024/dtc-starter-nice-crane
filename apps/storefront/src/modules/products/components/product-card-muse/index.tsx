@@ -12,6 +12,7 @@ export type ProductCardMuseProduct = {
   title: string
   handle?: string | null
   thumbnail?: string | null
+  images?: { url?: string | null }[] | null
   brand?: string
   price?: string
   compareAt?: string
@@ -51,12 +52,34 @@ type Props = {
 const isSizeOption = (title?: string | null) =>
   (title ?? "").toLowerCase() === "size"
 
+const isColourOption = (title?: string | null) =>
+  ["color", "colour"].includes((title ?? "").trim().toLowerCase())
+
+const colourMap: Record<string, string> = {
+  black: "#111111",
+  blue: "#2563EB",
+  brown: "#795548",
+  cream: "#F2E8D5",
+  gold: "#C9A227",
+  green: "#2E7D32",
+  grey: "#9E9E9E",
+  gray: "#9E9E9E",
+  orange: "#E66A21",
+  pink: "#E8A0B8",
+  purple: "#7E57C2",
+  red: "#C62828",
+  silver: "#B0B4BA",
+  tan: "#C49A6C",
+  white: "#FFFFFF",
+  yellow: "#E6C928",
+}
+
 const getVariantSize = (
   variant: ProductCardMuseVariant,
-  product: ProductCardMuseProduct
+  product: ProductCardMuseProduct,
 ) => {
   const sizeOptionId = product.options?.find((option) =>
-    isSizeOption(option.title)
+    isSizeOption(option.title),
   )?.id
 
   const sizeValue = variant.options?.find((option) => {
@@ -123,11 +146,16 @@ export default function ProductCardMuse({
   const promotionalBadge = product.promotionalBadge
   const sizes = getSizes(product)
   const hasSizes = sizes.length > 0
+  const colours = getColours(product)
+  const hoverImage = product.images?.find(
+    (image) => image.url && image.url !== product.thumbnail
+  )?.url
 
   const handleQuickAdd = (size: string) => {
     const variant =
       product.variants?.find(
-        (item) => getVariantSize(item, product) === size && variantInStock(item)
+        (item) =>
+          getVariantSize(item, product) === size && variantInStock(item),
       ) ?? product.variants?.find(variantInStock)
 
     if (!variant?.id) {
@@ -185,7 +213,10 @@ export default function ProductCardMuse({
           )}
         </div>
 
-        <LocalizedClientLink href={`/products/${product.handle}`} className="block">
+        <LocalizedClientLink
+          href={`/products/${product.handle}`}
+          className="block"
+        >
           <div className="relative flex aspect-square items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.5),transparent_55%),linear-gradient(135deg,var(--muse-cream-deep),var(--muse-cream-warm)_55%,var(--muse-cream-deep))]">
             {product.thumbnail ? (
               <Image
@@ -195,12 +226,27 @@ export default function ProductCardMuse({
                 priority={position <= 2}
                 quality={60}
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                className="object-cover transition duration-500 group-hover:scale-105"
+                className={`object-cover transition duration-500 ${
+                  hoverImage
+                    ? "motion-safe:group-hover:opacity-0"
+                    : "motion-safe:group-hover:scale-105"
+                }`}
               />
             ) : (
               <span className="text-[clamp(40px,6vw,64px)] font-black tracking-[-0.04em] text-black/[0.07]">
                 {String(position).padStart(2, "0")}
               </span>
+            )}
+            {hoverImage && (
+              <Image
+                src={hoverImage}
+                alt=""
+                aria-hidden="true"
+                fill
+                quality={60}
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                className="pointer-events-none object-cover opacity-0 transition duration-500 motion-safe:group-hover:scale-105 motion-safe:group-hover:opacity-100"
+              />
             )}
           </div>
         </LocalizedClientLink>
@@ -260,7 +306,7 @@ export default function ProductCardMuse({
                   >
                     {label}
                   </button>
-                )
+                ),
               )}
             </div>
           </div>
@@ -294,28 +340,65 @@ export default function ProductCardMuse({
         <p className="text-[11px] text-muse-text-muted">
           {fulfilment.deliveryLabel}
         </p>
-        <div className="mt-2 flex gap-1">
-          {sizes.slice(0, 8).map(({ label, inStock, low }) => (
-            <span
-              key={label}
-              title={label}
-              className={`h-1.5 w-1.5 rounded-full ${
-                low
-                  ? "bg-muse-orange"
-                  : inStock
-                  ? "bg-muse-black"
-                  : "bg-muse-border"
-              }`}
-            />
-          ))}
-        </div>
+        {colours.length > 1 && (
+          <div className="mt-2 flex gap-1.5" aria-label="Available colours">
+            {colours.slice(0, 8).map(({ label, hex }) => (
+              <span
+                key={label}
+                title={label}
+                aria-label={label}
+                className="h-2.5 w-2.5 rounded-full border border-black/15"
+                style={{ backgroundColor: hex }}
+              />
+            ))}
+          </div>
+        )}
       </LocalizedClientLink>
     </div>
   )
 }
 
+function getColours(product: ProductCardMuseProduct) {
+  const colourOptionId = product.options?.find((option) =>
+    isColourOption(option.title),
+  )?.id
+
+  if (!colourOptionId) {
+    return []
+  }
+
+  const colours = new Map<string, { label: string; hex: string }>()
+
+  product.variants?.forEach((variant) => {
+    const colour = variant.options?.find((option) => {
+      const nestedTitle = option.option?.title
+
+      return isColourOption(nestedTitle) || option.option_id === colourOptionId
+    })?.value
+
+    if (!colour) {
+      return
+    }
+
+    const normalized = colour.trim().toLowerCase()
+    const mappedColour = Object.entries(colourMap).find(([name]) =>
+      normalized.includes(name),
+    )?.[1]
+
+    colours.set(normalized, {
+      label: colour,
+      hex: mappedColour ?? "#D5D2CC",
+    })
+  })
+
+  return Array.from(colours.values())
+}
+
 function getSizes(product: ProductCardMuseProduct) {
-  const sizeValues = new Map<string, { label: string; inStock: boolean; low: boolean }>()
+  const sizeValues = new Map<
+    string,
+    { label: string; inStock: boolean; low: boolean }
+  >()
 
   product.variants?.forEach((variant) => {
     const label = getVariantSize(variant, product)

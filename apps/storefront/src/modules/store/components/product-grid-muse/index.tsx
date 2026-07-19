@@ -63,6 +63,7 @@ const toProductCard = (product: HttpTypes.StoreProduct): ProductCardMuseProduct 
     title: product.title || "MUSE product",
     handle: product.handle,
     thumbnail: product.thumbnail,
+    images: product.images,
     brand:
       typeof product.metadata?.brand === "string"
         ? product.metadata.brand

@@ -2,17 +2,15 @@ import { Metadata } from "next"
 import { notFound } from "next/navigation"
 
 import { getCategoryByHandle, listCategories } from "@lib/data/categories"
+import { listCollections } from "@lib/data/collections"
+import { listProductTags } from "@lib/data/product-tags"
 import { listRegions } from "@lib/data/regions"
 import { HttpTypes, StoreRegion } from "@medusajs/types"
-import CategoryTemplate from "@modules/categories/templates"
-import { SortOptions } from "@modules/store/components/refinement-list/sort-products"
+import StoreTemplateMuse from "@modules/store/templates/store-template-muse"
 
 type Props = {
   params: Promise<{ category: string[]; countryCode: string }>
-  searchParams: Promise<{
-    sortBy?: SortOptions
-    page?: string
-  }>
+  searchParams: Promise<Record<string, string | undefined>>
 }
 
 export async function generateStaticParams() {
@@ -24,12 +22,12 @@ export async function generateStaticParams() {
 
   const countryCodes = await listRegions()
     .then((regions: StoreRegion[]) =>
-      regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat()
+      regions?.map((r) => r.countries?.map((c) => c.iso_2)).flat(),
     )
     .catch(() => [])
 
   const categoryHandles = product_categories.map(
-    (category: HttpTypes.StoreProductCategory) => category.handle
+    (category: HttpTypes.StoreProductCategory) => category.handle,
   )
 
   const staticParams = countryCodes
@@ -37,7 +35,7 @@ export async function generateStaticParams() {
       categoryHandles.map((handle: string) => ({
         countryCode,
         category: [handle],
-      }))
+      })),
     )
     .flat()
 
@@ -49,12 +47,14 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   try {
     const productCategory = await getCategoryByHandle(params.category)
 
-    const title = productCategory.name + " | Medusa Store"
+    const title = `${productCategory.name} | MUSE NZ`
 
-    const description = productCategory.description ?? `${title} category.`
+    const description =
+      productCategory.description ??
+      `Shop ${productCategory.name.toLowerCase()} at MUSE NZ with tracked delivery and clear fulfilment estimates.`
 
     return {
-      title: `${title} | Medusa Store`,
+      title,
       description,
       alternates: {
         canonical: `${params.category.join("/")}`,
@@ -68,20 +68,41 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
 export default async function CategoryPage(props: Props) {
   const searchParams = await props.searchParams
   const params = await props.params
-  const { sortBy, page } = searchParams
-
   const productCategory = await getCategoryByHandle(params.category)
 
   if (!productCategory) {
     notFound()
   }
 
+  const [categories, collectionsResponse, productTagsResponse] =
+    await Promise.all([
+      listCategories().catch(() => []),
+      listCollections({ limit: "100" }).catch(() => ({
+        collections: [],
+        count: 0,
+      })),
+      listProductTags({ limit: "100" }).catch(() => ({
+        product_tags: [],
+        count: 0,
+      })),
+    ])
+  const nzStockCollection = collectionsResponse.collections.find(
+    (collection) => collection.handle?.trim() === "nz-stock",
+  )
+  const standardCollection = collectionsResponse.collections.find(
+    (collection) => collection.handle === "standard-delivery",
+  )
+
   return (
-    <CategoryTemplate
-      category={productCategory}
-      sortBy={sortBy}
-      page={page}
+    <StoreTemplateMuse
       countryCode={params.countryCode}
+      searchParams={searchParams}
+      categories={categories}
+      productTags={productTagsResponse.product_tags}
+      nzStockCollectionId={nzStockCollection?.id}
+      standardCollectionId={standardCollection?.id}
+      pageVariant="category"
+      category={productCategory}
     />
   )
 }

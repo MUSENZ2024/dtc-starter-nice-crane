@@ -22,6 +22,9 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
   "data-testid": dataTestid,
 }) => {
   const initialImage = thumbnail || images?.[0]?.url
+  const hoverImage = images?.find(
+    (image) => image.url && image.url !== initialImage
+  )?.url
 
   return (
     <Container
@@ -40,25 +43,46 @@ const Thumbnail: React.FC<ThumbnailProps> = ({
       )}
       data-testid={dataTestid}
     >
-      <ImageOrPlaceholder image={initialImage} size={size} />
+      <ImageOrPlaceholder
+        image={initialImage}
+        hoverImage={hoverImage}
+        size={size}
+      />
     </Container>
   )
 }
 
 const ImageOrPlaceholder = ({
   image,
+  hoverImage,
   size,
-}: Pick<ThumbnailProps, "size"> & { image?: string }) => {
+}: Pick<ThumbnailProps, "size"> & { image?: string; hoverImage?: string }) => {
   return image ? (
-    <Image
-      src={image}
-      alt="Thumbnail"
-      className="absolute inset-0 object-cover object-center"
-      draggable={false}
-      quality={50}
-      sizes="(max-width: 576px) 280px, (max-width: 768px) 360px, (max-width: 992px) 480px, 800px"
-      fill
-    />
+    <>
+      <Image
+        src={image}
+        alt="Thumbnail"
+        className={`absolute inset-0 object-cover object-center transition duration-500 ${
+          hoverImage ? "motion-safe:group-hover:opacity-0" : ""
+        }`}
+        draggable={false}
+        quality={50}
+        sizes="(max-width: 576px) 280px, (max-width: 768px) 360px, (max-width: 992px) 480px, 800px"
+        fill
+      />
+      {hoverImage && (
+        <Image
+          src={hoverImage}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 object-cover object-center opacity-0 transition duration-500 motion-safe:group-hover:scale-105 motion-safe:group-hover:opacity-100"
+          draggable={false}
+          quality={50}
+          sizes="(max-width: 576px) 280px, (max-width: 768px) 360px, (max-width: 992px) 480px, 800px"
+          fill
+        />
+      )}
+    </>
   ) : (
     <div className="w-full h-full absolute inset-0 flex items-center justify-center">
       <PlaceholderImage size={size === "small" ? 16 : 24} />

@@ -34,7 +34,7 @@ export default function FilterRailMuse({
   const pathname = usePathname()
   const params = useSearchParams()
   const [activeShoeGroup, setActiveShoeGroup] = useState(
-    shoeSizeGroups[0]?.label ?? ""
+    shoeSizeGroups[0]?.label ?? "",
   )
 
   const setParam = useCallback(
@@ -50,7 +50,7 @@ export default function FilterRailMuse({
       next.delete("page")
       router.push(`${pathname}?${next.toString()}`, { scroll: false })
     },
-    [params, pathname, router]
+    [params, pathname, router],
   )
 
   const toggleMulti = useCallback(
@@ -62,7 +62,7 @@ export default function FilterRailMuse({
 
       setParam(key, next.length ? next.join(",") : null)
     },
-    [params, setParam]
+    [params, setParam],
   )
 
   const toggleBrand = useCallback(
@@ -97,7 +97,7 @@ export default function FilterRailMuse({
       next.delete("page")
       router.push(`${pathname}?${next.toString()}`, { scroll: false })
     },
-    [lines, params, pathname, router]
+    [lines, params, pathname, router],
   )
 
   const toggleLine = useCallback(
@@ -123,7 +123,7 @@ export default function FilterRailMuse({
       next.delete("page")
       router.push(`${pathname}?${next.toString()}`, { scroll: false })
     },
-    [params, pathname, router]
+    [params, pathname, router],
   )
 
   const activeStock = params.get("stock")
@@ -136,13 +136,13 @@ export default function FilterRailMuse({
   const maxPrice = params.get("maxPrice")
   const hasFilters = Boolean(
     activeStock ||
-      activeBrands.length ||
-      activeLines.length ||
-      activeBadges.length ||
-      activeSizes.length ||
-      activeColours.length ||
-      activeCats.length ||
-      maxPrice
+    activeBrands.length ||
+    activeLines.length ||
+    activeBadges.length ||
+    activeSizes.length ||
+    activeColours.length ||
+    activeCats.length ||
+    maxPrice,
   )
 
   const clearAll = () => {
@@ -204,7 +204,9 @@ export default function FilterRailMuse({
                 type="button"
                 onClick={() => setParam("stock", active ? null : option.value)}
                 className={`flex items-center justify-between rounded-xl border bg-white px-3.5 py-3 text-left transition ${
-                  active ? "border-muse-black" : "border-muse-input hover:border-muse-black"
+                  active
+                    ? "border-muse-black"
+                    : "border-muse-input hover:border-muse-black"
                 }`}
               >
                 <span className="flex items-center gap-2.5">
@@ -225,20 +227,48 @@ export default function FilterRailMuse({
         </div>
       </FilterGroup>
 
-      {!!categories.length && (
-        <FilterGroup title="Category" defaultOpen>
-          <div className="flex flex-col gap-2">
-            {categories.map((category) => (
-              <CheckRow
-                key={category.id}
-                label={category.name}
-                active={activeCats.includes(category.id)}
-                onClick={() => toggleMulti("cat", category.id)}
-              />
-            ))}
-          </div>
-        </FilterGroup>
-      )}
+      <FilterGroup title="Brand" defaultOpen>
+        <div className="flex flex-col gap-1.5">
+          {brands.map((brand) => {
+            const brandLines = lines.filter(
+              (line) => line.brand === brand.value,
+            )
+            const brandActive = activeBrands.includes(brand.value)
+            const hasActiveLine = brandLines.some((line) =>
+              activeLines.includes(line.value),
+            )
+            const expanded = brandActive || hasActiveLine
+
+            return (
+              <div key={brand.value} className="rounded-xl bg-white/60">
+                <CheckRow
+                  label={brand.label}
+                  count={brand.count}
+                  active={brandActive}
+                  onClick={() => toggleBrand(brand.value)}
+                  suffix={
+                    brandLines.length ? (expanded ? "▴" : "▾") : undefined
+                  }
+                />
+                {expanded && !!brandLines.length && (
+                  <div className="ml-7 mt-1 flex flex-col gap-1.5 border-l border-muse-border pb-2 pl-3">
+                    {brandLines.map((line) => (
+                      <CheckRow
+                        key={line.value}
+                        label={line.label}
+                        count={line.count}
+                        active={activeLines.includes(line.value)}
+                        onClick={() => toggleLine(line)}
+                        compact
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </div>
+      </FilterGroup>
 
       <FilterGroup title="Size" defaultOpen>
         <div className="mb-4">
@@ -319,44 +349,20 @@ export default function FilterRailMuse({
         )}
       </FilterGroup>
 
-      <FilterGroup title="Brand">
-        <div className="flex flex-col gap-1.5">
-          {brands.map((brand) => {
-            const brandLines = lines.filter((line) => line.brand === brand.value)
-            const brandActive = activeBrands.includes(brand.value)
-            const hasActiveLine = brandLines.some((line) =>
-              activeLines.includes(line.value)
-            )
-            const expanded = brandActive || hasActiveLine
-
-            return (
-              <div key={brand.value} className="rounded-xl bg-white/60">
-                <CheckRow
-                  label={brand.label}
-                  count={brand.count}
-                  active={brandActive}
-                  onClick={() => toggleBrand(brand.value)}
-                  suffix={brandLines.length ? expanded ? "▴" : "▾" : undefined}
-                />
-                {expanded && !!brandLines.length && (
-                  <div className="ml-7 mt-1 flex flex-col gap-1.5 border-l border-muse-border pb-2 pl-3">
-                    {brandLines.map((line) => (
-                      <CheckRow
-                        key={line.value}
-                        label={line.label}
-                        count={line.count}
-                        active={activeLines.includes(line.value)}
-                        onClick={() => toggleLine(line)}
-                        compact
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </FilterGroup>
+      {!!categories.length && (
+        <FilterGroup title="Category">
+          <div className="flex flex-col gap-2">
+            {categories.map((category) => (
+              <CheckRow
+                key={category.id}
+                label={category.name}
+                active={activeCats.includes(category.id)}
+                onClick={() => toggleMulti("cat", category.id)}
+              />
+            ))}
+          </div>
+        </FilterGroup>
+      )}
 
       {!!badges.length && (
         <FilterGroup title="Drop / Status">
@@ -410,7 +416,9 @@ export default function FilterRailMuse({
               <button
                 key={range.value}
                 type="button"
-                onClick={() => setParam("maxPrice", active ? null : range.value)}
+                onClick={() =>
+                  setParam("maxPrice", active ? null : range.value)
+                }
                 className={`flex items-center gap-2.5 py-1 text-[12.5px] font-medium transition ${
                   active
                     ? "font-bold text-muse-black"
@@ -422,7 +430,9 @@ export default function FilterRailMuse({
                     active ? "border-muse-black" : "border-muse-input"
                   }`}
                 >
-                  {active && <span className="block h-2 w-2 rounded-full bg-muse-black" />}
+                  {active && (
+                    <span className="block h-2 w-2 rounded-full bg-muse-black" />
+                  )}
                 </span>
                 {range.label}
               </button>
@@ -444,7 +454,10 @@ function FilterGroup({
   defaultOpen?: boolean
 }) {
   return (
-    <details open={defaultOpen} className="group border-b border-muse-border last:border-b-0">
+    <details
+      open={defaultOpen}
+      className="group border-b border-muse-border last:border-b-0"
+    >
       <summary className="flex cursor-pointer list-none items-center justify-between px-5 py-3.5 text-[12.5px] font-bold text-muse-black transition hover:bg-muse-cream-deep">
         {title}
         <span className="text-[11px] text-muse-text-muted transition-transform group-open:rotate-180">
@@ -482,10 +495,14 @@ function CheckRow({
       <span className="flex items-center gap-2.5">
         <span
           className={`flex h-[18px] w-[18px] items-center justify-center rounded-md border transition ${
-            active ? "border-muse-black bg-muse-black" : "border-muse-input bg-white"
+            active
+              ? "border-muse-black bg-muse-black"
+              : "border-muse-input bg-white"
           }`}
         >
-          {active && <span className="text-[10px] leading-none text-white">✓</span>}
+          {active && (
+            <span className="text-[10px] leading-none text-white">✓</span>
+          )}
         </span>
         <span
           className={`font-medium text-muse-text ${
@@ -497,7 +514,9 @@ function CheckRow({
       </span>
       <span className="flex items-center gap-2 text-[11px] text-muse-text-light">
         {typeof count === "number" && <span>{count}</span>}
-        {suffix && <span className="text-[10px] text-muse-text-muted">{suffix}</span>}
+        {suffix && (
+          <span className="text-[10px] text-muse-text-muted">{suffix}</span>
+        )}
       </span>
     </button>
   )
