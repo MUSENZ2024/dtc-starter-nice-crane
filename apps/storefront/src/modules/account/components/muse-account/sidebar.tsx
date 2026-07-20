@@ -39,7 +39,7 @@ export default function MuseAccountSidebar({ customer, orderCount }: Props) {
   const pathname = usePathname()
   const { countryCode } = useParams() as { countryCode: string }
 
-  const activePath = pathname.split(`/${countryCode}`)[1] || "/account"
+  const activePath = pathname || "/account"
   const activeMatch =
     activePath === "/account"
       ? "overview"

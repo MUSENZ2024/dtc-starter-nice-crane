@@ -79,7 +79,7 @@ export async function POST(request: NextRequest) {
       payment_method_types: ["card"],
       client_reference_id: cart.id,
       success_url: `${origin}/api/split-pay/complete?session_id={CHECKOUT_SESSION_ID}&country_code=${countryCode}`,
-      cancel_url: `${origin}/${countryCode}/checkout?step=payment&muse_step=payment&split_pay=cancelled`,
+      cancel_url: `${origin}/checkout?step=payment&muse_step=payment&split_pay=cancelled`,
       setup_intent_data: {
         description: "MUSE Split Pay card authorisation",
         metadata: {

@@ -104,7 +104,7 @@ export async function signup(_currentState: unknown, formData: FormData) {
     await transferCart()
 
     if (countryCode) {
-      redirect(`/${countryCode}/account`)
+      redirect("/account")
     }
 
     return createdCustomer
@@ -137,7 +137,7 @@ export async function login(_currentState: unknown, formData: FormData) {
   }
 
   if (countryCode) {
-    redirect(`/${countryCode}/account`)
+    redirect("/account")
   }
 }
 
@@ -196,7 +196,7 @@ export async function resetPassword(
     return { success: false, error: String(error) }
   }
 
-  redirect(`/${countryCode}/account`)
+  redirect("/account")
 }
 
 export async function updateCustomerPassword(
@@ -348,7 +348,7 @@ export async function signout(countryCode: string) {
   const cartCacheTag = await getCacheTag("carts")
   revalidateTag(cartCacheTag)
 
-  redirect(`/${countryCode}/account`)
+  redirect("/account")
 }
 
 export async function transferCart() {

@@ -226,7 +226,7 @@ export const getOrderTracking = (order: HttpTypes.StoreOrder) => {
         url:
           label.tracking_url ||
           label.label_url ||
-          `/nz/track?number=${encodeURIComponent(number)}`,
+          `/track?number=${encodeURIComponent(number)}`,
         status: label.status ? formatStatus(label.status) : undefined,
       }
     })

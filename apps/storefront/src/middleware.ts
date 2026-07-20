@@ -1,181 +1,35 @@
-import { HttpTypes } from "@medusajs/types"
 import { NextRequest, NextResponse } from "next/server"
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_MEDUSA_BACKEND_URL
-const PUBLISHABLE_API_KEY = process.env.NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY
-const DEFAULT_REGION = process.env.NEXT_PUBLIC_DEFAULT_REGION || "dk"
-const REGION_FETCH_TIMEOUT_MS = 5000
-
-type RegionMap = Map<string, HttpTypes.StoreRegion | number>
-
-const regionMapCache = {
-  regionMap: new Map<string, HttpTypes.StoreRegion | number>(),
-  regionMapUpdated: Date.now(),
-}
-
-function getFallbackRegionMap() {
-  const fallback = new Map<string, number>()
-  fallback.set(DEFAULT_REGION, 1)
-  fallback.set("nz", 1)
-
-  return fallback
-}
-
-async function getRegionMap(cacheId: string): Promise<RegionMap> {
-  const { regionMap, regionMapUpdated } = regionMapCache
-
-  if (!BACKEND_URL) {
-    return getFallbackRegionMap()
-  }
-
-  if (
-    !regionMap.keys().next().value ||
-    regionMapUpdated < Date.now() - 3600 * 1000
-  ) {
-    const controller = new AbortController()
-    const timeout = setTimeout(() => controller.abort(), REGION_FETCH_TIMEOUT_MS)
-
-    // Fetch regions from Medusa. We can't use the JS client here because middleware is running on Edge and the client needs a Node environment.
-    const response = await fetch(`${BACKEND_URL}/store/regions`, {
-      method: "GET",
-      headers: {
-        "x-publishable-api-key": PUBLISHABLE_API_KEY!,
-      },
-      next: {
-        revalidate: 3600,
-        tags: [`regions-${cacheId}`],
-      },
-      cache: "force-cache",
-      signal: controller.signal,
-    }).catch(() => null)
-
-    clearTimeout(timeout)
-
-    if (!response?.ok) {
-      return regionMap.keys().next().value ? regionMap : getFallbackRegionMap()
-    }
-
-    const json = await response.json()
-
-    const { regions } = json
-
-    if (!regions?.length) {
-      return regionMap.keys().next().value ? regionMap : getFallbackRegionMap()
-    }
-
-    // Create a map of country codes to regions.
-    regions.forEach((region: HttpTypes.StoreRegion) => {
-      region.countries?.forEach((c) => {
-        regionMapCache.regionMap.set(c.iso_2 ?? "", region)
-      })
-    })
-
-    regionMapCache.regionMapUpdated = Date.now()
-  }
-
-  return regionMapCache.regionMap
-}
+const INTERNAL_COUNTRY_CODE = "nz"
+const LEGACY_COUNTRY_CODES = new Set(["nz", "dk"])
 
 /**
- * Fetches regions from Medusa and sets the region cookie.
- * @param request
- * @param response
+ * Keep Medusa's country-code route internal while exposing clean, stable URLs.
+ *
+ * Public:   /products/example
+ * Internal: /nz/products/example
+ * Legacy:   /nz/products/example -> /products/example
  */
-async function getCountryCode(
-  request: NextRequest,
-  regionMap: Map<string, HttpTypes.StoreRegion | number>
-) {
-  let countryCode
-
-  const urlCountryCode = request.nextUrl.pathname.split("/")[1]?.toLowerCase()
-
-  // Cloudflare Workers provides country via request.cf.country
-  const cloudflareCountryCode = (request as { cf?: { country?: string } }).cf?.country?.toLowerCase()
-
-  // Vercel provides x-vercel-ip-country header
-  const vercelCountryCode = request.headers
-    .get("x-vercel-ip-country")
-    ?.toLowerCase()
-
-  if (urlCountryCode && regionMap.has(urlCountryCode)) {
-    countryCode = urlCountryCode
-  } else if (cloudflareCountryCode && regionMap.has(cloudflareCountryCode)) {
-    countryCode = cloudflareCountryCode
-  } else if (vercelCountryCode && regionMap.has(vercelCountryCode)) {
-    countryCode = vercelCountryCode
-  } else if (regionMap.has(DEFAULT_REGION)) {
-    countryCode = DEFAULT_REGION
-  } else if (regionMap.keys().next().value) {
-    countryCode = regionMap.keys().next().value
-  }
-
-  return countryCode
-}
-
-/**
- * Middleware to handle region selection and onboarding status.
- */
-export async function middleware(request: NextRequest) {
+export function middleware(request: NextRequest) {
   if (request.nextUrl.pathname.includes(".")) {
     return NextResponse.next()
   }
 
-  const cacheIdCookie = request.cookies.get("_medusa_cache_id")
-  const cacheId = cacheIdCookie?.value || crypto.randomUUID()
+  const segments = request.nextUrl.pathname.split("/").filter(Boolean)
+  const firstSegment = segments[0]?.toLowerCase()
 
-  // MUSE currently has a single shopper-facing market. Avoid making the
-  // first request wait on Medusa's region endpoint when the URL already uses
-  // that market (or when `/` only needs the default-country redirect).
-  // Unknown/non-default country paths still use the region lookup below.
-  const firstPathSegment = request.nextUrl.pathname
-    .split("/")[1]
-    ?.toLowerCase()
-  const defaultCountry = DEFAULT_REGION.toLowerCase()
+  if (firstSegment && LEGACY_COUNTRY_CODES.has(firstSegment)) {
+    const cleanPath = `/${segments.slice(1).join("/")}`
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = cleanPath
 
-  if (request.nextUrl.pathname === "/") {
-    return NextResponse.redirect(
-      `${request.nextUrl.origin}/${defaultCountry}${request.nextUrl.search}`,
-      307
-    )
+    return NextResponse.redirect(redirectUrl, 308)
   }
 
-  if (firstPathSegment === defaultCountry) {
-    if (!cacheIdCookie) {
-      const response = NextResponse.next()
-      response.cookies.set("_medusa_cache_id", cacheId, {
-        maxAge: 60 * 60 * 24,
-      })
-      return response
-    }
+  const rewriteUrl = request.nextUrl.clone()
+  rewriteUrl.pathname = `/${INTERNAL_COUNTRY_CODE}${request.nextUrl.pathname}`
 
-    return NextResponse.next()
-  }
-
-  const regionMap = await getRegionMap(cacheId)
-  const countryCode = await getCountryCode(request, regionMap)
-
-  // if the country code is available, use it, otherwise use the default region
-  const country = countryCode || DEFAULT_REGION
-  const urlHasCountry = firstPathSegment === country.toLowerCase()
-
-  if (urlHasCountry) {
-    if (!cacheIdCookie) {
-      const response = NextResponse.next()
-      response.cookies.set("_medusa_cache_id", cacheId, {
-        maxAge: 60 * 60 * 24,
-      })
-      return response
-    }
-    return NextResponse.next()
-  }
-
-  // if the url doesn't have the country, redirect to it
-  const redirectPath =
-    request.nextUrl.pathname === "/" ? "" : request.nextUrl.pathname
-  const queryString = request.nextUrl.search || ""
-  const redirectUrl = `${request.nextUrl.origin}/${country}${redirectPath}${queryString}`
-
-  return NextResponse.redirect(redirectUrl, 307)
+  return NextResponse.rewrite(rewriteUrl)
 }
 
 export const config = {

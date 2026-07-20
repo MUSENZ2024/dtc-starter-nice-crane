@@ -147,9 +147,7 @@ const localizeHref = (href: string, countryCode?: string | string[]) => {
     return href
   }
 
-  const country = Array.isArray(countryCode) ? countryCode[0] : countryCode
-
-  return `/${country ?? "nz"}${href}`
+  return href
 }
 
 export default function MuseNavClient({ categoryLinks, productLinks }: Props) {

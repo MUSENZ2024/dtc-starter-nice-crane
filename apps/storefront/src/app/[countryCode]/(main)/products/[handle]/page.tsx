@@ -101,7 +101,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
       product.description ||
       `Shop ${product.title} at MUSE NZ with tracked New Zealand delivery.`,
     alternates: {
-      canonical: `/${params.countryCode}/products/${handle}`,
+      canonical: `/products/${handle}`,
     },
     openGraph: {
       title: `${product.title} | MUSE NZ`,

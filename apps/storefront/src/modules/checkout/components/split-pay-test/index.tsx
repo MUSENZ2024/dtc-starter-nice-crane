@@ -293,7 +293,7 @@ function SplitPaySetupForm({
     const { error, setupIntent } = await stripe.confirmSetup({
       elements,
       confirmParams: {
-        return_url: `${window.location.origin}/${countryCode}/checkout?step=payment&muse_step=payment`,
+        return_url: `${window.location.origin}/checkout?step=payment&muse_step=payment`,
         payment_method_data: {
           billing_details: {
             name: billingName || undefined,

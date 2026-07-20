@@ -5,5 +5,5 @@ export default async function ProtectedAccountFallback(props: {
 }) {
   const params = await props.params
 
-  redirect(`/${params.countryCode}/account`)
+  redirect("/account")
 }

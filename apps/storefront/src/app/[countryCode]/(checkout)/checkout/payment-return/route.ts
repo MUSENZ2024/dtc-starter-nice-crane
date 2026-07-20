@@ -22,7 +22,7 @@ export async function GET(
 
   const cartId = cartIdParam || (await getCartId())
 
-  const checkoutUrl = new URL(`/${countryCode}/checkout`, request.url)
+  const checkoutUrl = new URL("/checkout", request.url)
   checkoutUrl.searchParams.set("step", "review")
   checkoutUrl.searchParams.set("muse_step", "payment")
 

@@ -126,7 +126,7 @@ function getSplitPayConfirmationUrl({
   order: { orderId: string; displayId: string | number } | null
 }) {
   const completeUrl = new URL(
-    `/${countryCode}/order/split-pay/confirmed`,
+    "/order/split-pay/confirmed",
     request.url
   )
   completeUrl.searchParams.set("schedule_id", schedule.id)
@@ -373,7 +373,7 @@ export async function GET(request: NextRequest) {
 
   if (!sessionId) {
     return NextResponse.redirect(
-      new URL(`/${countryCode}/checkout?step=payment&muse_step=payment`, request.url)
+      new URL("/checkout?step=payment&muse_step=payment", request.url)
     )
   }
 
@@ -421,7 +421,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(completeUrl)
   } catch (error) {
     const failedUrl = new URL(
-      `/${countryCode}/checkout?step=payment&muse_step=payment`,
+      "/checkout?step=payment&muse_step=payment",
       request.url
     )
     failedUrl.searchParams.set(

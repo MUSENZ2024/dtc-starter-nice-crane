@@ -40,7 +40,7 @@ export default function RelatedProducts({
   product,
   countryCode,
 }: RelatedProductsProps) {
-  const shopHref = `/${countryCode}/store`
+  const shopHref = "/store"
 
   return (
     <div>

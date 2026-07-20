@@ -374,7 +374,7 @@ export default function StoreTemplateMuse({
     <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
       <div className="mx-auto max-w-[1400px] px-[18px] pt-5 text-[12px] font-medium tracking-[0.03em] text-muse-text-light small:px-8">
         <a
-          href={`/${countryCode}`}
+          href="/"
           className="transition hover:text-muse-orange"
         >
           Home
@@ -595,8 +595,8 @@ function GridToggle({
 
     const query = params.toString()
     return query
-      ? `/${countryCode}/${basePath}?${query}`
-      : `/${countryCode}/${basePath}`
+      ? `/${basePath}?${query}`
+      : `/${basePath}`
   }
 
   return (
@@ -653,8 +653,8 @@ function CategoryTiles({
 
     const query = params.toString()
     return query
-      ? `/${countryCode}/${basePath}?${query}`
-      : `/${countryCode}/${basePath}`
+      ? `/${basePath}?${query}`
+      : `/${basePath}`
   }
 
   return (
@@ -717,8 +717,8 @@ function hrefWithParams({
 
   const query = params.toString()
   return query
-    ? `/${countryCode}/clearance?${query}`
-    : `/${countryCode}/clearance`
+    ? `/clearance?${query}`
+    : "/clearance"
 }
 
 function ClearanceHero({

@@ -876,7 +876,7 @@ export default function ProductActions({
           quantity: editQuantity,
           countryCode,
         })
-        router.push(`/${countryCode}/cart`)
+        router.push("/cart")
         return
       }
 
@@ -913,7 +913,7 @@ export default function ProductActions({
         quantity: 1,
         countryCode,
       })
-      router.push(`/${countryCode}/checkout`)
+      router.push("/checkout")
     } finally {
       setIsAdding(false)
     }
