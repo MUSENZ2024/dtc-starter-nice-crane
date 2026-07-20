@@ -24,7 +24,7 @@ type GoogleAutocompletePrediction = {
 }
 
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-const MIN_ADDRESS_AUTOCOMPLETE_CHARS = 3
+const MIN_ADDRESS_AUTOCOMPLETE_CHARS = 1
 const ADDRESS_AUTOCOMPLETE_DEBOUNCE_MS = 250
 
 const createPlacesSessionToken = () =>
