@@ -14,16 +14,6 @@ import {
 } from "react"
 import StepHeader from "../step-header"
 
-type GooglePlace = {
-  address_components?: GoogleAddressComponent[]
-}
-
-type GoogleAddressComponent = {
-  long_name: string
-  short_name: string
-  types: string[]
-}
-
 type GoogleAutocompletePrediction = {
   description: string
   place_id: string
@@ -33,47 +23,14 @@ type GoogleAutocompletePrediction = {
   }
 }
 
-type GoogleMapsWindow = Window & {
-  gm_authFailure?: () => void
-  google?: {
-    maps?: {
-      places?: {
-        AutocompleteSessionToken: new () => unknown
-        AutocompleteService: new () => {
-          getPlacePredictions: (
-            request: {
-              input: string
-              componentRestrictions?: { country: string | string[] }
-              types?: string[]
-              sessionToken?: unknown
-            },
-            callback: (
-              predictions: GoogleAutocompletePrediction[] | null,
-              status: string
-            ) => void
-          ) => void
-        }
-        PlacesService: new (element: HTMLDivElement) => {
-          getDetails: (
-            request: { placeId: string; fields: string[] },
-            callback: (place: GooglePlace | null, status: string) => void
-          ) => void
-        }
-      }
-    }
-  }
-}
-
 const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-const MIN_ADDRESS_AUTOCOMPLETE_CHARS = 1
-const GOOGLE_PLACES_READY_TIMEOUT_MS = 10_000
+const MIN_ADDRESS_AUTOCOMPLETE_CHARS = 3
+const ADDRESS_AUTOCOMPLETE_DEBOUNCE_MS = 250
 
-const getAddressPart = (
-  components: GoogleAddressComponent[],
-  type: string,
-  name: "long_name" | "short_name" = "long_name"
-) =>
-  components.find((component) => component.types.includes(type))?.[name] || ""
+const createPlacesSessionToken = () =>
+  typeof crypto !== "undefined" && "randomUUID" in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
 
 type Props = {
   cart: HttpTypes.StoreCart
@@ -105,37 +62,19 @@ export default function StepShipping({
   onEdit,
 }: Props) {
   const addressInputRef = useRef<HTMLInputElement>(null)
-  const placesServiceElementRef = useRef<HTMLDivElement | null>(null)
-  const hasInitializedPlacesRef = useRef(false)
   const latestPredictionInputRef = useRef("")
-  const autocompleteServiceRef = useRef<{
-    getPlacePredictions: (
-      request: {
-        input: string
-        componentRestrictions?: { country: string | string[] }
-        types?: string[]
-        sessionToken?: unknown
-      },
-      callback: (
-        predictions: GoogleAutocompletePrediction[] | null,
-        status: string
-      ) => void
-    ) => void
-  } | null>(null)
-  const placesServiceRef = useRef<{
-    getDetails: (
-      request: { placeId: string; fields: string[] },
-      callback: (place: GooglePlace | null, status: string) => void
-    ) => void
-  } | null>(null)
-  const autocompleteSessionTokenRef = useRef<unknown>(null)
+  const autocompleteAbortControllerRef = useRef<AbortController | null>(null)
+  const autocompleteDebounceRef = useRef<number | null>(null)
+  const autocompleteSessionTokenRef = useRef(createPlacesSessionToken())
   const [addressPredictions, setAddressPredictions] = useState<
     GoogleAutocompletePrediction[]
   >([])
   const [isFetchingPredictions, setIsFetchingPredictions] = useState(false)
   const [isAddressFocused, setIsAddressFocused] = useState(false)
   const [placesStatusMessage, setPlacesStatusMessage] = useState<string | null>(
-    googleMapsApiKey ? null : "Google address autocomplete is not configured on this deployment."
+    googleMapsApiKey
+      ? null
+      : "Google address autocomplete is not configured on this deployment.",
   )
   const [form, setForm] = useState<AddressForm>({
     first_name: cart.shipping_address?.first_name ?? "",
@@ -166,7 +105,7 @@ export default function StepShipping({
   const address = cart.shipping_address
   const autocompleteCountryCode = useMemo(
     () => form.country_code || cart.shipping_address?.country_code || "nz",
-    [cart.shipping_address?.country_code, form.country_code]
+    [cart.shipping_address?.country_code, form.country_code],
   )
 
   function updateField(name: keyof AddressForm, value: string) {
@@ -177,36 +116,12 @@ export default function StepShipping({
     setBillingForm((current) => ({ ...current, [name]: value }))
   }
 
-  function applyAddressComponents(components: GoogleAddressComponent[]) {
-    const streetNumber = getAddressPart(components, "street_number")
-    const route = getAddressPart(components, "route")
-    const suburb =
-      getAddressPart(components, "sublocality_level_1") ||
-      getAddressPart(components, "sublocality")
-    const city =
-      getAddressPart(components, "locality") ||
-      getAddressPart(components, "postal_town") ||
-      getAddressPart(components, "administrative_area_level_2")
-    const postcode = getAddressPart(components, "postal_code")
-    const country = getAddressPart(components, "country", "short_name")
-
-    setForm((current) => ({
-      ...current,
-      address_1:
-        [streetNumber, route].filter(Boolean).join(" ") || current.address_1,
-      province: suburb || current.province,
-      city: city || current.city,
-      postal_code: postcode || current.postal_code,
-      country_code: country.toLowerCase() || current.country_code,
-    }))
-  }
-
-  function fetchAddressPredictions(value: string) {
+  async function fetchAddressPredictions(value: string) {
     const nextInput = value.trim()
     latestPredictionInputRef.current = nextInput
 
     if (
-      !autocompleteServiceRef.current ||
+      !googleMapsApiKey ||
       nextInput.length < MIN_ADDRESS_AUTOCOMPLETE_CHARS
     ) {
       setIsFetchingPredictions(false)
@@ -215,146 +130,139 @@ export default function StepShipping({
     }
 
     setIsFetchingPredictions(true)
-    autocompleteServiceRef.current.getPlacePredictions(
-      {
-        input:
-          autocompleteCountryCode === "nz"
-            ? `${nextInput}, New Zealand`
-            : nextInput,
-        componentRestrictions: { country: autocompleteCountryCode },
-        types: ["address"],
-        sessionToken: autocompleteSessionTokenRef.current,
-      },
-      (predictions, status) => {
-        if (latestPredictionInputRef.current !== nextInput) {
-          return
-        }
+    autocompleteAbortControllerRef.current?.abort()
+    const controller = new AbortController()
+    autocompleteAbortControllerRef.current = controller
 
-        setIsFetchingPredictions(false)
-        setAddressPredictions(predictions?.slice(0, 5) ?? [])
-        if (status !== "OK" && status !== "ZERO_RESULTS") {
-          setPlacesStatusMessage(
-            "Google address autocomplete is unavailable. Enable Maps JavaScript API and Places API (Legacy) for this key, then allow this site in its referrer restrictions."
-          )
-        }
+    try {
+      const response = await fetch("/api/places/autocomplete", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          input: nextInput,
+          countryCode: autocompleteCountryCode,
+          sessionToken: autocompleteSessionTokenRef.current,
+        }),
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Places autocomplete failed with ${response.status}`)
       }
-    )
+
+      const data = (await response.json()) as {
+        suggestions?: GoogleAutocompletePrediction[]
+      }
+      if (latestPredictionInputRef.current !== nextInput) {
+        return
+      }
+
+      setAddressPredictions((data.suggestions ?? []).slice(0, 5))
+      setPlacesStatusMessage(null)
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") {
+        return
+      }
+      setAddressPredictions([])
+      setPlacesStatusMessage(
+        "Google address autocomplete is unavailable. You can still enter your address manually.",
+      )
+    } finally {
+      if (latestPredictionInputRef.current === nextInput) {
+        setIsFetchingPredictions(false)
+      }
+    }
   }
 
   function handleAddressChange(value: string) {
     updateField("address_1", value)
-    fetchAddressPredictions(value)
+    if (autocompleteDebounceRef.current !== null) {
+      window.clearTimeout(autocompleteDebounceRef.current)
+    }
+
+    const nextInput = value.trim()
+    latestPredictionInputRef.current = nextInput
+    if (nextInput.length < MIN_ADDRESS_AUTOCOMPLETE_CHARS) {
+      autocompleteAbortControllerRef.current?.abort()
+      setAddressPredictions([])
+      setIsFetchingPredictions(false)
+      return
+    }
+
+    autocompleteDebounceRef.current = window.setTimeout(() => {
+      fetchAddressPredictions(value)
+    }, ADDRESS_AUTOCOMPLETE_DEBOUNCE_MS)
   }
 
-  function handlePredictionSelect(prediction: GoogleAutocompletePrediction) {
+  async function handlePredictionSelect(
+    prediction: GoogleAutocompletePrediction,
+  ) {
     setForm((current) => ({
       ...current,
-      address_1: prediction.structured_formatting?.main_text || prediction.description,
+      address_1:
+        prediction.structured_formatting?.main_text || prediction.description,
     }))
     setAddressPredictions([])
     setIsAddressFocused(false)
 
-    if (!placesServiceRef.current) {
+    if (!googleMapsApiKey) {
       return
     }
 
-    placesServiceRef.current.getDetails(
-      {
+    try {
+      const params = new URLSearchParams({
         placeId: prediction.place_id,
-        fields: ["address_components"],
-      },
-      (place) => {
-        applyAddressComponents(place?.address_components || [])
-        const places = (window as GoogleMapsWindow).google?.maps?.places
-        autocompleteSessionTokenRef.current = places
-          ? new places.AutocompleteSessionToken()
-          : null
+        countryCode: autocompleteCountryCode,
+        sessionToken: autocompleteSessionTokenRef.current,
+      })
+      const response = await fetch(`/api/places/details?${params}`, {
+        cache: "no-store",
+      })
+      if (!response.ok) {
+        throw new Error(`Place details failed with ${response.status}`)
       }
-    )
+      const data = (await response.json()) as {
+        address?: Partial<
+          Pick<
+            AddressForm,
+            | "address_1"
+            | "address_2"
+            | "province"
+            | "city"
+            | "postal_code"
+            | "country_code"
+          >
+        >
+      }
+      setForm((current) => ({
+        ...current,
+        address_1: data.address?.address_1 || current.address_1,
+        address_2: data.address?.address_2 || current.address_2,
+        province: data.address?.province || current.province,
+        city: data.address?.city || current.city,
+        postal_code: data.address?.postal_code || current.postal_code,
+        country_code: data.address?.country_code || current.country_code,
+      }))
+      autocompleteSessionTokenRef.current = createPlacesSessionToken()
+      setPlacesStatusMessage(null)
+    } catch {
+      setPlacesStatusMessage(
+        "We selected the address but could not fill every field. Please check the suburb, city and postcode.",
+      )
+    }
   }
 
-  useEffect(() => {
-    if (!googleMapsApiKey || !addressInputRef.current) {
-      return
-    }
-
-    let isMounted = true
-
-    const initAutocomplete = () => {
-      const googleWindow = window as GoogleMapsWindow
-
-      if (
-        !isMounted ||
-        hasInitializedPlacesRef.current ||
-        !addressInputRef.current ||
-        !googleWindow.google?.maps?.places?.AutocompleteService
-      ) {
-        return
+  useEffect(
+    () => () => {
+      autocompleteAbortControllerRef.current?.abort()
+      if (autocompleteDebounceRef.current !== null) {
+        window.clearTimeout(autocompleteDebounceRef.current)
       }
-
-      hasInitializedPlacesRef.current = true
-
-      const places = googleWindow.google.maps.places
-      autocompleteServiceRef.current = new places.AutocompleteService()
-      autocompleteSessionTokenRef.current = new places.AutocompleteSessionToken()
-      if (!placesServiceElementRef.current) {
-        placesServiceElementRef.current = document.createElement("div")
-      }
-      placesServiceRef.current = new places.PlacesService(
-        placesServiceElementRef.current
-      )
-      setPlacesStatusMessage(null)
-      if (
-        isAddressFocused &&
-        latestPredictionInputRef.current.length >= MIN_ADDRESS_AUTOCOMPLETE_CHARS
-      ) {
-        fetchAddressPredictions(latestPredictionInputRef.current)
-      }
-    }
-
-    const googleWindow = window as GoogleMapsWindow
-    const previousAuthFailureHandler = googleWindow.gm_authFailure
-    googleWindow.gm_authFailure = () => {
-      previousAuthFailureHandler?.()
-      setPlacesStatusMessage(
-        "Google rejected the address-lookup key. Enable Maps JavaScript API and Places API (Legacy), billing, and an allowed referrer for this checkout domain."
-      )
-    }
-
-    // The Google Maps script itself is loaded once, page-level, via
-    // next/script in checkout-page-muse (id="google-maps-places-script").
-    // Don't create a second <script> tag here — Google Maps does not
-    // support being loaded twice on the same page, and that previously
-    // risked the `places` library silently failing to attach. Just poll
-    // for it to become ready.
-    let readyTimer: number | undefined
-    const waitForPlaces = () => {
-      if (googleWindow.google?.maps?.places?.AutocompleteService) {
-        initAutocomplete()
-        return
-      }
-
-      readyTimer = window.setTimeout(waitForPlaces, 100)
-    }
-
-    waitForPlaces()
-
-    const deadlineTimer = window.setTimeout(() => {
-      if (!hasInitializedPlacesRef.current) {
-        window.clearTimeout(readyTimer)
-        setPlacesStatusMessage(
-          "Google address autocomplete did not become ready. Check the Maps JavaScript API, Places API (Legacy), billing, and key restrictions."
-        )
-      }
-    }, GOOGLE_PLACES_READY_TIMEOUT_MS)
-
-    return () => {
-      isMounted = false
-      window.clearTimeout(readyTimer)
-      window.clearTimeout(deadlineTimer)
-      googleWindow.gm_authFailure = previousAuthFailureHandler
-    }
-  }, [autocompleteCountryCode])
+    },
+    [],
+  )
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -418,20 +326,86 @@ export default function StepShipping({
       {isActive && (
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid gap-3 xsmall:grid-cols-2">
-            <Field label="First name" placeholder="First name" value={form.first_name} onChange={(value) => updateField("first_name", value)} autoComplete="given-name" required />
-            <Field label="Last name" placeholder="Last name" value={form.last_name} onChange={(value) => updateField("last_name", value)} autoComplete="family-name" required />
-            <Field label="Address" placeholder="Start typing your address..." value={form.address_1} onChange={handleAddressChange} autoComplete="new-password" required className="xsmall:col-span-2" inputRef={addressInputRef} name="muse-delivery-address-search" onFocus={() => { setIsAddressFocused(true); fetchAddressPredictions(form.address_1) }} onBlur={() => window.setTimeout(() => setIsAddressFocused(false), 160)} predictions={isAddressFocused ? addressPredictions : []} isFetchingPredictions={isAddressFocused && isFetchingPredictions} onPredictionSelect={handlePredictionSelect} helperText={placesStatusMessage ?? undefined} />
-            <Field label="Apartment, suite, unit (optional)" placeholder="Apt 2B" value={form.address_2} onChange={(value) => updateField("address_2", value)} autoComplete="address-line2" className="xsmall:col-span-2" />
-            <Field label="Suburb" placeholder="Ponsonby" value={form.province} onChange={(value) => updateField("province", value)} autoComplete="address-level3" required />
-            <Field label="City" placeholder="Auckland" value={form.city} onChange={(value) => updateField("city", value)} autoComplete="address-level2" required />
-            <Field label="Postcode" placeholder="1011" value={form.postal_code} onChange={(value) => updateField("postal_code", value)} autoComplete="postal-code" required maxLength={4} />
+            <Field
+              label="First name"
+              placeholder="First name"
+              value={form.first_name}
+              onChange={(value) => updateField("first_name", value)}
+              autoComplete="given-name"
+              required
+            />
+            <Field
+              label="Last name"
+              placeholder="Last name"
+              value={form.last_name}
+              onChange={(value) => updateField("last_name", value)}
+              autoComplete="family-name"
+              required
+            />
+            <Field
+              label="Address"
+              placeholder="Start typing your address..."
+              value={form.address_1}
+              onChange={handleAddressChange}
+              autoComplete="new-password"
+              required
+              className="xsmall:col-span-2"
+              inputRef={addressInputRef}
+              name="muse-delivery-address-search"
+              onFocus={() => {
+                setIsAddressFocused(true)
+                fetchAddressPredictions(form.address_1)
+              }}
+              onBlur={() =>
+                window.setTimeout(() => setIsAddressFocused(false), 160)
+              }
+              predictions={isAddressFocused ? addressPredictions : []}
+              isFetchingPredictions={isAddressFocused && isFetchingPredictions}
+              onPredictionSelect={handlePredictionSelect}
+              helperText={placesStatusMessage ?? undefined}
+            />
+            <Field
+              label="Apartment, suite, unit (optional)"
+              placeholder="Apt 2B"
+              value={form.address_2}
+              onChange={(value) => updateField("address_2", value)}
+              autoComplete="address-line2"
+              className="xsmall:col-span-2"
+            />
+            <Field
+              label="Suburb"
+              placeholder="Ponsonby"
+              value={form.province}
+              onChange={(value) => updateField("province", value)}
+              autoComplete="address-level3"
+              required
+            />
+            <Field
+              label="City"
+              placeholder="Auckland"
+              value={form.city}
+              onChange={(value) => updateField("city", value)}
+              autoComplete="address-level2"
+              required
+            />
+            <Field
+              label="Postcode"
+              placeholder="1011"
+              value={form.postal_code}
+              onChange={(value) => updateField("postal_code", value)}
+              autoComplete="postal-code"
+              required
+              maxLength={4}
+            />
             <label className="flex flex-col gap-1.5 xsmall:col-span-2">
               <span className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-muse-text-muted">
                 Country
               </span>
               <select
                 value={form.country_code}
-                onChange={(event) => updateField("country_code", event.target.value)}
+                onChange={(event) =>
+                  updateField("country_code", event.target.value)
+                }
                 className="w-full rounded-xl border border-muse-input bg-white px-4 py-3.5 text-[14px] text-muse-black outline-none transition focus:border-muse-black focus:ring-2 focus:ring-black/5"
                 required
               >
@@ -440,7 +414,9 @@ export default function StepShipping({
                     {country.display_name ?? country.iso_2?.toUpperCase()}
                   </option>
                 ))}
-                {!cart.region?.countries?.length && <option value="nz">New Zealand</option>}
+                {!cart.region?.countries?.length && (
+                  <option value="nz">New Zealand</option>
+                )}
               </select>
             </label>
             <Field
@@ -475,20 +451,73 @@ export default function StepShipping({
                 Billing address
               </p>
               <div className="grid gap-3 xsmall:grid-cols-2">
-                <Field label="First name" placeholder="First name" value={billingForm.first_name} onChange={(value) => updateBillingField("first_name", value)} autoComplete="given-name" required />
-                <Field label="Last name" placeholder="Last name" value={billingForm.last_name} onChange={(value) => updateBillingField("last_name", value)} autoComplete="family-name" required />
-                <Field label="Address" placeholder="Street address" value={billingForm.address_1} onChange={(value) => updateBillingField("address_1", value)} autoComplete="address-line1" required className="xsmall:col-span-2" />
-                <Field label="Apartment, suite, unit (optional)" placeholder="Apt 2B" value={billingForm.address_2} onChange={(value) => updateBillingField("address_2", value)} autoComplete="address-line2" className="xsmall:col-span-2" />
-                <Field label="Suburb" placeholder="Ponsonby" value={billingForm.province} onChange={(value) => updateBillingField("province", value)} autoComplete="address-level3" required />
-                <Field label="City" placeholder="Auckland" value={billingForm.city} onChange={(value) => updateBillingField("city", value)} autoComplete="address-level2" required />
-                <Field label="Postcode" placeholder="1011" value={billingForm.postal_code} onChange={(value) => updateBillingField("postal_code", value)} autoComplete="postal-code" required maxLength={4} />
+                <Field
+                  label="First name"
+                  placeholder="First name"
+                  value={billingForm.first_name}
+                  onChange={(value) => updateBillingField("first_name", value)}
+                  autoComplete="given-name"
+                  required
+                />
+                <Field
+                  label="Last name"
+                  placeholder="Last name"
+                  value={billingForm.last_name}
+                  onChange={(value) => updateBillingField("last_name", value)}
+                  autoComplete="family-name"
+                  required
+                />
+                <Field
+                  label="Address"
+                  placeholder="Street address"
+                  value={billingForm.address_1}
+                  onChange={(value) => updateBillingField("address_1", value)}
+                  autoComplete="address-line1"
+                  required
+                  className="xsmall:col-span-2"
+                />
+                <Field
+                  label="Apartment, suite, unit (optional)"
+                  placeholder="Apt 2B"
+                  value={billingForm.address_2}
+                  onChange={(value) => updateBillingField("address_2", value)}
+                  autoComplete="address-line2"
+                  className="xsmall:col-span-2"
+                />
+                <Field
+                  label="Suburb"
+                  placeholder="Ponsonby"
+                  value={billingForm.province}
+                  onChange={(value) => updateBillingField("province", value)}
+                  autoComplete="address-level3"
+                  required
+                />
+                <Field
+                  label="City"
+                  placeholder="Auckland"
+                  value={billingForm.city}
+                  onChange={(value) => updateBillingField("city", value)}
+                  autoComplete="address-level2"
+                  required
+                />
+                <Field
+                  label="Postcode"
+                  placeholder="1011"
+                  value={billingForm.postal_code}
+                  onChange={(value) => updateBillingField("postal_code", value)}
+                  autoComplete="postal-code"
+                  required
+                  maxLength={4}
+                />
                 <label className="flex flex-col gap-1.5 xsmall:col-span-2">
                   <span className="text-[11.5px] font-bold uppercase tracking-[0.08em] text-muse-text-muted">
                     Country
                   </span>
                   <select
                     value={billingForm.country_code}
-                    onChange={(event) => updateBillingField("country_code", event.target.value)}
+                    onChange={(event) =>
+                      updateBillingField("country_code", event.target.value)
+                    }
                     className="w-full rounded-xl border border-muse-input bg-white px-4 py-3.5 text-[14px] text-muse-black outline-none transition focus:border-muse-black focus:ring-2 focus:ring-black/5"
                     required
                   >
@@ -497,7 +526,9 @@ export default function StepShipping({
                         {country.display_name ?? country.iso_2?.toUpperCase()}
                       </option>
                     ))}
-                    {!cart.region?.countries?.length && <option value="nz">New Zealand</option>}
+                    {!cart.region?.countries?.length && (
+                      <option value="nz">New Zealand</option>
+                    )}
                   </select>
                 </label>
                 <Field

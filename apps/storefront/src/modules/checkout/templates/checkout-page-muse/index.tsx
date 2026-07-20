@@ -11,7 +11,6 @@ import { getShippingProtectionItem } from "@modules/checkout/components/step-del
 import StepPaymentMuse from "@modules/checkout/components/step-payment-muse"
 import StepShipping from "@modules/checkout/components/step-shipping"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
-import Script from "next/script"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
@@ -23,8 +22,6 @@ type Props = {
 }
 
 const stepOrder: StepKey[] = ["contact", "shipping", "delivery", "payment"]
-const googleMapsApiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-
 export default function CheckoutPageMuse({
   cart,
   customer,
@@ -37,16 +34,13 @@ export default function CheckoutPageMuse({
   const initialStep = normalizeStep(searchParams.get("muse_step"))
   const [activeStep, setActiveStep] = useState<StepKey>(initialStep)
   const [shippingProtectionSelected, setShippingProtectionSelected] = useState(
-    Boolean(getShippingProtectionItem(cart))
+    Boolean(getShippingProtectionItem(cart)),
   )
   const [completedSteps, setCompletedSteps] = useState<StepKey[]>(() =>
-    stepOrder.filter((step) => isStepComplete(step, cart))
+    stepOrder.filter((step) => isStepComplete(step, cart)),
   )
 
-  const mobileSummaryTotal = useMemo(
-    () => convertCartTotal(cart),
-    [cart]
-  )
+  const mobileSummaryTotal = useMemo(() => convertCartTotal(cart), [cart])
 
   useEffect(() => {
     setShippingProtectionSelected(Boolean(getShippingProtectionItem(cart)))
@@ -75,30 +69,24 @@ export default function CheckoutPageMuse({
     const index = stepOrder.indexOf(step)
     setActiveStep(step)
     setCompletedSteps((current) =>
-      current.filter((currentStep) => stepOrder.indexOf(currentStep) < index)
+      current.filter((currentStep) => stepOrder.indexOf(currentStep) < index),
     )
   }
 
   return (
     <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
-      {googleMapsApiKey && (
-        <>
-          <link rel="preconnect" href="https://maps.googleapis.com" />
-          <link rel="preconnect" href="https://maps.gstatic.com" />
-          <Script
-            id="google-maps-places-script"
-            src={`https://maps.googleapis.com/maps/api/js?key=${googleMapsApiKey}&libraries=places&language=en-NZ&region=NZ`}
-            strategy="afterInteractive"
-          />
-        </>
-      )}
       <CheckoutHeaderMuse />
 
       <div className="border-b border-muse-border bg-muse-cream-warm px-4 py-4 small:hidden">
         <details className="group">
           <summary className="flex min-h-11 cursor-pointer items-center justify-between gap-3">
             <span className="flex items-center gap-2 text-[13px] font-semibold text-muse-black">
-              <svg className="h-4 w-4 stroke-muse-orange" viewBox="0 0 24 24" fill="none" strokeWidth="2">
+              <svg
+                className="h-4 w-4 stroke-muse-orange"
+                viewBox="0 0 24 24"
+                fill="none"
+                strokeWidth="2"
+              >
                 <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z" />
                 <line x1="3" y1="6" x2="21" y2="6" />
                 <path d="M16 10a4 4 0 0 1-8 0" />
@@ -106,7 +94,9 @@ export default function CheckoutPageMuse({
               Show order summary
             </span>
             <span className="flex items-center gap-2">
-              <span className="text-base font-black tracking-tight">{mobileSummaryTotal}</span>
+              <span className="text-base font-black tracking-tight">
+                {mobileSummaryTotal}
+              </span>
               <span className="mobile-summary-toggle-icon text-[15px] leading-none text-muse-text-muted transition group-open:rotate-180">
                 ▾
               </span>
@@ -207,7 +197,9 @@ function isStepComplete(step: StepKey, cart: HttpTypes.StoreCart) {
     return Boolean(cart.email)
   }
   if (step === "shipping") {
-    return Boolean(cart.shipping_address?.address_1 && cart.shipping_address?.city)
+    return Boolean(
+      cart.shipping_address?.address_1 && cart.shipping_address?.city,
+    )
   }
   if (step === "delivery") {
     return Boolean(cart.shipping_methods?.length)
