@@ -35,6 +35,7 @@ const PaymentWrapper: React.FC<PaymentWrapperProps> = ({ cart, children }) => {
   ) {
     return (
       <StripeWrapper
+        cart={cart}
         paymentSession={paymentSession}
         stripeKey={stripeKey}
         stripePromise={stripePromise}

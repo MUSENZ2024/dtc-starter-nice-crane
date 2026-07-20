@@ -3,10 +3,13 @@
 import { Stripe, StripeElementsOptions } from "@stripe/stripe-js"
 import { Elements } from "@stripe/react-stripe-js"
 import { HttpTypes } from "@medusajs/types"
-import { createContext } from "react"
+import { refreshPaymentSession } from "@lib/data/cart"
+import { useRouter } from "next/navigation"
+import { createContext, useEffect, useState } from "react"
 
 type StripeWrapperProps = {
   paymentSession: HttpTypes.StorePaymentSession
+  cart: HttpTypes.StoreCart
   stripeKey?: string
   stripePromise: Promise<Stripe | null> | null
   children: React.ReactNode
@@ -16,12 +19,20 @@ export const StripeContext = createContext(false)
 
 const StripeWrapper: React.FC<StripeWrapperProps> = ({
   paymentSession,
+  cart,
   stripeKey,
   stripePromise,
   children,
 }) => {
+  const router = useRouter()
+  const [sessionState, setSessionState] = useState<
+    "checking" | "ready" | "recovering" | "error"
+  >("checking")
+  const [sessionError, setSessionError] = useState<string | null>(null)
+  const clientSecret = paymentSession.data?.client_secret as string | undefined
+
   const options: StripeElementsOptions = {
-    clientSecret: paymentSession!.data?.client_secret as string | undefined,
+    clientSecret,
     appearance: {
       theme: "stripe",
       variables: {
@@ -48,6 +59,71 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
     },
   }
 
+  useEffect(() => {
+    let active = true
+
+    async function verifyPaymentSession() {
+      if (!stripePromise || !clientSecret) {
+        return
+      }
+
+      const stripe = await stripePromise
+      if (!stripe || !active) {
+        return
+      }
+
+      const result = await stripe.retrievePaymentIntent(clientSecret)
+      if (!active) {
+        return
+      }
+
+      if (!result.error) {
+        setSessionState("ready")
+        return
+      }
+
+      const message = result.error.message?.toLowerCase() ?? ""
+      const isAccountMismatch =
+        message.includes("does not match any associated paymentintent") ||
+        message.includes("same account that created the paymentintent")
+
+      if (!isAccountMismatch) {
+        setSessionError(
+          result.error.message ?? "Stripe could not load this payment session."
+        )
+        setSessionState("error")
+        return
+      }
+
+      setSessionState("recovering")
+      try {
+        await refreshPaymentSession(
+          cart,
+          paymentSession.id,
+          paymentSession.provider_id
+        )
+        if (active) {
+          router.refresh()
+        }
+      } catch (error) {
+        if (active) {
+          setSessionError(
+            error instanceof Error
+              ? error.message
+              : "Stripe could not refresh this payment session."
+          )
+          setSessionState("error")
+        }
+      }
+    }
+
+    verifyPaymentSession()
+
+    return () => {
+      active = false
+    }
+  }, [cart, clientSecret, paymentSession.id, paymentSession.provider_id, router, stripePromise])
+
   if (!stripeKey) {
     throw new Error(
       "Stripe key is missing. Set NEXT_PUBLIC_STRIPE_KEY environment variable."
@@ -60,9 +136,27 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
     )
   }
 
-  if (!paymentSession?.data?.client_secret) {
+  if (!clientSecret) {
     throw new Error(
       "Stripe client secret is missing. Cannot initialize Stripe."
+    )
+  }
+
+  if (sessionState === "checking" || sessionState === "recovering") {
+    return (
+      <div className="py-8 text-center text-sm text-ui-fg-subtle">
+        {sessionState === "recovering"
+          ? "Refreshing secure payment…"
+          : "Loading secure payment…"}
+      </div>
+    )
+  }
+
+  if (sessionState === "error") {
+    return (
+      <div className="py-8 text-center text-sm text-ui-fg-error">
+        {sessionError}
+      </div>
     )
   }
 

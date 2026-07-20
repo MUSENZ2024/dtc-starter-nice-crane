@@ -378,6 +378,36 @@ export async function initiatePaymentSession(
     .catch(medusaError)
 }
 
+export async function refreshPaymentSession(
+  cart: HttpTypes.StoreCart,
+  sessionId: string,
+  providerId: string
+) {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+
+  await sdk.client.fetch(
+    `/store/carts/${cart.id}/payment-sessions/${sessionId}`,
+    {
+      method: "DELETE",
+      headers,
+    }
+  )
+
+  const response = await sdk.store.payment.initiatePaymentSession(
+    cart,
+    { provider_id: providerId },
+    {},
+    headers
+  )
+
+  const cartCacheTag = await getCacheTag("carts")
+  revalidateTag(cartCacheTag)
+
+  return response
+}
+
 export type PromotionActionResult =
   | { success: true }
   | { success: false; error: string }
