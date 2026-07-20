@@ -33,7 +33,7 @@ export async function POST(request: NextRequest) {
   const sessionToken =
     typeof body?.sessionToken === "string" ? body.sessionToken : ""
 
-  if (input.length < 3 || input.length > 160) {
+  if (input.length < 1 || input.length > 160) {
     return NextResponse.json({ suggestions: [] })
   }
 
