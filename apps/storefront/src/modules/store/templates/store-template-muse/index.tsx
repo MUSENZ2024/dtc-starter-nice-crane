@@ -373,12 +373,12 @@ export default function StoreTemplateMuse({
   return (
     <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
       <div className="mx-auto max-w-[1400px] px-[18px] pt-5 text-[12px] font-medium tracking-[0.03em] text-muse-text-light small:px-8">
-        <a
+        <LocalizedClientLink
           href="/"
           className="transition hover:text-muse-orange"
         >
           Home
-        </a>
+        </LocalizedClientLink>
         <span className="mx-2 opacity-60">/</span>
         {isClearance ? "Clearance" : isCategory ? category?.name : "Shop All"}
       </div>
