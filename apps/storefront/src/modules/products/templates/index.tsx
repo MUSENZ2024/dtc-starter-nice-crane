@@ -172,6 +172,10 @@ const ProductTemplate = async ({
             images={images}
             fulfilment={fulfilment}
             productTitle={product.title}
+            colourImageMap={
+              (product.metadata?.colour_image_map as Record<string, string> | undefined) ??
+              undefined
+            }
           />
         </div>
         <ProductActions product={product} region={region} />

@@ -835,6 +835,13 @@ export default function ProductActions({
 
   const setOptionValue = (optionId: string, value: string) => {
     setOptions((current) => ({ ...current, [optionId]: value }))
+    if (optionId === colourOption?.id) {
+      window.dispatchEvent(
+        new CustomEvent("muse:product-colour-change", {
+          detail: { colour: value },
+        })
+      )
+    }
   }
 
   const handleAddToCart = async () => {

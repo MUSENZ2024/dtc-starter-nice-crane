@@ -3,15 +3,16 @@
 import { HttpTypes } from "@medusajs/types"
 import { FulfilmentState } from "@lib/util/fulfilment-state"
 import Image from "next/image"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 
 type ImageGalleryProps = {
   images: HttpTypes.StoreProductImage[]
   fulfilment: FulfilmentState
   productTitle: string
+  colourImageMap?: Record<string, string>
 }
 
-const ImageGallery = ({ images, fulfilment, productTitle }: ImageGalleryProps) => {
+const ImageGallery = ({ images, fulfilment, productTitle, colourImageMap }: ImageGalleryProps) => {
   const galleryImages = useMemo(
     () =>
       images.length > 0
@@ -29,6 +30,16 @@ const ImageGallery = ({ images, fulfilment, productTitle }: ImageGalleryProps) =
     [images]
   )
   const [activeIndex, setActiveIndex] = useState(0)
+  useEffect(() => {
+    const handleColourChange = (event: Event) => {
+      const colour = (event as CustomEvent<{ colour?: string }>).detail?.colour
+      const url = colour ? colourImageMap?.[colour] : undefined
+      const index = url ? galleryImages.findIndex((image) => image.url === url) : -1
+      if (index >= 0) setActiveIndex(index)
+    }
+    window.addEventListener("muse:product-colour-change", handleColourChange)
+    return () => window.removeEventListener("muse:product-colour-change", handleColourChange)
+  }, [colourImageMap, galleryImages])
   const activeImage = galleryImages[activeIndex] ?? galleryImages[0]
   const thumbSlots = galleryImages.slice(0, 5)
   const hasMultipleImages = galleryImages.length > 1
