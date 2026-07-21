@@ -1,0 +1,5 @@
+import type { ExecArgs } from "@medusajs/framework/types"
+import { MARKETING_MODULE } from "../modules/marketing"
+import MarketingModuleService from "../modules/marketing/service"
+import { INITIAL_MARKETING_SEGMENTS, estimateSegment } from "../lib/marketing-segments"
+export default async function setupMarketingSegments({ container }: ExecArgs) { const service: MarketingModuleService=container.resolve(MARKETING_MODULE); const subscribers=await service.listMarketingSubscribers({}, {take:100000}); for(const item of INITIAL_MARKETING_SEGMENTS){ const [existing]=await service.listMarketingSegments({key:item.key},{take:1}); const count=estimateSegment(subscribers,item.definition).length; if(existing) await service.updateMarketingSegments({id:existing.id,name:item.name,description:item.description,definition:item.definition,estimated_count:count,estimated_at:new Date(),is_system:true}); else await service.createMarketingSegments({...item,status:"active",estimated_count:count,estimated_at:new Date(),is_system:true}) } }

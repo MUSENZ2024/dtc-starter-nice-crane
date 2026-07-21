@@ -11,6 +11,8 @@ import CartMismatchBanner from "@modules/layout/components/cart-mismatch-banner"
 import Footer from "@modules/layout/templates/footer"
 import Nav from "@modules/layout/templates/nav"
 import FreeShippingPriceNudge from "@modules/shipping/components/free-shipping-price-nudge"
+import WelcomePopup from "@modules/marketing/components/welcome-popup"
+import { MarketingOverlayProvider } from "@modules/marketing/context/marketing-overlay-context"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
@@ -46,14 +48,17 @@ async function PersonalizedLayoutChrome() {
 export default function PageLayout(props: { children: React.ReactNode }) {
   return (
     <CartDrawerProvider>
-      <SavedItemsProvider>
-        <Nav />
-        <Suspense fallback={null}>
-          <PersonalizedLayoutChrome />
-        </Suspense>
-        {props.children}
-        <Footer />
-      </SavedItemsProvider>
+      <MarketingOverlayProvider>
+        <SavedItemsProvider>
+          <Nav />
+          <Suspense fallback={null}>
+            <PersonalizedLayoutChrome />
+          </Suspense>
+          <WelcomePopup />
+          {props.children}
+          <Footer />
+        </SavedItemsProvider>
+      </MarketingOverlayProvider>
     </CartDrawerProvider>
   )
 }

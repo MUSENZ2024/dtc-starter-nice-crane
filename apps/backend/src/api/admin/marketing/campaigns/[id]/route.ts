@@ -1,0 +1,7 @@
+import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MARKETING_MODULE } from "../../../../../modules/marketing"
+import MarketingModuleService from "../../../../../modules/marketing/service"
+import { saveMarketingCampaignWorkflow } from "../../../../../workflows/marketing/save-marketing-campaign"
+import type { SaveCampaignBody } from "../validators"
+export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) { const service: MarketingModuleService = req.scope.resolve(MARKETING_MODULE); const campaign = await service.retrieveMarketingCampaign(req.params.id); const recipients = await service.listMarketingCampaignRecipients({ campaign_id: campaign.id }, { take: 100000 }); res.json({ campaign, recipients: { total: recipients.length, eligible: recipients.filter((item) => item.status !== "excluded").length, excluded: recipients.filter((item) => item.status === "excluded").length, reasons: recipients.reduce<Record<string, number>>((acc, item) => { if (item.exclusion_reason) acc[item.exclusion_reason] = (acc[item.exclusion_reason] || 0) + 1; return acc }, {}) } }) }
+export async function POST(req: AuthenticatedMedusaRequest<SaveCampaignBody>, res: MedusaResponse) { const { result } = await saveMarketingCampaignWorkflow(req.scope).run({ input: { ...req.validatedBody, id: req.params.id, created_by: req.auth_context?.actor_id || null } }); res.json(result) }

@@ -18,6 +18,7 @@ import DropCountdown from "./drop-countdown"
 import InstagramFeed from "./instagram-feed"
 import NuptseSlideshow from "./nuptse-slideshow"
 import RealProofSection from "./real-proof-section"
+import OpenMarketingDialogButton from "@modules/marketing/components/open-marketing-dialog-button"
 
 export const metadata: Metadata = {
   title: "MUSE NZ | Retro Puffers & Runners",
@@ -77,7 +78,7 @@ const NZ_STOCK_PLACEHOLDERS = [
   ["03", "Outerwear restock", "Coming after import"],
 ]
 
-const FEATURED_BLACK_NUPTSE_HANDLE = "1996-retro-puffer-jacket-black"
+const FEATURED_BLACK_NUPTSE_HANDLE = "nuptse-jacket-black"
 const BEST_SELLER_TAG = "best-seller"
 
 const getPrimaryImage = (product?: HttpTypes.StoreProduct | null) =>
@@ -95,7 +96,7 @@ const getHoverImage = (product?: HttpTypes.StoreProduct | null) => {
 const getCardFromProduct = (
   product: HttpTypes.StoreProduct,
   index: number,
-  deliveryLabel: string,
+  deliveryLabel: string
 ): HomeCard => {
   const { cheapestPrice } = getProductPrice({ product })
   const fulfilment = getFulfilmentState(product)
@@ -127,7 +128,7 @@ export default async function Home(props: Props) {
     price: "NZ$180",
     compareAt: "NZ$500",
     badge: "Standard",
-    href: "/products/1996-retro-puffer-jacket-black",
+    href: `/products/${FEATURED_BLACK_NUPTSE_HANDLE}`,
     placeholder: "01",
     eta: deliveryLabel,
   }
@@ -194,7 +195,7 @@ export default async function Home(props: Props) {
     : fallbackPuffer
   const productCards = [
     ...bestSellerProducts.map((product, index) =>
-      getCardFromProduct(product, index, deliveryLabel),
+      getCardFromProduct(product, index, deliveryLabel)
     ),
   ]
 
@@ -553,20 +554,11 @@ export default async function Home(props: Props) {
             Drop access
           </p>
           <h2 className="mx-auto mt-3 max-w-[680px] text-[34px] font-black leading-[1] tracking-[-0.045em] small:text-[48px]">
-            Get first access when the next colour or size run lands.
+            Get first access to your next pair.
           </h2>
-          <div className="mx-auto mt-8 flex max-w-[520px] flex-col gap-3 xsmall:flex-row">
-            <input
-              aria-label="Email address"
-              placeholder="Email address"
-              className="min-h-[64px] flex-1 rounded-full border border-white/15 bg-white/[0.06] px-6 text-[16px] text-white outline-none placeholder:text-white/35 focus:border-[#C8D050]"
-            />
-            <button className="min-h-[64px] rounded-full bg-[#C8D050] px-8 text-[12px] font-black uppercase tracking-[0.14em] text-[#0A0A0A]">
-              Join
-            </button>
-          </div>
-          <p className="mt-4 text-xs text-white/35">
-            No spam. Just restocks, drops, and delivery updates.
+          <OpenMarketingDialogButton />
+          <p className="mt-4 text-xs text-white/50">
+            Plus $20 off your first order over $150. Terms apply.
           </p>
         </div>
       </section>
@@ -702,11 +694,11 @@ function ProductCard({ product }: { product: HomeCard }) {
                   status === "low"
                     ? "bg-[#C1440E]"
                     : status === "available"
-                      ? "bg-[#333]"
-                      : "bg-[#333]/30"
+                    ? "bg-[#333]"
+                    : "bg-[#333]/30"
                 }`}
               />
-            ),
+            )
           )}
         </div>
       </LocalizedClientLink>

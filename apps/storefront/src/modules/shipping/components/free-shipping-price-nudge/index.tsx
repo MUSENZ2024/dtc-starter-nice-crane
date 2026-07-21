@@ -12,6 +12,8 @@ import LocalizedClientLink from "@modules/common/components/localized-client-lin
 import { clx } from "@modules/common/components/ui"
 import { useState } from "react"
 import { StoreFreeShippingPrice } from "types/global"
+import { useCartDrawer } from "@lib/context/cart-drawer-context"
+import { useMarketingOverlay } from "@modules/marketing/context/marketing-overlay-context"
 
 const computeTarget = (
   cart: HttpTypes.StoreCart,
@@ -197,6 +199,8 @@ function FreeShippingPopup({
   price: StoreFreeShippingPrice
 }) {
   const [isClosed, setIsClosed] = useState(false)
+  const { isOpen: isCartOpen } = useCartDrawer()
+  const { isMarketingActive } = useMarketingOverlay()
   const progress = Math.min(price.remaining_percentage, 100)
   const remaining = convertToLocale({
     amount: price.target_remaining,
@@ -284,7 +288,7 @@ function FreeShippingPopup({
       <div
         className={clx(
           "fixed inset-x-0 bottom-0 z-[201] transition-transform duration-500 ease-in-out md:hidden",
-          isClosed ? "translate-y-[110%]" : "translate-y-0",
+          isClosed || isCartOpen || isMarketingActive ? "translate-y-[110%]" : "translate-y-0",
         )}
       >
         <div className="flex flex-col gap-2.5 rounded-t-2xl bg-muse-black px-4 pb-[calc(14px+env(safe-area-inset-bottom,0px))] pt-3.5 text-white shadow-[0_-4px_24px_rgba(0,0,0,0.18)]">
@@ -336,7 +340,7 @@ function FreeShippingPopup({
       <div
         className={clx(
           "fixed bottom-6 right-6 z-[201] hidden transition-all duration-500 ease-in-out md:block",
-          isClosed
+          isClosed || isCartOpen || isMarketingActive
             ? "pointer-events-none invisible opacity-0"
             : "visible opacity-100",
         )}

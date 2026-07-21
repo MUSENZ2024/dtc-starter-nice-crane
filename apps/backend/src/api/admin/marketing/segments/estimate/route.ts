@@ -1,0 +1,6 @@
+import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/http"
+import { MARKETING_MODULE } from "../../../../../modules/marketing"
+import MarketingModuleService from "../../../../../modules/marketing/service"
+import { estimateSegment } from "../../../../../lib/marketing-segments"
+import type { EstimateSegmentBody } from "../validators"
+export async function POST(req: AuthenticatedMedusaRequest<EstimateSegmentBody>, res: MedusaResponse) { const service: MarketingModuleService = req.scope.resolve(MARKETING_MODULE); const [subscribers, emails, issuances, enrollments, recipients] = await Promise.all([service.listMarketingSubscribers({}, { take: 100000 }), service.listMarketingEmailEvents({}, { take: 100000 }), service.listMarketingOfferIssuances({}, { take: 100000 }), service.listMarketingEnrollments({}, { take: 100000 }), service.listMarketingCampaignRecipients({}, { take: 100000 })]); const matches = estimateSegment(subscribers, req.validatedBody.definition, { emailEvents: emails, issuances, enrollments, recipients }); res.json({ estimated_count: matches.length, sample: matches.slice(0, 10).map((item) => ({ id: item.id, email: item.email, preference: item.primary_preference, customer_type: item.customer_type })) }) }

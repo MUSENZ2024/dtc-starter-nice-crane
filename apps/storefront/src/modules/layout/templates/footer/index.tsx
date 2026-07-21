@@ -1,4 +1,5 @@
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import NewsletterForm from "@modules/marketing/components/newsletter-form"
 
 const PAYMENT_BADGES = [
   ["Visa", "/payment-badges/Visa.png"],
@@ -18,25 +19,13 @@ export default async function Footer() {
         <div className="mx-auto flex max-w-[1440px] flex-wrap items-center justify-between gap-5 px-6 py-10">
           <div>
             <p className="mb-1 text-[15px] font-black text-white">
-              New arrivals + 10% off your first order
+              $20 off your first order over $150 + first access to new drops.
             </p>
             <p className="text-[12.5px] text-white/40">
               No spam. Just restocks, new products, and the occasional deal.
             </p>
           </div>
-          <form className="flex flex-wrap gap-2">
-            <input
-              type="email"
-              placeholder="Your email"
-              className="min-w-[220px] rounded-[8px] border border-white/[0.12] bg-white/[0.06] px-4 py-2.5 text-[13px] text-white outline-none placeholder:text-white/35 focus:border-[#C8D050]/50"
-            />
-            <button
-              type="submit"
-              className="rounded-[8px] bg-[#C8D050] px-5 py-2.5 text-[12px] font-black uppercase tracking-[0.1em] text-[#0A0A0A] transition hover:bg-[#B6C043]"
-            >
-              Join the list
-            </button>
-          </form>
+          <NewsletterForm source="footer_signup" />
         </div>
       </div>
 
