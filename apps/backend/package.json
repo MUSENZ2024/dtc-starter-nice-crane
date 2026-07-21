@@ -15,7 +15,7 @@
   "scripts": {
     "build": "medusa build",
     "typecheck": "tsc --noEmit",
-    "predeploy": "medusa db:migrate && medusa exec ./src/scripts/import-legacy-reviews.ts",
+    "predeploy": "medusa db:migrate && medusa exec ./src/scripts/import-legacy-reviews.ts && MARKETING_SETUP_FLOW_STATUS=active MARKETING_SETUP_OFFER_STATUS=active medusa exec ./src/scripts/setup-welcome-offer.ts && medusa exec ./src/scripts/setup-marketing-segments.ts && medusa exec ./src/scripts/backfill-welcome-enrollments.ts",
     "start": "medusa start",
     "dev": "medusa develop",
     "test": "pnpm test:unit",
