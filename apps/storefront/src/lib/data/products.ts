@@ -28,14 +28,13 @@ const STOREFRONT_HIDDEN_PRODUCT_TITLES = new Set([
 ])
 
 const isPublishedProduct = (product: HttpTypes.StoreProduct) => {
-  const status = (product as HttpTypes.StoreProduct & { status?: string }).status
+  const status = (product as HttpTypes.StoreProduct & { status?: string })
+    .status
 
   return status ? status === "published" : true
 }
 
-const isStorefrontDiscoverableProduct = (
-  product: HttpTypes.StoreProduct
-) => {
+const isStorefrontDiscoverableProduct = (product: HttpTypes.StoreProduct) => {
   const handle = product.handle?.trim().toLowerCase()
   const title = product.title?.trim().toLowerCase()
 
@@ -130,7 +129,8 @@ export const listProducts = async ({
     .then(({ products, count }) => {
       const discoverableProducts = products.filter(
         (product) =>
-          isPublishedProduct(product) && isStorefrontDiscoverableProduct(product)
+          isPublishedProduct(product) &&
+          isStorefrontDiscoverableProduct(product)
       )
       const discoverableCount =
         discoverableProducts.length === products.length
@@ -167,7 +167,11 @@ export const listProductsWithSort = async ({
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
 }> => {
   const limit = queryParams?.limit || 12
-  const pageSize = 24
+  // Medusa accepts up to 100 products per catalogue request. The old 24-item
+  // batch size made a price/fulfilment sort pay for as many as five backend
+  // round trips before it could render anything. Two larger batches cover
+  // more candidates with substantially less request overhead.
+  const pageSize = 100
   const requestedPage = Math.max(page, 1)
   const products: HttpTypes.StoreProduct[] = []
 
@@ -185,7 +189,7 @@ export const listProductsWithSort = async ({
   products.push(...firstPage.response.products)
 
   const count = firstPage.response.count
-  const maxProductsToSort = Math.min(count, 120)
+  const maxProductsToSort = Math.min(count, 200)
   const remainingPages = Array.from(
     { length: Math.max(0, Math.ceil(maxProductsToSort / pageSize) - 1) },
     (_, index) => index + 2
@@ -234,7 +238,8 @@ const getVariantOptionValue = (
   optionTitle: string
 ) => {
   const matched = variant.options?.find(
-    (option) => option.option?.title?.toLowerCase() === optionTitle.toLowerCase()
+    (option) =>
+      option.option?.title?.toLowerCase() === optionTitle.toLowerCase()
   )?.value
 
   if (matched) {
@@ -250,7 +255,10 @@ const getVariantOptionValue = (
 }
 
 const normalizeFilterValue = (value: string) =>
-  value.trim().toLowerCase().replace(/[\s_]+/g, "-")
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
 
 const footwearSizeRows = [
   ["USM 3.5", "USW 5", "35.5", "UK 3"],
@@ -396,10 +404,16 @@ const selectedSizeMatchesProductVariant = (
     return false
   }
 
-  const normalizedVariantSize = normalizeSizeValue(variantSize).replace("XXL", "2XL")
+  const normalizedVariantSize = normalizeSizeValue(variantSize).replace(
+    "XXL",
+    "2XL"
+  )
   const isEuVariant = /^\d{2}(?:\.5)?$/.test(normalizedVariantSize)
 
-  if (isLikelyPufferOrApparel(product) || isApparelSize(normalizedVariantSize)) {
+  if (
+    isLikelyPufferOrApparel(product) ||
+    isApparelSize(normalizedVariantSize)
+  ) {
     return selectedSizes.some(
       (selectedSize) =>
         normalizeSizeValue(selectedSize).replace("XXL", "2XL") ===
@@ -409,7 +423,8 @@ const selectedSizeMatchesProductVariant = (
 
   if (isEuVariant) {
     return selectedSizes.some(
-      (selectedSize) => normalizeSizeValue(selectedSize) === normalizedVariantSize
+      (selectedSize) =>
+        normalizeSizeValue(selectedSize) === normalizedVariantSize
     )
   }
 
@@ -485,7 +500,9 @@ export async function listProductsFiltered({
       priceMax !== undefined ||
       sortBy === "ships_soonest" ||
       productTagIdsToFetch.length ||
-      !["created_at", "best_sellers", "price_asc", "price_desc"].includes(sortBy)
+      !["created_at", "best_sellers", "price_asc", "price_desc"].includes(
+        sortBy
+      )
   )
 
   if (!needsClientFiltering) {
@@ -498,9 +515,9 @@ export async function listProductsFiltered({
           limit,
         },
         sortBy,
-      countryCode,
-      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
-    })
+        countryCode,
+        revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+      })
 
       return {
         products: response.products,
@@ -516,9 +533,9 @@ export async function listProductsFiltered({
         ...queryParams,
         limit,
       },
-        countryCode,
-        revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
-      })
+      countryCode,
+      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+    })
 
     return {
       products: response.products,
@@ -574,15 +591,19 @@ export async function listProductsFiltered({
       revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
     })
 
-    productsForFiltering = mergeProductsById([response.products, productsForFiltering])
+    productsForFiltering = mergeProductsById([
+      response.products,
+      productsForFiltering,
+    ])
   }
 
   let filtered = [...productsForFiltering]
 
   if (stock) {
-    filtered = filtered.filter((product) => productHasStockState(product, stock))
+    filtered = filtered.filter((product) =>
+      productHasStockState(product, stock)
+    )
   }
-
 
   if (tag_filter_groups?.length || tag_id?.length) {
     filtered = filtered.filter((product) => {

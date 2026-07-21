@@ -582,97 +582,103 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
         </svg>
       </button>
 
-      {menuOpen && (
-        <div className="fixed inset-0 z-[250] large:hidden">
-          <button
-            type="button"
-            className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm"
-            onClick={closeMenu}
-            aria-label="Close menu backdrop"
-          />
+      {mounted &&
+        menuOpen &&
+        createPortal(
+          <div className="fixed inset-0 z-[250] large:hidden">
+            <button
+              type="button"
+              className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm"
+              onClick={closeMenu}
+              aria-label="Close menu backdrop"
+            />
 
-          <aside
-            ref={menuDialogRef}
-            id="mobile-menu-dialog"
-            className="absolute bottom-0 left-0 top-0 flex h-dvh w-[min(340px,90vw)] flex-col bg-[#0A0A0A] text-white shadow-2xl"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="mobile-menu-title"
-          >
-            <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-5">
-              <img
-                src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
-                alt="MUSE"
-                className="h-[22px] w-auto"
-              />
-              <h2 id="mobile-menu-title" className="sr-only">
-                Mobile menu
-              </h2>
-              <button
-                onClick={closeMenu}
-                aria-label="Close menu"
-                className="flex h-11 w-11 items-center justify-center text-white/70 transition hover:text-white"
-                type="button"
-              >
-                <svg
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  aria-hidden="true"
-                >
-                  <path d="M18 6L6 18M6 6l12 12" />
-                </svg>
-              </button>
-            </div>
-
-            <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-4 py-6">
-              {primaryLinks.map((link) => (
-                <LocalizedClientLink
-                  key={link.href}
-                  href={link.href}
+            <aside
+              ref={menuDialogRef}
+              id="mobile-menu-dialog"
+              className="absolute bottom-0 left-0 top-0 flex h-dvh w-[min(340px,90vw)] flex-col bg-[#0A0A0A] text-white shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="mobile-menu-title"
+            >
+              <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-5">
+                <img
+                  src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
+                  alt="MUSE"
+                  className="h-[22px] w-auto"
+                />
+                <h2 id="mobile-menu-title" className="sr-only">
+                  Mobile menu
+                </h2>
+                <button
                   onClick={closeMenu}
-                  className={`rounded-[12px] px-4 py-[15px] text-[22px] font-black transition hover:bg-white/[0.05] ${
-                    link.accent === "red" ? "text-[#C1440E]" : "text-white"
-                  }`}
+                  aria-label="Close menu"
+                  className="flex h-11 w-11 items-center justify-center text-white/70 transition hover:text-white"
+                  type="button"
                 >
-                  {link.label}
-                </LocalizedClientLink>
-              ))}
-
-              <div className="my-2 h-px bg-white/[0.08]" />
-
-              {secondaryLinks.map((link) => (
-                <LocalizedClientLink
-                  key={link.href}
-                  href={link.href}
-                  onClick={closeMenu}
-                  className="rounded-[12px] px-4 py-[13px] text-[13px] font-black uppercase tracking-[0.1em] text-white/50 transition hover:bg-white/[0.05] hover:text-white"
-                >
-                  {link.label}
-                </LocalizedClientLink>
-              ))}
-
-              <div className="mt-4 rounded-[16px] border border-white/[0.08] bg-white/[0.04] px-[18px] py-4">
-                <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#C8D050]">
-                  Backed by our guarantee
-                </p>
-                <p className="text-[12px] leading-[1.6] text-white/70">
-                  30-day money-back - inspected before dispatch - Auckland-based
-                </p>
+                  <svg
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    aria-hidden="true"
+                  >
+                    <path d="M18 6L6 18M6 6l12 12" />
+                  </svg>
+                </button>
               </div>
-            </nav>
 
-            <div className="flex items-center justify-between border-t border-white/[0.08] px-6 py-4">
-              <span className="text-[12px] text-white/65">NZ - NZD</span>
-              <span className="text-[12px] text-white/65">© 2026 MUSE NZ</span>
-            </div>
-          </aside>
-        </div>
-      )}
+              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-4 py-6">
+                {primaryLinks.map((link) => (
+                  <LocalizedClientLink
+                    key={link.href}
+                    href={link.href}
+                    onClick={closeMenu}
+                    className={`rounded-[12px] px-4 py-[15px] text-[22px] font-black transition hover:bg-white/[0.05] ${
+                      link.accent === "red" ? "text-[#C1440E]" : "text-white"
+                    }`}
+                  >
+                    {link.label}
+                  </LocalizedClientLink>
+                ))}
+
+                <div className="my-2 h-px bg-white/[0.08]" />
+
+                {secondaryLinks.map((link) => (
+                  <LocalizedClientLink
+                    key={link.href}
+                    href={link.href}
+                    onClick={closeMenu}
+                    className="rounded-[12px] px-4 py-[13px] text-[13px] font-black uppercase tracking-[0.1em] text-white/50 transition hover:bg-white/[0.05] hover:text-white"
+                  >
+                    {link.label}
+                  </LocalizedClientLink>
+                ))}
+
+                <div className="mt-4 rounded-[16px] border border-white/[0.08] bg-white/[0.04] px-[18px] py-4">
+                  <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#C8D050]">
+                    Backed by our guarantee
+                  </p>
+                  <p className="text-[12px] leading-[1.6] text-white/70">
+                    30-day money-back - inspected before dispatch -
+                    Auckland-based
+                  </p>
+                </div>
+              </nav>
+
+              <div className="flex items-center justify-between border-t border-white/[0.08] px-6 py-4">
+                <span className="text-[12px] text-white/65">NZ - NZD</span>
+                <span className="text-[12px] text-white/65">
+                  © 2026 MUSE NZ
+                </span>
+              </div>
+            </aside>
+          </div>,
+          document.body
+        )}
 
       {mounted &&
         createPortal(
@@ -730,7 +736,12 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                 <h2 id="search-dialog-title" className="sr-only">
                   Search MUSE
                 </h2>
-                <p className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+                <p
+                  className="sr-only"
+                  role="status"
+                  aria-live="polite"
+                  aria-atomic="true"
+                >
                   {searchStatus}
                 </p>
                 <div className="flex min-h-12 items-center gap-2 rounded-full border border-white/[0.12] bg-white/[0.04] pl-4 pr-1">
@@ -761,6 +772,12 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                     className="h-12 min-w-0 flex-1 bg-transparent text-[16px] text-white outline-none placeholder:text-white/45 small:text-sm"
                     aria-label="Search products, collections and help"
                   />
+                  {isProductSearchLoading && (
+                    <span
+                      className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/25 border-t-[#C8D050]"
+                      aria-hidden="true"
+                    />
+                  )}
                   {query && (
                     <button
                       className="flex min-h-11 items-center px-2 text-[10px] font-black uppercase tracking-[0.1em] text-white/70 transition hover:text-white"
@@ -796,6 +813,8 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                                   <img
                                     src={product.image}
                                     alt={`${product.title} product result`}
+                                    loading="lazy"
+                                    decoding="async"
                                     className="h-full w-full object-cover"
                                   />
                                 ) : null}

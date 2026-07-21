@@ -738,12 +738,15 @@ function ClearanceHero({
   ]
 
   const proofs = [
-    ["NZ Stock only", "Held locally and ready to move."],
-    ["Auckland dispatch", "Most orders ship in 1-3 business days."],
-    ["Genuine markdowns", "Selected past drops, final sizes, and slow movers."],
+    ["Ready to ship", "In stock with us here in Auckland."],
     [
-      "Most styles will not restock",
-      "Ends when sold out, without fake countdowns.",
+      "Fast dispatch",
+      "Your order will usually be on its way in 1-3 business days.",
+    ],
+    ["Clearance prices", "Save on selected footwear and apparel."],
+    [
+      "Limited pairs available",
+      "Once a style or size sells out, it may not be back.",
     ],
   ]
 

@@ -18,14 +18,21 @@ export const retrieveCollection = async (id: string) => {
 export const listCollections = async (
   queryParams: Record<string, string> = {}
 ): Promise<{ collections: HttpTypes.StoreCollection[]; count: number }> => {
-  queryParams.limit = queryParams.limit || "100"
-  queryParams.offset = queryParams.offset || "0"
+  const query = {
+    // Collection selectors and route generation only need identity fields.
+    // Fetching *products made this shared response exceed Next's 2 MB cache
+    // limit, turning a supposedly cached lookup into repeated network work.
+    fields: "id,title,handle",
+    limit: "100",
+    offset: "0",
+    ...queryParams,
+  }
 
   return await sdk.client
     .fetch<{ collections: HttpTypes.StoreCollection[]; count: number }>(
       "/store/collections",
       {
-        query: queryParams,
+        query,
         next: { revalidate: 300 },
         cache: "force-cache",
       }
@@ -38,7 +45,7 @@ export const getCollectionByHandle = async (
 ): Promise<HttpTypes.StoreCollection | null> => {
   return await sdk.client
     .fetch<HttpTypes.StoreCollectionListResponse>(`/store/collections`, {
-      query: { handle, fields: "*products" },
+      query: { handle, fields: "id,title,handle" },
       next: { revalidate: 300 },
       cache: "force-cache",
     })

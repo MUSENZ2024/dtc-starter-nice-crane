@@ -91,6 +91,7 @@ export default function CartDrawer({
     openDrawer,
     closeDrawer,
     registerCartSnapshot,
+    registerCartSubtotal,
   } = useCartDrawer()
   const { items: savedItems, hydrated, isSaved, toggleSaved, removeSaved } =
     useSavedItems()
@@ -262,6 +263,10 @@ export default function CartDrawer({
   const shippingUnlocked = freeShippingGap === 0
   const isEmpty = cartItems.length === 0 && pendingOnlyItems.length === 0
   const fulfilmentSummary = getCartFulfilmentSummary(cartItems)
+
+  useEffect(() => {
+    registerCartSubtotal(subtotal)
+  }, [registerCartSubtotal, subtotal])
 
   function getSavedItemFromCartItem(
     item: HttpTypes.StoreCartLineItem

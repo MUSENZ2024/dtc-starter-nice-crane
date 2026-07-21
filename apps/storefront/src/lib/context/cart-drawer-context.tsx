@@ -34,6 +34,7 @@ type CartSnapshotLine = {
 type CartDrawerContextValue = {
   isOpen: boolean
   isCartMutating: boolean
+  cartSubtotal: number | null
   optimisticItems: OptimisticCartItem[]
   openDrawer: () => void
   closeDrawer: () => void
@@ -41,11 +42,13 @@ type CartDrawerContextValue = {
   finishCartMutation: () => void
   removeOptimisticItem: (variantId: string) => void
   registerCartSnapshot: (lines: CartSnapshotLine[]) => void
+  registerCartSubtotal: (subtotal: number) => void
 }
 
 const CartDrawerContext = createContext<CartDrawerContextValue>({
   isOpen: false,
   isCartMutating: false,
+  cartSubtotal: null,
   optimisticItems: [],
   openDrawer: () => {},
   closeDrawer: () => {},
@@ -53,11 +56,13 @@ const CartDrawerContext = createContext<CartDrawerContextValue>({
   finishCartMutation: () => {},
   removeOptimisticItem: () => {},
   registerCartSnapshot: () => {},
+  registerCartSubtotal: () => {},
 })
 
 export function CartDrawerProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = useState(false)
   const [isCartMutating, setIsCartMutating] = useState(false)
+  const [cartSubtotal, setCartSubtotal] = useState<number | null>(null)
   const [optimisticItems, setOptimisticItems] = useState<OptimisticCartItem[]>([])
   const cartQuantitySnapshot = useRef<Map<string, number>>(new Map())
 
@@ -126,6 +131,9 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
       })
     )
   }, [])
+  const registerCartSubtotal = useCallback((subtotal: number) => {
+    setCartSubtotal(subtotal)
+  }, [])
 
   useEffect(() => {
     document.body.style.overflow = isOpen ? "hidden" : ""
@@ -151,6 +159,7 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
       value={{
         isOpen,
         isCartMutating,
+        cartSubtotal,
         optimisticItems,
         openDrawer,
         closeDrawer,
@@ -158,6 +167,7 @@ export function CartDrawerProvider({ children }: { children: React.ReactNode }) 
         finishCartMutation,
         removeOptimisticItem,
         registerCartSnapshot,
+        registerCartSubtotal,
       }}
     >
       {children}

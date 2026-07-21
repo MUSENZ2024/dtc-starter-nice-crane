@@ -3,6 +3,7 @@
 import { SortOptions } from "@lib/data/products.types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useRef, useState, useTransition } from "react"
+import StoreUpdatingIndicator from "@modules/store/components/store-updating-indicator"
 
 const SORT_OPTIONS: { value: SortOptions; label: string }[] = [
   { value: "best_sellers", label: "Best sellers" },
@@ -50,44 +51,51 @@ export default function SortSelectMuse({
   }
 
   return (
-    <div ref={menuRef} className="relative flex-shrink-0" aria-busy={isPending}>
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="flex h-11 min-w-[164px] items-center justify-between gap-3 rounded-full border border-muse-input bg-white px-4 text-left text-[12.5px] font-semibold text-muse-black transition hover:border-muse-black focus:border-muse-black focus:outline-none"
-        aria-haspopup="listbox"
-        aria-expanded={open}
+    <>
+      <StoreUpdatingIndicator active={isPending} label="Sorting products" />
+      <div
+        ref={menuRef}
+        className="relative flex-shrink-0"
+        aria-busy={isPending}
       >
-        <span>{isPending ? "Updating..." : current.label}</span>
-        <span className="text-[10px] text-muse-text-muted">▾</span>
-      </button>
-
-      {open && (
-        <div
-          role="listbox"
-          className="absolute bottom-[calc(100%+8px)] right-0 z-[90] w-[220px] overflow-hidden rounded-xl border border-muse-black/10 bg-muse-black py-1.5 text-muse-cream shadow-xl small:bottom-auto small:top-[calc(100%+8px)]"
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          className="flex h-11 min-w-[164px] items-center justify-between gap-3 rounded-full border border-muse-input bg-white px-4 text-left text-[12.5px] font-semibold text-muse-black transition hover:border-muse-black focus:border-muse-black focus:outline-none"
+          aria-haspopup="listbox"
+          aria-expanded={open}
         >
-          {SORT_OPTIONS.map((option) => {
-            const active = option.value === current.value
+          <span>{isPending ? "Updating..." : current.label}</span>
+          <span className="text-[10px] text-muse-text-muted">▾</span>
+        </button>
 
-            return (
-              <button
-                key={option.value}
-                type="button"
-                role="option"
-                aria-selected={active}
-                onClick={() => handleChange(option.value)}
-                className={`flex w-full items-center justify-between px-4 py-2 text-left text-[12.5px] font-semibold transition hover:bg-white/10 ${
-                  active ? "text-muse-yellow" : "text-muse-cream"
-                }`}
-              >
-                {option.label}
-                {active && <span>✓</span>}
-              </button>
-            )
-          })}
-        </div>
-      )}
-    </div>
+        {open && (
+          <div
+            role="listbox"
+            className="absolute bottom-[calc(100%+8px)] right-0 z-[90] w-[220px] overflow-hidden rounded-xl border border-muse-black/10 bg-muse-black py-1.5 text-muse-cream shadow-xl small:bottom-auto small:top-[calc(100%+8px)]"
+          >
+            {SORT_OPTIONS.map((option) => {
+              const active = option.value === current.value
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  role="option"
+                  aria-selected={active}
+                  onClick={() => handleChange(option.value)}
+                  className={`flex w-full items-center justify-between px-4 py-2 text-left text-[12.5px] font-semibold transition hover:bg-white/10 ${
+                    active ? "text-muse-yellow" : "text-muse-cream"
+                  }`}
+                >
+                  {option.label}
+                  {active && <span>✓</span>}
+                </button>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    </>
   )
 }

@@ -10,7 +10,7 @@ export type StoreProductTag = {
 }
 
 export const listProductTags = async (
-  queryParams: { limit?: string } = {}
+  queryParams: { limit?: string; value?: string | string[] } = {},
 ): Promise<{ product_tags: StoreProductTag[]; count: number }> => {
   const fetchTags = () =>
     sdk.client.fetch<{ product_tags: StoreProductTag[]; count?: number }>(
@@ -19,11 +19,12 @@ export const listProductTags = async (
         method: "GET",
         query: {
           limit: queryParams.limit ?? "100",
+          ...(queryParams.value ? { value: queryParams.value } : {}),
           fields: "id,name,value,products.id,products.status",
         },
         next: { revalidate: 300 },
         cache: "force-cache",
-      }
+      },
     )
 
   let result: { product_tags: StoreProductTag[]; count?: number } | undefined
@@ -43,12 +44,12 @@ export const listProductTags = async (
   if (!result) throw lastError
 
   return {
-      product_tags: result.product_tags.map((tag) => ({
-        ...tag,
-        products: tag.products?.filter((product) =>
-          product.status ? product.status === "published" : true
-        ),
-      })),
-      count: result.count ?? result.product_tags.length,
+    product_tags: result.product_tags.map((tag) => ({
+      ...tag,
+      products: tag.products?.filter((product) =>
+        product.status ? product.status === "published" : true,
+      ),
+    })),
+    count: result.count ?? result.product_tags.length,
   }
 }

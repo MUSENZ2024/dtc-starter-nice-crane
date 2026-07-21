@@ -3,7 +3,9 @@ import Image from "next/image"
 import { HttpTypes } from "@medusajs/types"
 
 import { listProducts } from "@lib/data/products"
+import { listProductTags } from "@lib/data/product-tags"
 import { getDeliveredByLabel } from "@lib/util/delivery-estimate"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
@@ -42,39 +44,6 @@ type HomeCard = {
   eta: string
 }
 
-const PLACEHOLDER_CARDS: HomeCard[] = [
-  {
-    title: "Retro Runner - Sea Salt",
-    id: "home-preview-runner-sea-salt",
-    price: "NZ$160",
-    compareAt: "NZ$280",
-    badge: "Coming soon",
-    href: "/store",
-    placeholder: "02",
-    eta: "Coming soon",
-  },
-  {
-    title: "Everyday Court Sneaker - Grey",
-    id: "home-preview-court-grey",
-    price: "NZ$150",
-    compareAt: "NZ$240",
-    badge: "Drop preview",
-    href: "/store",
-    placeholder: "03",
-    eta: "Drop preview",
-  },
-  {
-    title: "Puffer Vest - Navy",
-    id: "home-preview-puffer-vest-navy",
-    price: "NZ$145",
-    compareAt: "NZ$260",
-    badge: "Winter preview",
-    href: "/store",
-    placeholder: "04",
-    eta: "Winter preview",
-  },
-]
-
 const HOW_STEPS = [
   [
     "1",
@@ -108,23 +77,28 @@ const NZ_STOCK_PLACEHOLDERS = [
   ["03", "Outerwear restock", "Coming after import"],
 ]
 
+const FEATURED_BLACK_NUPTSE_HANDLE = "1996-retro-puffer-jacket-black"
+const BEST_SELLER_TAG = "best-seller"
+
 const getPrimaryImage = (product?: HttpTypes.StoreProduct | null) =>
   product?.thumbnail || product?.images?.[0]?.url || null
 
 const getHoverImage = (product?: HttpTypes.StoreProduct | null) => {
   const primaryImage = getPrimaryImage(product)
 
-  return product?.images?.find(
-    (image) => image.url && image.url !== primaryImage
-  )?.url || null
+  return (
+    product?.images?.find((image) => image.url && image.url !== primaryImage)
+      ?.url || null
+  )
 }
 
 const getCardFromProduct = (
   product: HttpTypes.StoreProduct,
   index: number,
-  deliveryLabel: string
+  deliveryLabel: string,
 ): HomeCard => {
   const { cheapestPrice } = getProductPrice({ product })
+  const fulfilment = getFulfilmentState(product)
 
   return {
     title: product.title || "MUSE product",
@@ -135,12 +109,12 @@ const getCardFromProduct = (
       cheapestPrice.original_price !== cheapestPrice.calculated_price
         ? cheapestPrice.original_price
         : "NZ$500",
-    badge: index === 1 ? "NZ Stock" : "Standard",
+    badge: fulfilment.shortLabel,
     href: `/products/${product.handle}`,
     image: getPrimaryImage(product),
     hoverImage: getHoverImage(product),
     placeholder: String(index + 1).padStart(2, "0"),
-    eta: index === 1 ? "Ships in 1-3 days" : deliveryLabel,
+    eta: fulfilment.deliveryLabel || deliveryLabel,
   }
 }
 
@@ -158,30 +132,53 @@ export default async function Home(props: Props) {
     eta: deliveryLabel,
   }
 
-  const [products, nuptseProducts] = await Promise.all([
-    listProducts({
-      countryCode,
-      queryParams: {
-        limit: 4,
-        q: "puffer",
-        fields: "id,title,handle,thumbnail,*images,*variants.calculated_price",
-      },
-      revalidateSeconds: 300,
-    })
-      .then(({ response }) => response.products)
-      .catch(() => []),
-    listProducts({
-      countryCode,
-      queryParams: {
-        limit: 12,
-        q: "nuptse",
-        fields: "id,title,handle,thumbnail",
-      },
-      revalidateSeconds: 300,
-    })
-      .then(({ response }) => response.products)
-      .catch(() => []),
-  ])
+  const bestSellerTag = await listProductTags({
+    limit: "1",
+    value: BEST_SELLER_TAG,
+  })
+    .then(({ product_tags }) => product_tags[0])
+    .catch(() => undefined)
+
+  const [bestSellerProducts, featuredBlackNuptseProducts, nuptseProducts] =
+    await Promise.all([
+      listProducts({
+        countryCode,
+        queryParams: {
+          limit: 24,
+          ...(bestSellerTag?.id ? { tag_id: [bestSellerTag.id] } : {}),
+          order: "updated_at",
+          fields:
+            "id,title,handle,thumbnail,*images,*collection,*type,*tags,+metadata,*variants.calculated_price",
+        },
+        revalidateSeconds: 300,
+      })
+        .then(({ response }) => response.products)
+        .then((products) => (bestSellerTag ? products : []))
+        .catch(() => []),
+      listProducts({
+        countryCode,
+        queryParams: {
+          limit: 1,
+          handle: FEATURED_BLACK_NUPTSE_HANDLE,
+          fields:
+            "id,title,handle,thumbnail,*images,*variants.calculated_price",
+        },
+        revalidateSeconds: 300,
+      })
+        .then(({ response }) => response.products)
+        .catch(() => []),
+      listProducts({
+        countryCode,
+        queryParams: {
+          limit: 12,
+          q: "nuptse",
+          fields: "id,title,handle,thumbnail",
+        },
+        revalidateSeconds: 300,
+      })
+        .then(({ response }) => response.products)
+        .catch(() => []),
+    ])
 
   const nuptseSlides = nuptseProducts
     .flatMap((product) => {
@@ -190,22 +187,16 @@ export default async function Home(props: Props) {
     })
     .slice(0, 12)
 
-  const puffer =
-    products.find((product) =>
-      `${product.title} ${product.handle}`.toLowerCase().includes("puffer")
-    ) || products[0]
+  const puffer = featuredBlackNuptseProducts[0]
 
   const featuredCard = puffer
     ? getCardFromProduct(puffer, 0, deliveryLabel)
     : fallbackPuffer
   const productCards = [
-    featuredCard,
-    ...products
-      .filter((product) => product.id !== puffer?.id)
-      .slice(0, 3)
-      .map((product, index) => getCardFromProduct(product, index + 1, deliveryLabel)),
-    ...PLACEHOLDER_CARDS,
-  ].slice(0, 4)
+    ...bestSellerProducts.map((product, index) =>
+      getCardFromProduct(product, index, deliveryLabel),
+    ),
+  ]
 
   return (
     <div className="bg-[#F4F2ED] text-[#0A0A0A]">
@@ -312,7 +303,7 @@ export default async function Home(props: Props) {
           eyebrow="What's moving"
           title="Best sellers this month"
           link="View all →"
-          href="/store"
+          href="/store?badge=best-seller"
         />
         <div className="grid grid-cols-2 gap-2.5 small:grid-cols-4 small:gap-4">
           {productCards.map((product) => (
@@ -400,14 +391,15 @@ export default async function Home(props: Props) {
             <p className="text-[15.5px] leading-[1.65] text-[#666]">
               You might have noticed our prices sit lower than traditional
               retail. That&apos;s because our products are UA / replica pieces,
-              sourced through trusted manufacturing partners rather than official
-              retail channels.
+              sourced through trusted manufacturing partners rather than
+              official retail channels.
               <br />
               <br />
-              We&apos;re upfront about that because we&apos;d rather keep things clear
-              from the start. You&apos;re not paying retail markup, brand-store
-              pricing, or extra overheads - you&apos;re paying for a product that
-              gives you the look and feel you want at a more accessible price.
+              We&apos;re upfront about that because we&apos;d rather keep things
+              clear from the start. You&apos;re not paying retail markup,
+              brand-store pricing, or extra overheads - you&apos;re paying for a
+              product that gives you the look and feel you want at a more
+              accessible price.
             </p>
           </div>
           <ul className="flex flex-col gap-4">
@@ -499,7 +491,8 @@ export default async function Home(props: Props) {
           {FEATURED_REVIEWS.map((review) => (
             <div key={review.id} className="rounded-[22px] bg-[#F4F2ED] p-6">
               <p className="text-sm tracking-[0.08em] text-[#C1440E]">
-                {"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}
+                {"★".repeat(review.rating)}
+                {"☆".repeat(5 - review.rating)}
               </p>
               <p className="mt-4 min-h-[96px] text-[14.5px] leading-7 text-[#333]">
                 “{review.text}”
@@ -709,11 +702,11 @@ function ProductCard({ product }: { product: HomeCard }) {
                   status === "low"
                     ? "bg-[#C1440E]"
                     : status === "available"
-                    ? "bg-[#333]"
-                    : "bg-[#333]/30"
+                      ? "bg-[#333]"
+                      : "bg-[#333]/30"
                 }`}
               />
-            )
+            ),
           )}
         </div>
       </LocalizedClientLink>

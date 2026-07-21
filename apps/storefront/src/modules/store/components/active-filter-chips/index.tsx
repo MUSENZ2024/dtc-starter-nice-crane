@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useTransition } from "react"
+import StoreUpdatingIndicator from "@modules/store/components/store-updating-indicator"
 
 const FILTER_KEYS = [
   "stock",
@@ -79,34 +80,40 @@ export default function ActiveFilterChips({
   }
 
   return (
-    <div className="flex flex-wrap items-center gap-1.5" aria-busy={isPending}>
-      <span className="sr-only" role="status" aria-live="polite">
-        {isPending ? "Updating products" : ""}
-      </span>
-      {chips.map(({ key, value }) => (
-        <button
-          key={`${key}-${value}`}
-          type="button"
-          onClick={() => remove(key, value)}
-          className="flex items-center gap-1.5 rounded-full bg-muse-black px-3 py-1.5 text-[11.5px] font-bold text-muse-cream transition hover:bg-muse-orange"
-        >
-          {key === "maxPrice"
-            ? `Under $${value}`
-            : key === "cat"
-            ? categoryLabels[value] ?? formatValue(value)
-            : key === "brand" || key === "line" || key === "badge"
-            ? tagLabels[value] ?? formatValue(value)
-            : formatValue(value)}
-          <span className="text-sm leading-none opacity-70">×</span>
-        </button>
-      ))}
-      <button
-        type="button"
-        onClick={clearAll}
-        className="text-[11.5px] font-bold uppercase tracking-wider text-muse-orange"
+    <>
+      <StoreUpdatingIndicator active={isPending} />
+      <div
+        className="flex flex-wrap items-center gap-1.5"
+        aria-busy={isPending}
       >
-        Clear all
-      </button>
-    </div>
+        <span className="sr-only" role="status" aria-live="polite">
+          {isPending ? "Updating products" : ""}
+        </span>
+        {chips.map(({ key, value }) => (
+          <button
+            key={`${key}-${value}`}
+            type="button"
+            onClick={() => remove(key, value)}
+            className="flex items-center gap-1.5 rounded-full bg-muse-black px-3 py-1.5 text-[11.5px] font-bold text-muse-cream transition hover:bg-muse-orange"
+          >
+            {key === "maxPrice"
+              ? `Under $${value}`
+              : key === "cat"
+              ? categoryLabels[value] ?? formatValue(value)
+              : key === "brand" || key === "line" || key === "badge"
+              ? tagLabels[value] ?? formatValue(value)
+              : formatValue(value)}
+            <span className="text-sm leading-none opacity-70">×</span>
+          </button>
+        ))}
+        <button
+          type="button"
+          onClick={clearAll}
+          className="text-[11.5px] font-bold uppercase tracking-wider text-muse-orange"
+        >
+          Clear all
+        </button>
+      </div>
+    </>
   )
 }

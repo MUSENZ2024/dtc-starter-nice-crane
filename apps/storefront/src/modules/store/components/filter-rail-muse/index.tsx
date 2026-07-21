@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState, useTransition } from "react"
 
 import { HttpTypes } from "@medusajs/types"
+import StoreUpdatingIndicator from "@modules/store/components/store-updating-indicator"
 
 type Brand = { value: string; label: string; count: number }
 type Line = Brand & { brand: string }
@@ -170,289 +171,294 @@ export default function FilterRailMuse({
   }
 
   return (
-    <div
-      className="sticky top-[88px] overflow-hidden rounded-[20px] border border-muse-border bg-muse-cream-warm"
-      aria-busy={isPending}
-    >
-      <div className="flex items-center justify-between border-b border-muse-border px-5 py-4">
-        <span className="text-[13px] font-extrabold uppercase tracking-[0.1em]">
-          {isPending ? "Updating..." : "Filter"}
-        </span>
-        <span className="sr-only" role="status" aria-live="polite">
-          {isPending ? "Updating products" : ""}
-        </span>
-        {hasFilters && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="text-[11.5px] font-bold uppercase tracking-wider text-muse-orange"
-          >
-            Clear all
-          </button>
-        )}
-      </div>
-
-      <FilterGroup title="Availability" defaultOpen>
-        <div className="flex flex-col gap-2">
-          {[
-            {
-              label: "NZ Stock",
-              sub: "Ships in 1-3 days",
-              value: "nz-stock",
-              colour: "bg-muse-green",
-            },
-            {
-              label: "Standard Delivery",
-              sub: "13-16 days",
-              value: "standard-delivery",
-              colour: "bg-muse-orange",
-            },
-          ].map((option) => {
-            const active = activeStock === option.value
-
-            return (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => setParam("stock", active ? null : option.value)}
-                className={`flex items-center justify-between rounded-xl border bg-white px-3.5 py-3 text-left transition ${
-                  active
-                    ? "border-muse-black"
-                    : "border-muse-input hover:border-muse-black"
-                }`}
-              >
-                <span className="flex items-center gap-2.5">
-                  <span className={`h-2 w-2 rounded-full ${option.colour}`} />
-                  <span>
-                    <span className="block text-[12.5px] font-semibold">
-                      {option.label}
-                    </span>
-                    <span className="block text-[10.5px] text-muse-text-muted">
-                      {option.sub}
-                    </span>
-                  </span>
-                </span>
-                <CheckDot active={active} />
-              </button>
-            )
-          })}
+    <>
+      <StoreUpdatingIndicator active={isPending} />
+      <div
+        className="sticky top-[88px] overflow-hidden rounded-[20px] border border-muse-border bg-muse-cream-warm"
+        aria-busy={isPending}
+      >
+        <div className="flex items-center justify-between border-b border-muse-border px-5 py-4">
+          <span className="text-[13px] font-extrabold uppercase tracking-[0.1em]">
+            {isPending ? "Updating..." : "Filter"}
+          </span>
+          <span className="sr-only" role="status" aria-live="polite">
+            {isPending ? "Updating products" : ""}
+          </span>
+          {hasFilters && (
+            <button
+              type="button"
+              onClick={clearAll}
+              className="text-[11.5px] font-bold uppercase tracking-wider text-muse-orange"
+            >
+              Clear all
+            </button>
+          )}
         </div>
-      </FilterGroup>
 
-      <FilterGroup title="Brand" defaultOpen>
-        <div className="flex flex-col gap-1.5">
-          {brands.map((brand) => {
-            const brandLines = lines.filter(
-              (line) => line.brand === brand.value
-            )
-            const brandActive = activeBrands.includes(brand.value)
-            const hasActiveLine = brandLines.some((line) =>
-              activeLines.includes(line.value)
-            )
-            const expanded = brandActive || hasActiveLine
-
-            return (
-              <div key={brand.value} className="rounded-xl bg-white/60">
-                <CheckRow
-                  label={brand.label}
-                  count={brand.count}
-                  active={brandActive}
-                  onClick={() => toggleBrand(brand.value)}
-                  suffix={
-                    brandLines.length ? (expanded ? "▴" : "▾") : undefined
-                  }
-                />
-                {expanded && !!brandLines.length && (
-                  <div className="ml-7 mt-1 flex flex-col gap-1.5 border-l border-muse-border pb-2 pl-3">
-                    {brandLines.map((line) => (
-                      <CheckRow
-                        key={line.value}
-                        label={line.label}
-                        count={line.count}
-                        active={activeLines.includes(line.value)}
-                        onClick={() => toggleLine(line)}
-                        compact
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-      </FilterGroup>
-
-      <FilterGroup title="Size" defaultOpen>
-        <div className="mb-4">
-          <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-muse-text-light">
-            Apparel
-          </p>
-          <div className="grid grid-cols-4 gap-1.5">
-            {apparelSizes.map((size) => {
-              const active = activeSizes.includes(size)
+        <FilterGroup title="Availability" defaultOpen>
+          <div className="flex flex-col gap-2">
+            {[
+              {
+                label: "NZ Stock",
+                sub: "Ships in 1-3 days",
+                value: "nz-stock",
+                colour: "bg-muse-green",
+              },
+              {
+                label: "Standard Delivery",
+                sub: "13-16 days",
+                value: "standard-delivery",
+                colour: "bg-muse-orange",
+              },
+            ].map((option) => {
+              const active = activeStock === option.value
 
               return (
                 <button
-                  key={size}
+                  key={option.value}
                   type="button"
-                  onClick={() => toggleMulti("size", size)}
-                  className={`rounded-lg border py-2.5 text-center text-[11.5px] font-bold transition ${
+                  onClick={() =>
+                    setParam("stock", active ? null : option.value)
+                  }
+                  className={`flex items-center justify-between rounded-xl border bg-white px-3.5 py-3 text-left transition ${
                     active
-                      ? "border-muse-black bg-muse-black text-muse-cream"
-                      : "border-muse-input bg-white text-muse-black hover:border-muse-black"
+                      ? "border-muse-black"
+                      : "border-muse-input hover:border-muse-black"
                   }`}
                 >
-                  {size}
+                  <span className="flex items-center gap-2.5">
+                    <span className={`h-2 w-2 rounded-full ${option.colour}`} />
+                    <span>
+                      <span className="block text-[12.5px] font-semibold">
+                        {option.label}
+                      </span>
+                      <span className="block text-[10.5px] text-muse-text-muted">
+                        {option.sub}
+                      </span>
+                    </span>
+                  </span>
+                  <CheckDot active={active} />
                 </button>
               )
             })}
           </div>
-        </div>
+        </FilterGroup>
 
-        {!!shoeSizeGroups.length && (
-          <div>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <p className="text-[10px] font-black uppercase tracking-[0.12em] text-muse-text-light">
-                Footwear
-              </p>
-              <div className="relative">
-                <select
-                  value={activeShoeGroup}
-                  onChange={(event) => setActiveShoeGroup(event.target.value)}
-                  className="h-8 cursor-pointer appearance-none rounded-full border border-muse-input bg-white pl-4 pr-8 text-[11px] font-bold text-muse-black outline-none transition focus:border-muse-black"
-                  aria-label="Footwear size system"
-                >
-                  {shoeSizeGroups.map((group) => (
-                    <option key={group.label} value={group.label}>
-                      {group.label}
-                    </option>
-                  ))}
-                </select>
-                <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] leading-none text-muse-text-muted">
-                  ▾
-                </span>
+        <FilterGroup title="Brand" defaultOpen>
+          <div className="flex flex-col gap-1.5">
+            {brands.map((brand) => {
+              const brandLines = lines.filter(
+                (line) => line.brand === brand.value
+              )
+              const brandActive = activeBrands.includes(brand.value)
+              const hasActiveLine = brandLines.some((line) =>
+                activeLines.includes(line.value)
+              )
+              const expanded = brandActive || hasActiveLine
+
+              return (
+                <div key={brand.value} className="rounded-xl bg-white/60">
+                  <CheckRow
+                    label={brand.label}
+                    count={brand.count}
+                    active={brandActive}
+                    onClick={() => toggleBrand(brand.value)}
+                    suffix={
+                      brandLines.length ? (expanded ? "▴" : "▾") : undefined
+                    }
+                  />
+                  {expanded && !!brandLines.length && (
+                    <div className="ml-7 mt-1 flex flex-col gap-1.5 border-l border-muse-border pb-2 pl-3">
+                      {brandLines.map((line) => (
+                        <CheckRow
+                          key={line.value}
+                          label={line.label}
+                          count={line.count}
+                          active={activeLines.includes(line.value)}
+                          onClick={() => toggleLine(line)}
+                          compact
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </FilterGroup>
+
+        <FilterGroup title="Size" defaultOpen>
+          <div className="mb-4">
+            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.12em] text-muse-text-light">
+              Apparel
+            </p>
+            <div className="grid grid-cols-4 gap-1.5">
+              {apparelSizes.map((size) => {
+                const active = activeSizes.includes(size)
+
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => toggleMulti("size", size)}
+                    className={`rounded-lg border py-2.5 text-center text-[11.5px] font-bold transition ${
+                      active
+                        ? "border-muse-black bg-muse-black text-muse-cream"
+                        : "border-muse-input bg-white text-muse-black hover:border-muse-black"
+                    }`}
+                  >
+                    {size}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
+          {!!shoeSizeGroups.length && (
+            <div>
+              <div className="mb-2 flex items-center justify-between gap-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-muse-text-light">
+                  Footwear
+                </p>
+                <div className="relative">
+                  <select
+                    value={activeShoeGroup}
+                    onChange={(event) => setActiveShoeGroup(event.target.value)}
+                    className="h-8 cursor-pointer appearance-none rounded-full border border-muse-input bg-white pl-4 pr-8 text-[11px] font-bold text-muse-black outline-none transition focus:border-muse-black"
+                    aria-label="Footwear size system"
+                  >
+                    {shoeSizeGroups.map((group) => (
+                      <option key={group.label} value={group.label}>
+                        {group.label}
+                      </option>
+                    ))}
+                  </select>
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[10px] leading-none text-muse-text-muted">
+                    ▾
+                  </span>
+                </div>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5">
+                {shoeSizeGroups
+                  .find((group) => group.label === activeShoeGroup)
+                  ?.sizes.map((size) => {
+                    const active = activeSizes.includes(size)
+                    const label = size.replace(/^(USM|USW|UK)\s?/, "")
+
+                    return (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => toggleMulti("size", size)}
+                        title={size}
+                        className={`rounded-lg border py-2.5 text-center text-[11.5px] font-bold transition ${
+                          active
+                            ? "border-muse-black bg-muse-black text-muse-cream"
+                            : "border-muse-input bg-white text-muse-black hover:border-muse-black"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    )
+                  })}
               </div>
             </div>
-            <div className="grid grid-cols-4 gap-1.5">
-              {shoeSizeGroups
-                .find((group) => group.label === activeShoeGroup)
-                ?.sizes.map((size) => {
-                  const active = activeSizes.includes(size)
-                  const label = size.replace(/^(USM|USW|UK)\s?/, "")
+          )}
+        </FilterGroup>
 
-                  return (
-                    <button
-                      key={size}
-                      type="button"
-                      onClick={() => toggleMulti("size", size)}
-                      title={size}
-                      className={`rounded-lg border py-2.5 text-center text-[11.5px] font-bold transition ${
-                        active
-                          ? "border-muse-black bg-muse-black text-muse-cream"
-                          : "border-muse-input bg-white text-muse-black hover:border-muse-black"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  )
-                })}
+        {!!categories.length && (
+          <FilterGroup title="Category">
+            <div className="flex flex-col gap-2">
+              {categories.map((category) => (
+                <CheckRow
+                  key={category.id}
+                  label={category.name}
+                  active={activeCats.includes(category.id)}
+                  onClick={() => toggleMulti("cat", category.id)}
+                />
+              ))}
             </div>
-          </div>
+          </FilterGroup>
         )}
-      </FilterGroup>
 
-      {!!categories.length && (
-        <FilterGroup title="Category">
-          <div className="flex flex-col gap-2">
-            {categories.map((category) => (
-              <CheckRow
-                key={category.id}
-                label={category.name}
-                active={activeCats.includes(category.id)}
-                onClick={() => toggleMulti("cat", category.id)}
-              />
-            ))}
+        {!!badges.length && (
+          <FilterGroup title="Drop / Status">
+            <div className="flex flex-col gap-2">
+              {badges.map((badge) => (
+                <CheckRow
+                  key={badge.value}
+                  label={badge.label}
+                  count={badge.count}
+                  active={activeBadges.includes(badge.value)}
+                  onClick={() => toggleMulti("badge", badge.value)}
+                />
+              ))}
+            </div>
+          </FilterGroup>
+        )}
+
+        <FilterGroup title="Colour">
+          <div className="flex flex-wrap gap-2">
+            {colours.map((colour) => {
+              const active = activeColours.includes(colour.value)
+
+              return (
+                <button
+                  key={colour.value}
+                  type="button"
+                  title={colour.value}
+                  aria-label={colour.value}
+                  onClick={() => toggleMulti("colour", colour.value)}
+                  className={`h-7 w-7 rounded-full transition hover:scale-110 ${
+                    active ? "ring-2 ring-muse-black ring-offset-2" : ""
+                  } ${colour.border ? "border border-muse-border" : ""}`}
+                  style={{ backgroundColor: colour.hex }}
+                />
+              )
+            })}
           </div>
         </FilterGroup>
-      )}
 
-      {!!badges.length && (
-        <FilterGroup title="Drop / Status">
-          <div className="flex flex-col gap-2">
-            {badges.map((badge) => (
-              <CheckRow
-                key={badge.value}
-                label={badge.label}
-                count={badge.count}
-                active={activeBadges.includes(badge.value)}
-                onClick={() => toggleMulti("badge", badge.value)}
-              />
-            ))}
-          </div>
-        </FilterGroup>
-      )}
+        <FilterGroup title="Price">
+          <div className="flex flex-col gap-1.5">
+            {[
+              { label: "Under $100", value: "100" },
+              { label: "Under $150", value: "150" },
+              { label: "Under $200", value: "200" },
+              { label: "Under $250", value: "250" },
+            ].map((range) => {
+              const active = maxPrice === range.value
 
-      <FilterGroup title="Colour">
-        <div className="flex flex-wrap gap-2">
-          {colours.map((colour) => {
-            const active = activeColours.includes(colour.value)
-
-            return (
-              <button
-                key={colour.value}
-                type="button"
-                title={colour.value}
-                aria-label={colour.value}
-                onClick={() => toggleMulti("colour", colour.value)}
-                className={`h-7 w-7 rounded-full transition hover:scale-110 ${
-                  active ? "ring-2 ring-muse-black ring-offset-2" : ""
-                } ${colour.border ? "border border-muse-border" : ""}`}
-                style={{ backgroundColor: colour.hex }}
-              />
-            )
-          })}
-        </div>
-      </FilterGroup>
-
-      <FilterGroup title="Price">
-        <div className="flex flex-col gap-1.5">
-          {[
-            { label: "Under $100", value: "100" },
-            { label: "Under $150", value: "150" },
-            { label: "Under $200", value: "200" },
-            { label: "Under $250", value: "250" },
-          ].map((range) => {
-            const active = maxPrice === range.value
-
-            return (
-              <button
-                key={range.value}
-                type="button"
-                onClick={() =>
-                  setParam("maxPrice", active ? null : range.value)
-                }
-                className={`flex items-center gap-2.5 py-1 text-[12.5px] font-medium transition ${
-                  active
-                    ? "font-bold text-muse-black"
-                    : "text-muse-text-muted hover:text-muse-black"
-                }`}
-              >
-                <span
-                  className={`flex h-4 w-4 items-center justify-center rounded-full border ${
-                    active ? "border-muse-black" : "border-muse-input"
+              return (
+                <button
+                  key={range.value}
+                  type="button"
+                  onClick={() =>
+                    setParam("maxPrice", active ? null : range.value)
+                  }
+                  className={`flex items-center gap-2.5 py-1 text-[12.5px] font-medium transition ${
+                    active
+                      ? "font-bold text-muse-black"
+                      : "text-muse-text-muted hover:text-muse-black"
                   }`}
                 >
-                  {active && (
-                    <span className="block h-2 w-2 rounded-full bg-muse-black" />
-                  )}
-                </span>
-                {range.label}
-              </button>
-            )
-          })}
-        </div>
-      </FilterGroup>
-    </div>
+                  <span
+                    className={`flex h-4 w-4 items-center justify-center rounded-full border ${
+                      active ? "border-muse-black" : "border-muse-input"
+                    }`}
+                  >
+                    {active && (
+                      <span className="block h-2 w-2 rounded-full bg-muse-black" />
+                    )}
+                  </span>
+                  {range.label}
+                </button>
+              )
+            })}
+          </div>
+        </FilterGroup>
+      </div>
+    </>
   )
 }
 

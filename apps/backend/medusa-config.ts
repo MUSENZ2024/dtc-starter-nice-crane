@@ -34,6 +34,9 @@ module.exports = defineConfig({
   },
   modules: [
     {
+      resolve: "./src/modules/abandoned-cart",
+    },
+    {
       resolve: "./src/modules/product-review",
     },
     {

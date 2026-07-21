@@ -5,6 +5,7 @@ import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getRecommendedProducts } from "@lib/util/product-recommendations"
 import { HttpTypes } from "@medusajs/types"
 import CompleteTheFitCard from "./quick-add-card"
+import FreeDeliveryMessage from "./free-delivery-message"
 
 type Props = {
   product: HttpTypes.StoreProduct
@@ -12,7 +13,6 @@ type Props = {
 }
 
 const FREE_SHIPPING_THRESHOLD = 200
-const CLOSE_TO_FREE_SHIPPING = 70
 
 export default async function CompleteTheFit({ product, countryCode }: Props) {
   const [productsResponse, cart] = await Promise.all([
@@ -49,11 +49,7 @@ export default async function CompleteTheFit({ product, countryCode }: Props) {
             Complete the fit
           </h2>
         </div>
-        {cartGap && cartGap > 0 && cartGap <= CLOSE_TO_FREE_SHIPPING ? (
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#C1440E]">
-            Add NZ${cartGap.toFixed(0)} for free delivery
-          </p>
-        ) : null}
+        <FreeDeliveryMessage initialCartGap={cartGap} />
       </div>
 
       <div className="grid grid-cols-2 gap-2.5 small:grid-cols-4 small:gap-4">
