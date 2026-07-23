@@ -2,8 +2,10 @@ import { Metadata } from "next"
 import Image from "next/image"
 import { HttpTypes } from "@medusajs/types"
 
+import { listCollections } from "@lib/data/collections"
 import { listProducts } from "@lib/data/products"
 import { listProductTags } from "@lib/data/product-tags"
+import { listProductTypes } from "@lib/data/product-types"
 import { getDeliveredByLabel } from "@lib/util/delivery-estimate"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
@@ -76,7 +78,7 @@ const FEATURED_REVIEWS = allWrittenMuseReviews
 
 const FEATURED_BLACK_NUPTSE_HANDLE = "nuptse-jacket-black"
 const BEST_SELLER_TAG = "best-seller"
-const NZ_STOCK_TAG = "nzstock"
+const NZ_STOCK_ORGANIZATION_VALUE = "NZ Stock"
 
 const getPrimaryImage = (product?: HttpTypes.StoreProduct | null) =>
   product?.thumbnail || product?.images?.[0]?.url || null
@@ -132,24 +134,33 @@ export default async function Home(props: Props) {
     colours: [],
   }
 
-  const [bestSellerTag, nzStockTag] = await Promise.all([
-    listProductTags({
-      limit: "1",
-      value: BEST_SELLER_TAG,
-    })
-      .then(({ product_tags }) => product_tags[0])
-      .catch(() => undefined),
-    listProductTags({
-      limit: "1",
-      value: NZ_STOCK_TAG,
-    })
-      .then(({ product_tags }) => product_tags[0])
-      .catch(() => undefined),
-  ])
+  const [bestSellerTag, collectionsResult, productTypesResult] =
+    await Promise.all([
+      listProductTags({
+        limit: "1",
+        value: BEST_SELLER_TAG,
+      })
+        .then(({ product_tags }) => product_tags[0])
+        .catch(() => undefined),
+      listCollections().catch(() => ({ collections: [], count: 0 })),
+      listProductTypes({
+        limit: "1",
+        value: NZ_STOCK_ORGANIZATION_VALUE,
+      }).catch(() => ({ product_types: [], count: 0 })),
+    ])
+
+  const nzStockCollection = collectionsResult.collections.find(
+    (collection) =>
+      collection.title?.trim().toLowerCase() ===
+        NZ_STOCK_ORGANIZATION_VALUE.toLowerCase() ||
+      collection.handle?.trim().toLowerCase() === "nz-stock"
+  )
+  const nzStockProductType = productTypesResult.product_types[0]
 
   const [
     bestSellerProducts,
-    nzStockProducts,
+    nzStockCollectionProducts,
+    nzStockTypeProducts,
     featuredBlackNuptseProducts,
     nuptseProducts,
   ] = await Promise.all([
@@ -167,20 +178,36 @@ export default async function Home(props: Props) {
       .then(({ response }) => response.products)
       .then((products) => (bestSellerTag ? products : []))
       .catch(() => []),
-    listProducts({
-      countryCode,
-      queryParams: {
-        limit: 24,
-        ...(nzStockTag?.id ? { tag_id: [nzStockTag.id] } : {}),
-        order: "updated_at",
-        fields:
-          "id,title,handle,thumbnail,*images,*collection,*type,*options,*variants.options,*tags,+metadata,*variants.calculated_price",
-      },
-      revalidateSeconds: 300,
-    })
-      .then(({ response }) => response.products)
-      .then((products) => (nzStockTag ? products : []))
-      .catch(() => []),
+    nzStockCollection?.id
+      ? listProducts({
+          countryCode,
+          queryParams: {
+            limit: 24,
+            collection_id: [nzStockCollection.id],
+            order: "updated_at",
+            fields:
+              "id,title,handle,thumbnail,*images,*collection,*type,*options,*variants.options,*tags,+metadata,*variants.calculated_price",
+          },
+          revalidateSeconds: 300,
+        })
+          .then(({ response }) => response.products)
+          .catch(() => [])
+      : Promise.resolve([]),
+    nzStockProductType?.id
+      ? listProducts({
+          countryCode,
+          queryParams: {
+            limit: 24,
+            type_id: [nzStockProductType.id],
+            order: "updated_at",
+            fields:
+              "id,title,handle,thumbnail,*images,*collection,*type,*options,*variants.options,*tags,+metadata,*variants.calculated_price",
+          },
+          revalidateSeconds: 300,
+        })
+          .then(({ response }) => response.products)
+          .catch(() => [])
+      : Promise.resolve([]),
     listProducts({
       countryCode,
       queryParams: {
@@ -222,6 +249,14 @@ export default async function Home(props: Props) {
       getCardFromProduct(product, index, deliveryLabel)
     ),
   ]
+  const nzStockProducts = Array.from(
+    new Map(
+      [...nzStockCollectionProducts, ...nzStockTypeProducts].map((product) => [
+        product.id,
+        product,
+      ])
+    ).values()
+  )
   const nzStockCards = nzStockProducts.map((product, index) =>
     getCardFromProduct(product, index, deliveryLabel)
   )
