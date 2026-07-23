@@ -2,6 +2,7 @@
 
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
+import { getProductColourSwatches } from "@lib/util/product-colours"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
 import Image from "next/image"
@@ -51,28 +52,6 @@ type Props = {
 
 const isSizeOption = (title?: string | null) =>
   (title ?? "").toLowerCase() === "size"
-
-const isColourOption = (title?: string | null) =>
-  ["color", "colour"].includes((title ?? "").trim().toLowerCase())
-
-const colourMap: Record<string, string> = {
-  black: "#111111",
-  blue: "#2563EB",
-  brown: "#795548",
-  cream: "#F2E8D5",
-  gold: "#C9A227",
-  green: "#2E7D32",
-  grey: "#9E9E9E",
-  gray: "#9E9E9E",
-  orange: "#E66A21",
-  pink: "#E8A0B8",
-  purple: "#7E57C2",
-  red: "#C62828",
-  silver: "#B0B4BA",
-  tan: "#C49A6C",
-  white: "#FFFFFF",
-  yellow: "#E6C928",
-}
 
 const getVariantSize = (
   variant: ProductCardMuseVariant,
@@ -146,7 +125,7 @@ export default function ProductCardMuse({
   const promotionalBadge = product.promotionalBadge
   const sizes = getSizes(product)
   const hasSizes = sizes.length > 0
-  const colours = getColours(product)
+  const colours = getProductColourSwatches(product)
   const hoverImage = product.images?.find(
     (image) => image.url && image.url !== product.thumbnail
   )?.url
@@ -356,42 +335,6 @@ export default function ProductCardMuse({
       </LocalizedClientLink>
     </div>
   )
-}
-
-function getColours(product: ProductCardMuseProduct) {
-  const colourOptionId = product.options?.find((option) =>
-    isColourOption(option.title),
-  )?.id
-
-  if (!colourOptionId) {
-    return []
-  }
-
-  const colours = new Map<string, { label: string; hex: string }>()
-
-  product.variants?.forEach((variant) => {
-    const colour = variant.options?.find((option) => {
-      const nestedTitle = option.option?.title
-
-      return isColourOption(nestedTitle) || option.option_id === colourOptionId
-    })?.value
-
-    if (!colour) {
-      return
-    }
-
-    const normalized = colour.trim().toLowerCase()
-    const mappedColour = Object.entries(colourMap).find(([name]) =>
-      normalized.includes(name),
-    )?.[1]
-
-    colours.set(normalized, {
-      label: colour,
-      hex: mappedColour ?? "#D5D2CC",
-    })
-  })
-
-  return Array.from(colours.values())
 }
 
 function getSizes(product: ProductCardMuseProduct) {

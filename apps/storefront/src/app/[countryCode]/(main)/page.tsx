@@ -7,6 +7,7 @@ import { listProductTags } from "@lib/data/product-tags"
 import { getDeliveredByLabel } from "@lib/util/delivery-estimate"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { getProductColourSwatches } from "@lib/util/product-colours"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
 import {
@@ -43,6 +44,7 @@ type HomeCard = {
   hoverImage?: string | null
   placeholder: string
   eta: string
+  colours: { label: string; hex: string }[]
 }
 
 const HOW_STEPS = [
@@ -72,14 +74,9 @@ const FEATURED_REVIEWS = allWrittenMuseReviews
   .filter((review) => review.rating === 5)
   .slice(0, 3)
 
-const NZ_STOCK_PLACEHOLDERS = [
-  ["01", "Fast-moving sizes", "NZ Stock module placeholder"],
-  ["02", "Footwear drop", "Coming after import"],
-  ["03", "Outerwear restock", "Coming after import"],
-]
-
 const FEATURED_BLACK_NUPTSE_HANDLE = "nuptse-jacket-black"
 const BEST_SELLER_TAG = "best-seller"
+const NZ_STOCK_TAG = "nzstock"
 
 const getPrimaryImage = (product?: HttpTypes.StoreProduct | null) =>
   product?.thumbnail || product?.images?.[0]?.url || null
@@ -116,6 +113,7 @@ const getCardFromProduct = (
     hoverImage: getHoverImage(product),
     placeholder: String(index + 1).padStart(2, "0"),
     eta: fulfilment.deliveryLabel || deliveryLabel,
+    colours: getProductColourSwatches(product),
   }
 }
 
@@ -131,55 +129,81 @@ export default async function Home(props: Props) {
     href: `/products/${FEATURED_BLACK_NUPTSE_HANDLE}`,
     placeholder: "01",
     eta: deliveryLabel,
+    colours: [],
   }
 
-  const bestSellerTag = await listProductTags({
-    limit: "1",
-    value: BEST_SELLER_TAG,
-  })
-    .then(({ product_tags }) => product_tags[0])
-    .catch(() => undefined)
+  const [bestSellerTag, nzStockTag] = await Promise.all([
+    listProductTags({
+      limit: "1",
+      value: BEST_SELLER_TAG,
+    })
+      .then(({ product_tags }) => product_tags[0])
+      .catch(() => undefined),
+    listProductTags({
+      limit: "1",
+      value: NZ_STOCK_TAG,
+    })
+      .then(({ product_tags }) => product_tags[0])
+      .catch(() => undefined),
+  ])
 
-  const [bestSellerProducts, featuredBlackNuptseProducts, nuptseProducts] =
-    await Promise.all([
-      listProducts({
-        countryCode,
-        queryParams: {
-          limit: 24,
-          ...(bestSellerTag?.id ? { tag_id: [bestSellerTag.id] } : {}),
-          order: "updated_at",
-          fields:
-            "id,title,handle,thumbnail,*images,*collection,*type,*tags,+metadata,*variants.calculated_price",
-        },
-        revalidateSeconds: 300,
-      })
-        .then(({ response }) => response.products)
-        .then((products) => (bestSellerTag ? products : []))
-        .catch(() => []),
-      listProducts({
-        countryCode,
-        queryParams: {
-          limit: 1,
-          handle: FEATURED_BLACK_NUPTSE_HANDLE,
-          fields:
-            "id,title,handle,thumbnail,*images,*variants.calculated_price",
-        },
-        revalidateSeconds: 300,
-      })
-        .then(({ response }) => response.products)
-        .catch(() => []),
-      listProducts({
-        countryCode,
-        queryParams: {
-          limit: 12,
-          q: "nuptse",
-          fields: "id,title,handle,thumbnail",
-        },
-        revalidateSeconds: 300,
-      })
-        .then(({ response }) => response.products)
-        .catch(() => []),
-    ])
+  const [
+    bestSellerProducts,
+    nzStockProducts,
+    featuredBlackNuptseProducts,
+    nuptseProducts,
+  ] = await Promise.all([
+    listProducts({
+      countryCode,
+      queryParams: {
+        limit: 24,
+        ...(bestSellerTag?.id ? { tag_id: [bestSellerTag.id] } : {}),
+        order: "updated_at",
+        fields:
+          "id,title,handle,thumbnail,*images,*collection,*type,*options,*variants.options,*tags,+metadata,*variants.calculated_price",
+      },
+      revalidateSeconds: 300,
+    })
+      .then(({ response }) => response.products)
+      .then((products) => (bestSellerTag ? products : []))
+      .catch(() => []),
+    listProducts({
+      countryCode,
+      queryParams: {
+        limit: 24,
+        ...(nzStockTag?.id ? { tag_id: [nzStockTag.id] } : {}),
+        order: "updated_at",
+        fields:
+          "id,title,handle,thumbnail,*images,*collection,*type,*options,*variants.options,*tags,+metadata,*variants.calculated_price",
+      },
+      revalidateSeconds: 300,
+    })
+      .then(({ response }) => response.products)
+      .then((products) => (nzStockTag ? products : []))
+      .catch(() => []),
+    listProducts({
+      countryCode,
+      queryParams: {
+        limit: 1,
+        handle: FEATURED_BLACK_NUPTSE_HANDLE,
+        fields: "id,title,handle,thumbnail,*images,*variants.calculated_price",
+      },
+      revalidateSeconds: 300,
+    })
+      .then(({ response }) => response.products)
+      .catch(() => []),
+    listProducts({
+      countryCode,
+      queryParams: {
+        limit: 12,
+        q: "nuptse",
+        fields: "id,title,handle,thumbnail",
+      },
+      revalidateSeconds: 300,
+    })
+      .then(({ response }) => response.products)
+      .catch(() => []),
+  ])
 
   const nuptseSlides = nuptseProducts
     .flatMap((product) => {
@@ -198,6 +222,9 @@ export default async function Home(props: Props) {
       getCardFromProduct(product, index, deliveryLabel)
     ),
   ]
+  const nzStockCards = nzStockProducts.map((product, index) =>
+    getCardFromProduct(product, index, deliveryLabel)
+  )
 
   return (
     <div className="bg-[#F4F2ED] text-[#0A0A0A]">
@@ -442,27 +469,29 @@ export default async function Home(props: Props) {
         </div>
       </section>
 
-      <section className="mx-auto mb-20 max-w-[1320px] px-[18px] small:px-8">
-        <div className="mb-8">
-          <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1F7A3A]">
-            NZ Stock
-          </p>
-          <h2 className="mt-2 text-[34px] font-black leading-[0.98] tracking-[-0.045em] small:text-[52px]">
-            Fast-shipping slots for future stock.
-          </h2>
-        </div>
-        <div className="grid gap-3 small:grid-cols-3">
-          {NZ_STOCK_PLACEHOLDERS.map(([num, title, body]) => (
-            <div key={num} className="rounded-[26px] bg-[#F8F7F4] p-5">
-              <div className="mb-4 flex aspect-[1.1] items-center justify-center rounded-[20px] bg-[#E8E6E0] text-6xl font-black tracking-[-0.08em] text-black/10">
-                {num}
-              </div>
-              <p className="text-lg font-black tracking-[-0.03em]">{title}</p>
-              <p className="mt-1 text-sm text-[#666]">{body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      {nzStockCards.length > 0 && (
+        <section
+          id="nz-stock"
+          className="mx-auto mb-20 max-w-[1320px] px-[18px] small:px-8"
+        >
+          <div className="mb-8">
+            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1F7A3A]">
+              NZ Stock
+            </p>
+            <h2 className="mt-2 text-[34px] font-black leading-[0.98] tracking-[-0.045em] small:text-[52px]">
+              Fast-shipping slots for future stock.
+            </h2>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 small:grid-cols-3 small:gap-4">
+            {nzStockCards.map((product) => (
+              <ProductCard
+                key={`${product.placeholder}-${product.href}`}
+                product={product}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <RealProofSection />
 
@@ -685,22 +714,19 @@ function ProductCard({ product }: { product: HomeCard }) {
           )}
         </div>
         <p className="text-[11px] text-[#777]">{product.eta}</p>
-        <div className="mt-2 flex gap-1">
-          {["available", "available", "available", "low", "available", ""].map(
-            (status, index) => (
+        {product.colours.length > 1 && (
+          <div className="mt-2 flex gap-1.5" aria-label="Available colours">
+            {product.colours.slice(0, 8).map(({ label, hex }) => (
               <span
-                key={index}
-                className={`h-2 w-2 rounded-full ${
-                  status === "low"
-                    ? "bg-[#C1440E]"
-                    : status === "available"
-                    ? "bg-[#333]"
-                    : "bg-[#333]/30"
-                }`}
+                key={label}
+                title={label}
+                aria-label={label}
+                className="h-2.5 w-2.5 rounded-full border border-black/15"
+                style={{ backgroundColor: hex }}
               />
-            )
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </LocalizedClientLink>
     </div>
   )
