@@ -5,7 +5,7 @@ import { Elements } from "@stripe/react-stripe-js"
 import { HttpTypes } from "@medusajs/types"
 import { refreshPaymentSession } from "@lib/data/cart"
 import { useRouter } from "next/navigation"
-import { createContext, useEffect, useState } from "react"
+import { createContext, useEffect, useMemo, useState } from "react"
 
 type StripeWrapperProps = {
   paymentSession: HttpTypes.StorePaymentSession
@@ -31,33 +31,36 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
   const [sessionError, setSessionError] = useState<string | null>(null)
   const clientSecret = paymentSession.data?.client_secret as string | undefined
 
-  const options: StripeElementsOptions = {
-    clientSecret,
-    appearance: {
-      theme: "stripe",
-      variables: {
-        borderRadius: "14px",
-        colorBackground: "#FFFFFF",
-        colorDanger: "#C1440E",
-        colorPrimary: "#0A0A0A",
-        colorText: "#0A0A0A",
-        colorTextSecondary: "#6F6A64",
-        fontFamily: "Inter, system-ui, sans-serif",
-        fontSizeBase: "16px",
-        spacingUnit: "4px",
-      },
-      rules: {
-        ".Input": {
-          border: "1px solid #D5D2CC",
-          boxShadow: "none",
+  const options = useMemo<StripeElementsOptions>(
+    () => ({
+      clientSecret,
+      appearance: {
+        theme: "stripe",
+        variables: {
+          borderRadius: "14px",
+          colorBackground: "#FFFFFF",
+          colorDanger: "#C1440E",
+          colorPrimary: "#0A0A0A",
+          colorText: "#0A0A0A",
+          colorTextSecondary: "#6F6A64",
+          fontFamily: "Inter, system-ui, sans-serif",
+          fontSizeBase: "16px",
+          spacingUnit: "4px",
         },
-        ".Input:focus": {
-          border: "1px solid #0A0A0A",
-          boxShadow: "0 0 0 2px rgba(10, 10, 10, 0.06)",
+        rules: {
+          ".Input": {
+            border: "1px solid #D5D2CC",
+            boxShadow: "none",
+          },
+          ".Input:focus": {
+            border: "1px solid #0A0A0A",
+            boxShadow: "0 0 0 2px rgba(10, 10, 10, 0.06)",
+          },
         },
       },
-    },
-  }
+    }),
+    [clientSecret]
+  )
 
   useEffect(() => {
     let active = true

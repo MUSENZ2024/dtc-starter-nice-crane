@@ -133,6 +133,9 @@ function ExpressPayStripe({
   const elements = useElements()
   const [isReady, setIsReady] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const clientSecret = cart.payment_collection?.payment_sessions?.find(
+    (session) => session.status === "pending" && session.data?.client_secret
+  )?.data.client_secret as string | undefined
   const shippingRates = useMemo(
     () => shippingMethods.map(toStripeShippingRate),
     [shippingMethods]
@@ -202,7 +205,10 @@ function ExpressPayStripe({
               event.error?.message ||
                 "Express checkout is unavailable in this browser. Continue with the payment methods below."
             )
-              setIsReady(false)
+            setIsReady(false)
+          }}
+          onCancel={() => {
+            setError(null)
           }}
           onShippingAddressChange={(
             event: StripeExpressCheckoutElementShippingAddressChangeEvent
@@ -263,28 +269,85 @@ function ExpressPayStripe({
               return
             }
 
-            const { error: confirmError } = await stripe.confirmPayment({
-              elements,
-              redirect: "if_required",
-            })
+            try {
+              const { error: submitError } = await elements.submit()
 
-            if (confirmError) {
-              setError(confirmError.message || "Payment could not be confirmed.")
-              event.paymentFailed({
-                reason: "invalid_payment_data",
-                message: confirmError.message || "Payment could not be confirmed.",
-              })
-              return
-            }
+              if (submitError) {
+                const message =
+                  submitError.message || "Please check your payment details."
+                setError(message)
+                event.paymentFailed({
+                  reason: "invalid_payment_data",
+                  message,
+                })
+                return
+              }
 
-            await placeOrder().catch((err) => {
-              const message = err instanceof Error ? err.message : String(err)
+              if (!clientSecret) {
+                const message =
+                  "The secure payment session expired. Please refresh and try again."
+                setError(message)
+                event.paymentFailed({
+                  reason: "fail",
+                  message,
+                })
+                return
+              }
+
+              window.sessionStorage.setItem(
+                "muse:lastStripePaymentClientSecret",
+                clientSecret
+              )
+
+              const { error: confirmError, paymentIntent } =
+                await stripe.confirmPayment({
+                  elements,
+                  clientSecret,
+                  confirmParams: {
+                    return_url: `${window.location.origin}/${
+                      cart.shipping_address?.country_code || "nz"
+                    }/checkout/payment-return?cart_id=${cart.id}`,
+                  },
+                  redirect: "if_required",
+                })
+
+              if (confirmError) {
+                const message =
+                  confirmError.message || "Payment could not be confirmed."
+                setError(message)
+                event.paymentFailed({
+                  reason: "invalid_payment_data",
+                  message,
+                })
+                return
+              }
+
+              if (
+                paymentIntent &&
+                !["requires_capture", "succeeded"].includes(paymentIntent.status)
+              ) {
+                const message =
+                  "Payment is still being processed. Please wait and try again."
+                setError(message)
+                event.paymentFailed({
+                  reason: "fail",
+                  message,
+                })
+                return
+              }
+
+              await placeOrder()
+            } catch (err) {
+              const message =
+                err instanceof Error
+                  ? err.message
+                  : "Payment could not be completed. Please try again."
               setError(message)
               event.paymentFailed({
                 reason: "fail",
                 message,
               })
-            })
+            }
           }}
         />
       </div>
