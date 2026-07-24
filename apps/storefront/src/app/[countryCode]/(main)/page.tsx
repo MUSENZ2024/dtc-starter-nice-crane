@@ -22,11 +22,15 @@ import InstagramFeed from "./instagram-feed"
 import NuptseSlideshow from "./nuptse-slideshow"
 import RealProofSection from "./real-proof-section"
 import OpenMarketingDialogButton from "@modules/marketing/components/open-marketing-dialog-button"
+import { getBaseURL } from "@lib/util/env"
 
 export const metadata: Metadata = {
-  title: "MUSE NZ | Retro Puffers & Runners",
+  title: "Affordable Sneakers, Shoes & Streetwear",
   description:
-    "Retro puffers and runners curated for NZ, with Standard Delivery, live tracking, and 30-day money back support.",
+    "Shop affordable sneakers, discounted shoes, retro runners, puffers and streetwear at MUSE NZ, with NZ Stock and tracked delivery across New Zealand.",
+  alternates: {
+    canonical: "/",
+  },
 }
 
 type Props = {
@@ -122,6 +126,39 @@ const getCardFromProduct = (
 export default async function Home(props: Props) {
   const { countryCode } = await props.params
   const deliveryLabel = getDeliveredByLabel()
+  const baseUrl = getBaseURL()
+  const organizationJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "OnlineStore",
+    "@id": `${baseUrl}/#organization`,
+    name: "MUSE NZ",
+    alternateName: "MUSE",
+    url: baseUrl,
+    logo: `${baseUrl}/muse-logo-long.png`,
+    image: `${baseUrl}/opengraph-image`,
+    description:
+      "New Zealand online store for affordable sneakers, shoes, puffers and streetwear.",
+    areaServed: {
+      "@type": "Country",
+      name: "New Zealand",
+    },
+    sameAs: [
+      "https://www.instagram.com/muse.nz/",
+      "https://www.facebook.com/musenz/",
+    ],
+  }
+  const websiteJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    "@id": `${baseUrl}/#website`,
+    url: baseUrl,
+    name: "MUSE NZ",
+    alternateName: "MUSE New Zealand",
+    publisher: {
+      "@id": `${baseUrl}/#organization`,
+    },
+    inLanguage: "en-NZ",
+  }
   const fallbackPuffer: HomeCard = {
     id: "home-fallback-puffer",
     title: "TNF 1996 Retro Nuptse - Black",
@@ -257,12 +294,18 @@ export default async function Home(props: Props) {
       ])
     ).values()
   )
-  const nzStockCards = nzStockProducts.map((product, index) =>
-    getCardFromProduct(product, index, deliveryLabel)
-  )
+  const nzStockCards = nzStockProducts
+    .slice(0, 6)
+    .map((product, index) => getCardFromProduct(product, index, deliveryLabel))
 
   return (
     <div className="bg-[#F4F2ED] text-[#0A0A0A]">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([organizationJsonLd, websiteJsonLd]),
+        }}
+      />
       <section className="mx-auto grid max-w-[1320px] gap-9 px-[18px] py-10 small:grid-cols-[0.9fr_1.1fr] small:gap-14 small:px-8 small:py-16">
         <div className="flex flex-col justify-center">
           <p className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#999]">
@@ -509,20 +552,21 @@ export default async function Home(props: Props) {
           id="nz-stock"
           className="mx-auto mb-20 max-w-[1320px] px-[18px] small:px-8"
         >
-          <div className="mb-8">
-            <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#1F7A3A]">
-              NZ Stock
-            </p>
-            <h2 className="mt-2 text-[34px] font-black leading-[0.98] tracking-[-0.045em] small:text-[52px]">
-              Fast-shipping slots for future stock.
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 gap-2.5 small:grid-cols-3 small:gap-4">
+          <SectionHead
+            eyebrow="NZ Stock"
+            title="Fast shipping, stocked in NZ."
+            link="View all →"
+            href="/store?stock=nz-stock"
+            green
+          />
+          <div className="no-scrollbar -mx-[18px] flex snap-x snap-mandatory gap-2.5 overflow-x-auto px-[18px] pb-3 small:mx-0 small:gap-4 small:px-0">
             {nzStockCards.map((product) => (
-              <ProductCard
+              <div
                 key={`${product.placeholder}-${product.href}`}
-                product={product}
-              />
+                className="w-[calc((100vw-46px)/2)] shrink-0 snap-start small:w-[calc((100%-48px)/4)]"
+              >
+                <ProductCard product={product} />
+              </div>
             ))}
           </div>
         </section>

@@ -6,9 +6,12 @@ import { listProductTags } from "@lib/data/product-tags"
 import StoreTemplateMuse from "@modules/store/templates/store-template-muse"
 
 export const metadata: Metadata = {
-  title: "Shop All - MUSE NZ",
+  title: "Shop Affordable Sneakers, Shoes & Streetwear",
   description:
-    "Retro footwear and outerwear. NZ Stock ships in 1-3 days. Standard Delivery in 13-16 days.",
+    "Browse affordable sneakers, discounted shoes, retro runners, puffers and streetwear at MUSE NZ. Shop NZ Stock or tracked Standard Delivery.",
+  alternates: {
+    canonical: "/store",
+  },
 }
 
 type Params = {

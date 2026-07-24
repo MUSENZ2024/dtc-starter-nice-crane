@@ -6,10 +6,10 @@ describe("first-time welcome flow", () => {
   })
 
   it.each([
-    ["footwear", "The footwear MUSE customers keep coming back for"],
-    ["outerwear", "Outerwear worth knowing about"],
-    ["restocks", "Your next-size restock starts here"],
-    ["everything", "The MUSE pieces worth knowing about"],
+    ["footwear", "Four MUSE pieces worth knowing about"],
+    ["outerwear", "Four MUSE pieces worth knowing about"],
+    ["restocks", "Four MUSE pieces worth knowing about"],
+    ["everything", "Four MUSE pieces worth knowing about"],
   ])("selects the %s discovery subject", (preference, subject) => expect(discoverySubject(preference)).toBe(subject))
 
 })

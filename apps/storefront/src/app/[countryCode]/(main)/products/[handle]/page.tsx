@@ -95,19 +95,27 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
+  const description =
+    product.description ||
+    `Shop ${product.title} at MUSE NZ. Affordable sneakers, shoes and streetwear with tracked delivery across New Zealand.`
+
   return {
-    title: `${product.title} | MUSE NZ`,
-    description:
-      product.description ||
-      `Shop ${product.title} at MUSE NZ with tracked New Zealand delivery.`,
+    title: product.title,
+    description,
     alternates: {
       canonical: `/products/${handle}`,
     },
     openGraph: {
+      type: "website",
+      url: `/products/${handle}`,
       title: `${product.title} | MUSE NZ`,
-      description:
-        product.description ||
-        `Shop ${product.title} at MUSE NZ with tracked New Zealand delivery.`,
+      description,
+      images: product.thumbnail ? [product.thumbnail] : [],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: `${product.title} | MUSE NZ`,
+      description,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
   }
@@ -157,23 +165,57 @@ export default async function ProductPage(props: Props) {
     description: pricedProduct.description || pricedProduct.title,
     image: pricedProduct.images?.map((image) => image.url).filter(Boolean),
     sku: pricedProduct.variants?.[0]?.sku || pricedProduct.id,
-    url: `${getBaseURL()}/${params.countryCode}/products/${params.handle}`,
+    brand: {
+      "@type": "Brand",
+      name:
+        (pricedProduct.metadata?.brand as string | undefined) ||
+        pricedProduct.collection?.title ||
+        "MUSE NZ",
+    },
+    url: `${getBaseURL()}/products/${params.handle}`,
     offers: cheapestPrice
       ? {
           "@type": "Offer",
           price: cheapestPrice.calculated_price_number,
           priceCurrency: cheapestPrice.currency_code.toUpperCase(),
           availability: `https://schema.org/${inStock ? "InStock" : "OutOfStock"}`,
-          url: `${getBaseURL()}/${params.countryCode}/products/${params.handle}`,
+          itemCondition: "https://schema.org/NewCondition",
+          url: `${getBaseURL()}/products/${params.handle}`,
         }
       : undefined,
+  }
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    itemListElement: [
+      {
+        "@type": "ListItem",
+        position: 1,
+        name: "Home",
+        item: getBaseURL(),
+      },
+      {
+        "@type": "ListItem",
+        position: 2,
+        name: "Shop",
+        item: `${getBaseURL()}/store`,
+      },
+      {
+        "@type": "ListItem",
+        position: 3,
+        name: pricedProduct.title,
+        item: `${getBaseURL()}/products/${params.handle}`,
+      },
+    ],
   }
 
   return (
     <>
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify([productJsonLd, breadcrumbJsonLd]),
+        }}
       />
       <ProductTemplate
         product={pricedProduct}

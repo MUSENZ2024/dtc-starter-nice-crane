@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import FaqPage from "@modules/content/muse-static-pages/faq-page"
 
 export const metadata: Metadata = {
-  title: "FAQ — MUSE NZ",
+  title: "Frequently Asked Questions",
   description:
     "Got a question about your order, shipping, returns, or our products? Find your answer here. MUSE NZ help centre.",
 }

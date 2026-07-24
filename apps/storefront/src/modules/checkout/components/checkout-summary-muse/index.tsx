@@ -28,7 +28,7 @@ export default function CheckoutSummaryMuse({
   compact,
   shippingProtectionSelected = false,
 }: Props) {
-  const subtotal = cart.subtotal ?? cart.item_subtotal ?? 0
+  const subtotal = cart.item_subtotal ?? 0
   const shippingProtectionItem = getShippingProtectionItem(cart)
   const items = cart.items?.filter((item) => item.id !== shippingProtectionItem?.id)
   const fulfilmentSummary = getCartFulfilmentSummary(items)

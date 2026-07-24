@@ -3,7 +3,7 @@ import { Metadata } from "next"
 import TrackingClient from "./tracking-client"
 
 export const metadata: Metadata = {
-  title: "Track Your Order - MUSE NZ",
+  title: "Track Your Order",
   description:
     "Track your MUSE NZ order. Live status, estimated delivery, and the full journey from overseas to your door.",
 }

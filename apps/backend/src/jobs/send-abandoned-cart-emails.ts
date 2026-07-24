@@ -56,6 +56,7 @@ type CartRecord = {
   customer_id?: string | null
   currency_code?: string | null
   total?: unknown
+  item_subtotal?: unknown
   created_at?: string | Date | null
   updated_at: string | Date
   items?: Array<{
@@ -87,6 +88,12 @@ async function getSegment(query: any, cart: CartRecord): Promise<"first_time" | 
 
 async function toSnapshot(query: any, cart: CartRecord): Promise<AbandonedCartSnapshot> {
   const total = toNumber(cart.total)
+  const itemSubtotal = cart.item_subtotal == null
+    ? (cart.items || []).reduce(
+        (sum, item) => sum + toNumber(item.unit_price) * (toNumber(item.quantity) || 1),
+        0
+      )
+    : toNumber(cart.item_subtotal)
   const segment = await getSegment(query, cart)
   const firstName = typeof cart.shipping_address?.first_name === "string"
     ? cart.shipping_address.first_name
@@ -106,8 +113,8 @@ async function toSnapshot(query: any, cart: CartRecord): Promise<AbandonedCartSn
     currency_code: cart.currency_code || "nzd",
     total,
     item_count: (cart.items || []).reduce((sum, item) => sum + (toNumber(item.quantity) || 1), 0),
-    free_shipping_qualified: total >= FREE_SHIPPING_THRESHOLD,
-    free_shipping_remaining: Math.max(0, FREE_SHIPPING_THRESHOLD - total),
+    free_shipping_qualified: itemSubtotal >= FREE_SHIPPING_THRESHOLD,
+    free_shipping_remaining: Math.max(0, FREE_SHIPPING_THRESHOLD - itemSubtotal),
     created_at: cart.created_at ? new Date(cart.created_at).toISOString() : null,
     updated_at: new Date(cart.updated_at).toISOString(),
     shipping_address: cart.shipping_address,
@@ -141,7 +148,7 @@ export default async function sendAbandonedCartEmails(container: MedusaContainer
     const { data: carts, metadata } = await query.graph({
       entity: "cart",
       fields: [
-        "id", "email", "customer_id", "currency_code", "total", "created_at", "updated_at",
+        "id", "email", "customer_id", "currency_code", "total", "item_subtotal", "created_at", "updated_at",
         "items.id", "items.title", "items.product_title", "items.variant_title", "items.quantity", "items.unit_price", "items.thumbnail",
         "customer.id", "customer.first_name", "customer.last_name",
         "shipping_address.*", "billing_address.*", "shipping_methods.id", "shipping_methods.name", "shipping_methods.amount",

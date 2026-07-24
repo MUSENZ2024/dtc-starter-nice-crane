@@ -59,8 +59,11 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   }
 
   const metadata = {
-    title: `${collection.title} | Medusa Store`,
-    description: `${collection.title} collection`,
+    title: collection.title,
+    description: `Shop the ${collection.title} collection at MUSE NZ. Discover affordable sneakers, shoes, outerwear and streetwear with tracked New Zealand delivery.`,
+    alternates: {
+      canonical: `/collections/${params.handle}`,
+    },
   } as Metadata
 
   return metadata

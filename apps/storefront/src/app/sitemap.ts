@@ -4,20 +4,45 @@ import { MetadataRoute } from "next"
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getBaseURL()
-  const staticPaths = ["", "/store", "/faq", "/privacy", "/terms", "/track"]
+  const staticPaths = [
+    "",
+    "/store",
+    "/clearance",
+    "/faq",
+    "/privacy",
+    "/terms",
+    "/track",
+  ]
   const entries: MetadataRoute.Sitemap = staticPaths.map((path) => ({
     url: `${baseUrl}${path}`,
     changeFrequency: path === "" || path === "/store" ? "daily" : "monthly",
     priority: path === "" ? 1 : path === "/store" ? 0.9 : 0.5,
   }))
 
-  const { response } = await listProducts({
+  const firstPage = await listProducts({
     countryCode: "nz",
     queryParams: { limit: 100, fields: "handle,updated_at" },
-  }).catch(() => ({ response: { products: [], count: 0 }, nextPage: null }))
+  }).catch(() => ({
+    response: { products: [], count: 0 },
+    nextPage: null,
+  }))
+  const pageCount = Math.ceil(firstPage.response.count / 100)
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(0, pageCount - 1) }, (_, index) =>
+      listProducts({
+        countryCode: "nz",
+        pageParam: index + 2,
+        queryParams: { limit: 100, fields: "handle,updated_at" },
+      }).then(({ response }) => response.products)
+    )
+  ).catch(() => [])
+  const products = [
+    ...firstPage.response.products,
+    ...remainingPages.flat(),
+  ]
 
   entries.push(
-    ...response.products
+    ...products
       .filter((product) => product.handle)
       .map((product) => ({
         url: `${baseUrl}/products/${product.handle}`,

@@ -30,10 +30,13 @@ const colourMap: Record<string, string> = {
   navy: "#1E3A5F",
   "navy blue": "#1E3A5F",
   blue: "#8ED4E8",
+  "light blue": "#8ED4E8",
   purple: "#5A3D6E",
   green: "#264929",
   "dark green": "#264929",
-  orange: "#C8542D",
+  orange: "#F05A28",
+  yellow: "#FFD400",
+  red: "#D71920",
   cream: "#D4C4A8",
   "cream & white": "#E9E2D1",
   grey: "#A4A4A4",
@@ -41,7 +44,7 @@ const colourMap: Record<string, string> = {
   pink: "#E8BFC3",
   "baby blue": "#A8DCE0",
   olive: "#929475",
-  white: "#F2F0E8",
+  white: "#FFFFFF",
   "white & black": "linear-gradient(135deg, #F2F0E8 0 48%, #1A1A1A 52% 100%)",
 }
 

@@ -6,7 +6,7 @@ import { listProductTags } from "@lib/data/product-tags"
 import StoreTemplateMuse from "@modules/store/templates/store-template-muse"
 
 export const metadata: Metadata = {
-  title: "Clearance | NZ Stock Footwear & Apparel | MUSE NZ",
+  title: "Clearance | Discounted Shoes & Streetwear",
   description:
     "Shop MUSE NZ Clearance for selected footwear and apparel already held in Auckland. Fast 1-3 day dispatch, final sizes, past drops, and genuine markdowns while stock lasts.",
   alternates: {
