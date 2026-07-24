@@ -54,8 +54,13 @@ export default function CheckoutPageMuse({
       params.set("step", "payment")
     }
 
+    if (params.toString() === searchParams.toString()) {
+      return
+    }
+
     router.replace(`${pathname}?${params.toString()}`, { scroll: false })
-  }, [activeStep, pathname, router, searchParams])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeStep, pathname, router])
 
   function completeStep(step: StepKey) {
     setCompletedSteps((current) => Array.from(new Set([...current, step])))

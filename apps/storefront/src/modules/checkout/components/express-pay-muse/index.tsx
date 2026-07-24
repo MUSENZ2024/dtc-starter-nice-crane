@@ -132,6 +132,7 @@ function ExpressPayStripe({
   const stripe = useStripe()
   const elements = useElements()
   const [isReady, setIsReady] = useState(false)
+  const [loadTimedOut, setLoadTimedOut] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const clientSecret = cart.payment_collection?.payment_sessions?.find(
     (session) => session.status === "pending" && session.data?.client_secret
@@ -140,6 +141,18 @@ function ExpressPayStripe({
     () => shippingMethods.map(toStripeShippingRate),
     [shippingMethods]
   )
+
+  useEffect(() => {
+    if (isReady) {
+      return
+    }
+
+    // Stripe's ExpressCheckoutElement never calls onReady when no wallet
+    // (Apple Pay/Google Pay/Link) is available in this browsing context, so
+    // without a timeout the loading spinner would spin forever.
+    const timer = window.setTimeout(() => setLoadTimedOut(true), 6000)
+    return () => window.clearTimeout(timer)
+  }, [isReady])
 
   const activeShippingRate =
     shippingRates.find((rate) => rate.id === selectedShippingMethodId) ??
@@ -198,6 +211,7 @@ function ExpressPayStripe({
           }}
           onReady={(event) => {
             setError(null)
+            setLoadTimedOut(false)
             setIsReady(Boolean(event.availablePaymentMethods))
           }}
           onLoadError={(event) => {
@@ -351,7 +365,7 @@ function ExpressPayStripe({
           }}
         />
       </div>
-      {!isReady && <ExpressCheckoutLoading />}
+      {!isReady && (loadTimedOut ? <ExpressCheckoutUnavailable /> : <ExpressCheckoutLoading />)}
       <ErrorMessage error={error} data-testid="express-payment-error-message" />
     </section>
   )
