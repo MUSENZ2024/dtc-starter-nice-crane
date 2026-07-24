@@ -87,6 +87,9 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
       top_products: topProducts,
     })
   } catch (error) {
+    req.scope.resolve("logger").error(
+      `[analytics/sales] ${error instanceof Error ? error.stack || error.message : String(error)}`
+    )
     res.status(400).json({ message: error instanceof Error ? error.message : "Invalid reporting range" })
   }
 }
