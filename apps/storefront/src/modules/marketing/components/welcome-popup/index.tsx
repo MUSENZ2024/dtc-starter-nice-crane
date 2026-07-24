@@ -166,7 +166,7 @@ export default function WelcomePopup() {
             {step === 2 && (
               <form onSubmit={submit}>
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-muse-orange">Private access</p>
-                <DialogTitle className="mt-3 pr-12 text-[32px] font-black leading-[1.02] tracking-[-0.04em] small:text-[44px]">Get first access—and $20 off your first order over $150.</DialogTitle>
+                <DialogTitle className="mt-3 pr-12 text-[32px] font-black leading-[1.02] tracking-[-0.04em] small:text-[44px]">Get first access—and a one-time $20 welcome code when you spend over $150.</DialogTitle>
                 <label htmlFor="welcome-marketing-email" className="mt-7 block text-[12px] font-black uppercase tracking-[0.1em]">Email address</label>
                 <input id="welcome-marketing-email" autoFocus type="email" inputMode="email" autoComplete="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="mt-2 min-h-12 w-full rounded-[10px] border border-muse-border bg-white px-4 text-[16px] outline-none focus:border-muse-black" />
                 <p className="mt-3 text-[11px] leading-5 text-muse-text-muted">By joining, you agree to receive MUSE NZ marketing emails about new drops, restocks and offers. You can unsubscribe at any time. See our <a href={`/${params.countryCode || "nz"}/privacy`} className="underline">Privacy Policy</a>.</p>
