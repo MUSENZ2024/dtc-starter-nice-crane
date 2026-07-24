@@ -180,7 +180,7 @@ export default function WelcomePopup() {
               <div className="py-8 text-center">
                 <p className="text-[11px] font-black uppercase tracking-[0.18em] text-muse-orange">You're in</p>
                 <DialogTitle className="mx-auto mt-3 max-w-[460px] text-[36px] font-black leading-[1] tracking-[-0.04em]">You're on the list. Check your inbox for your private code.</DialogTitle>
-                <p className="mx-auto mt-4 max-w-[420px] text-[13px] leading-6 text-muse-text-muted">Email delivery and welcome offers activate in a later phase. Your access preference has been saved.</p>
+                <p className="mx-auto mt-4 max-w-[420px] text-[13px] leading-6 text-muse-text-muted">Your preferences have been saved. Keep an eye on your inbox for new drops, restocks and offers.</p>
                 <button type="button" onClick={closeMarketingDialog} className="mt-7 min-h-12 rounded-full bg-muse-black px-8 text-[12px] font-black uppercase tracking-[0.12em] text-white">Continue shopping</button>
               </div>
             )}

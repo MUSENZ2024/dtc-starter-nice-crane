@@ -103,6 +103,24 @@ export default async function Nav() {
       </div>
 
       <div className="sticky inset-x-0 top-0 z-50">
+        <aside
+          aria-label="Old MUSE website notice"
+          className="flex min-h-10 items-center justify-center bg-muse-orange px-4 py-2 text-center text-[11px] font-bold leading-4 text-white small:text-[12px]"
+        >
+          <p>
+            You&apos;re browsing our new website. Prefer our old site?{" "}
+            <a
+              href="https://old.musenz.com"
+              target="_blank"
+              rel="noreferrer"
+              className="underline decoration-white/70 underline-offset-2 transition hover:decoration-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
+            >
+              Visit old.musenz.com
+            </a>{" "}
+            <span className="whitespace-nowrap">(closing 31 August)</span>
+          </p>
+        </aside>
+
         <header
           id="muse-nav"
           className="h-16 border-b border-white/[0.08] bg-[rgba(10,10,10,0.96)] text-white backdrop-blur-[16px] transition-transform duration-300"
