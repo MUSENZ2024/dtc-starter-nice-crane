@@ -72,10 +72,14 @@ export const scheduleAbandonedCartCampaignStep = createStep(
       snapshot,
     });
 
+    // The job only creates a campaign after the cart has already been inactive
+    // for an hour. Schedule the sequence from detection time so an older cart
+    // can't receive every overdue message in the same job run.
+    const detectedAt = new Date().toISOString();
     const schedule = [
-      { sequence: 1 as const, hours: 1 },
-      { sequence: 2 as const, hours: 25 },
-      { sequence: 3 as const, hours: 73 },
+      { sequence: 1 as const, hours: 0 },
+      { sequence: 2 as const, hours: 24 },
+      { sequence: 3 as const, hours: 72 },
     ];
     await service.createAbandonedCartEmailEvents(
       schedule.map(({ sequence, hours }) => ({
@@ -85,7 +89,7 @@ export const scheduleAbandonedCartCampaignStep = createStep(
         template_key: ABANDONED_CART_EMAILS[sequence].templateKey,
         subject: ABANDONED_CART_EMAILS[sequence].subject,
         status: "scheduled" as const,
-        scheduled_at: addHours(snapshot.updated_at, hours),
+        scheduled_at: addHours(detectedAt, hours),
         tracking_token: randomUUID(),
       })),
     );
