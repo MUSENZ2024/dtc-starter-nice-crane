@@ -27,6 +27,29 @@ function toNumber(value: unknown): number {
   return Number.isFinite(number) ? number : 0
 }
 
+function formatError(error: unknown): string {
+  if (error instanceof Error) {
+    const details = Object.fromEntries(
+      Object.getOwnPropertyNames(error).map((key) => [
+        key,
+        (error as unknown as Record<string, unknown>)[key],
+      ])
+    )
+
+    try {
+      return JSON.stringify(details)
+    } catch {
+      return error.stack ?? error.message
+    }
+  }
+
+  try {
+    return JSON.stringify(error)
+  } catch {
+    return String(error)
+  }
+}
+
 type CartRecord = {
   id: string
   email?: string | null
@@ -141,7 +164,7 @@ export default async function sendAbandonedCartEmails(container: MedusaContainer
         const { result } = await scheduleAbandonedCartCampaignWorkflow(container).run({ input: { snapshot } })
         if ((result as { created: boolean }).created) scheduled += 1
       } catch (error) {
-        logger.error(`Could not schedule abandoned cart ${cart.id}: ${error instanceof Error ? error.message : String(error)}`)
+        logger.error(`Could not schedule abandoned cart ${cart.id}: ${formatError(error)}`)
       }
     }
     offset += PAGE_SIZE
@@ -158,7 +181,7 @@ export default async function sendAbandonedCartEmails(container: MedusaContainer
       if (result.sent) sent += 1
     } catch (error) {
       failed += 1
-      logger.error(`Abandoned-cart event ${event.id} failed: ${error instanceof Error ? error.stack ?? error.message : String(error)}`)
+      logger.error(`Abandoned-cart event ${event.id} failed: ${formatError(error)}`)
     }
   }
 
