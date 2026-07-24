@@ -12,7 +12,7 @@ export const sendMarketingTestEmailStep = createStep("send-marketing-test-email"
   const snapshot = (event.content_snapshot || {}) as Record<string, unknown>
   const storefront = process.env.STOREFRONT_URL || "http://localhost:8000"
   const html = await renderMarketingWelcomeEmail({ templateKey: event.template_key, previewText: `[TEST] ${event.preview_text_snapshot}`, firstName: "MUSE test", code: String(snapshot.code || "MUSE20-PREVIEW"), expiresAt: new Date(String(snapshot.expires_at || Date.now())).toLocaleString("en-NZ", { timeZone: "Pacific/Auckland", dateStyle: "medium", timeStyle: "short" }), preference: String(snapshot.preference || "everything"), unsubscribeUrl: `${storefront}/marketing/unsubscribe?preview=1`, shopUrl: `${storefront}/store?preview=1` })
-  const notifications = await container.resolve(Modules.NOTIFICATION).createNotifications({ to, from: process.env.MUSE_EMAIL_FROM || "hello@musenz.com", channel: "email", content: { subject: `[TEST] ${event.subject_snapshot}`, html } })
+  const notifications = await container.resolve(Modules.NOTIFICATION).createNotifications({ to, from: process.env.MUSE_EMAIL_FROM || "MUSE NZ <orders@musenz.com>", channel: "email", content: { subject: `[TEST] ${event.subject_snapshot}`, html } })
   const notification = Array.isArray(notifications) ? notifications[0] : notifications
   return new StepResponse({ sent: true, notification_id: notification?.id || null, recipient: to })
 })

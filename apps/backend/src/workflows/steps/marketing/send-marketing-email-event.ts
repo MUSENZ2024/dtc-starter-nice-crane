@@ -29,7 +29,7 @@ export const sendMarketingEmailEventStep = createStep("send-marketing-email-even
   try {
     const storefront = process.env.STOREFRONT_URL || "http://localhost:8000"
     const html = await renderMarketingWelcomeEmail({ templateKey: event.template_key, previewText: event.preview_text_snapshot, firstName: subscriber.first_name, code: String(snapshot.code), expiresAt: expiresAt.toLocaleString("en-NZ", { timeZone: "Pacific/Auckland", dateStyle: "medium", timeStyle: "short" }), preference: String(snapshot.preference || "everything"), unsubscribeUrl: `${storefront}/marketing/unsubscribe?token=${encodeURIComponent(String(snapshot.unsubscribe_token))}`, shopUrl: `${storefront}/store?utm_source=muse_email&utm_medium=email&utm_campaign=welcome` })
-    const notifications = await container.resolve(Modules.NOTIFICATION).createNotifications({ to: subscriber.email_normalized, from: process.env.MUSE_EMAIL_FROM || "orders@musenz.com", channel: "email", content: { subject: event.subject_snapshot, html } })
+    const notifications = await container.resolve(Modules.NOTIFICATION).createNotifications({ to: subscriber.email_normalized, from: process.env.MUSE_EMAIL_FROM || "MUSE NZ <orders@musenz.com>", channel: "email", content: { subject: event.subject_snapshot, html } })
     const notification = Array.isArray(notifications) ? notifications[0] : notifications
     await service.updateMarketingEmailEvents({ id: event.id, status: "sent", sent_at: new Date(), provider_notification_id: notification?.id || null, last_error: null })
     return new StepResponse<SendResult, Record<string, never>>({ sent: true, event_id: event.id }, {})

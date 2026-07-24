@@ -11,7 +11,7 @@ export const enrollWelcomeFlowStep = createStep("enroll-welcome-flow", async ({ 
   const subscriber = await service.retrieveMarketingSubscriber(subscriber_id)
   const [flow] = await service.listMarketingFlows({ key: WELCOME_FLOW_KEY, status: "active" }, { take: 1 })
   const [issuance] = await service.listMarketingOfferIssuances({ subscriber_id, status: "active" }, { take: 1, order: { issued_at: "DESC" } })
-  if (!flow || !issuance || subscriber.status !== "subscribed" || subscriber.customer_type !== "first_time") return new StepResponse({ status: "ineligible" }, {})
+  if (!flow || !issuance || subscriber.status !== "subscribed") return new StepResponse({ status: "ineligible" }, {})
   const [existing] = await service.listMarketingEnrollments({ subscriber_id, flow_id: flow.id, flow_version: flow.version }, { take: 1 })
   if (existing) return new StepResponse({ status: "already_enrolled", enrollment: existing }, {})
   const enteredAt = new Date()

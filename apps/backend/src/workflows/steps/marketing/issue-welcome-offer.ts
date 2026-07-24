@@ -8,7 +8,7 @@ import { generateWelcomeOfferCode, offerExpiry, WELCOME_OFFER_KEY } from "../../
 export type IssueWelcomeOfferInput = { subscriber_id: string }
 type Compensation = { issuance_id?: string; promotion_id?: string }
 type IssueResult = {
-  status: "offer_inactive" | "already_issued" | "ineligible_existing_customer" | "issued"
+  status: "offer_inactive" | "already_issued" | "issued"
   issuance?: Record<string, unknown>
 }
 
@@ -39,10 +39,7 @@ export const issueWelcomeOfferStep = createStep(
       filters: { email: subscriber.email_normalized },
       pagination: { take: 1 },
     })
-    if (offer.first_order_only && priorOrders.length) {
-      await service.updateMarketingSubscribers({ id: subscriber.id, customer_type: "returning" })
-      return new StepResponse<IssueResult, Compensation>({ status: "ineligible_existing_customer" }, {})
-    }
+    const isExistingCustomer = priorOrders.length > 0
 
     const issuedAt = new Date()
     const expiresAt = offerExpiry(issuedAt, offer.expires_after_hours)
@@ -93,7 +90,16 @@ export const issueWelcomeOfferStep = createStep(
       expires_at: expiresAt,
       currency_code: offer.currency_code,
     })
-    await service.updateMarketingSubscribers({ id: subscriber.id, customer_type: "first_time" })
+    await service.updateMarketingSubscribers({
+      id: subscriber.id,
+      customer_type: isExistingCustomer ? "returning" : "first_time",
+      metadata: {
+        ...((subscriber.metadata || {}) as Record<string, unknown>),
+        welcome_offer_registered_at: issuedAt.toISOString(),
+        welcome_offer_legacy_customer: isExistingCustomer,
+        welcome_offer_issuance_id: issuance.id,
+      },
+    })
     return new StepResponse<IssueResult, Compensation>({ status: "issued", issuance: issuance as unknown as Record<string, unknown> }, { issuance_id: issuance.id, promotion_id: promotion.id })
   },
   async (data: Compensation | undefined, { container }) => {

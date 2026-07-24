@@ -16,6 +16,6 @@ export const saveMarketingCampaignStep = createStep("save-marketing-campaign", a
     const updated = await service.updateMarketingCampaigns({ id: input.id, name: input.name, subject: input.subject, preview_text: input.preview_text, content: { blocks: input.content }, audience_definition: input.audience_definition, utm_campaign: input.utm_campaign })
     return new StepResponse<{ campaign: any }, { created_id: string | null }>({ campaign: Array.isArray(updated) ? updated[0] : updated }, { created_id: null })
   }
-  const created = await service.createMarketingCampaigns({ ...input, content: { blocks: input.content }, status: "draft", audience_snapshot_count: 0, excluded_snapshot_count: 0, sender: process.env.MUSE_EMAIL_FROM || "MUSE NZ <hello@musenz.com>", template_key: "structured_campaign_v1" })
+  const created = await service.createMarketingCampaigns({ ...input, content: { blocks: input.content }, status: "draft", audience_snapshot_count: 0, excluded_snapshot_count: 0, sender: process.env.MUSE_EMAIL_FROM || "MUSE NZ <orders@musenz.com>", template_key: "structured_campaign_v1" })
   return new StepResponse<{ campaign: any }, { created_id: string | null }>({ campaign: created }, { created_id: created.id })
 }, async (data, { container }) => { if (data?.created_id) await (container.resolve(MARKETING_MODULE) as MarketingModuleService).deleteMarketingCampaigns(data.created_id) })
