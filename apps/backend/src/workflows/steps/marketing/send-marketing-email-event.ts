@@ -3,6 +3,7 @@ import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import { MARKETING_MODULE } from "../../../modules/marketing"
 import MarketingModuleService from "../../../modules/marketing/service"
 import { renderMarketingWelcomeEmail } from "../../../lib/marketing-welcome-email"
+import { postEnrollmentOrderFilters } from "../../../lib/marketing-welcome-purchase"
 
 const boundedError = (error: unknown) => (error instanceof Error ? error.message : String(error)).slice(0, 500)
 
@@ -17,7 +18,17 @@ export const sendMarketingEmailEventStep = createStep("send-marketing-email-even
   const snapshot = (event.content_snapshot || {}) as Record<string, unknown>
   const expiresAt = new Date(String(snapshot.expires_at || 0))
   const query = container.resolve(ContainerRegistrationKeys.QUERY)
-  const { data: orders } = await query.graph({ entity: "orders", fields: ["id"], filters: { email: subscriber.email_normalized }, pagination: { take: 1 } })
+  const { data: orders } = enrollment
+    ? await query.graph({
+        entity: "orders",
+        fields: ["id", "created_at"],
+        filters: postEnrollmentOrderFilters(
+          subscriber.email_normalized,
+          enrollment.entered_at,
+        ),
+        pagination: { take: 1 },
+      })
+    : { data: [] }
   const cancelReason = subscriber.status !== "subscribed" ? subscriber.status : !enrollment || enrollment.status !== "active" ? "enrollment_inactive" : !flow || flow.status !== "active" ? "flow_inactive" : orders.length ? "purchased" : expiresAt <= new Date() ? "offer_expired" : null
   if (cancelReason) {
     const now = new Date()
