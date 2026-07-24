@@ -200,12 +200,12 @@ function ExpressPayStripe({
               return
             }
 
+            // allowedShippingCountries/billingAddressRequired/emailRequired/
+            // phoneNumberRequired/shippingAddressRequired are deprecated on
+            // resolve() and must only be set via the `options` prop above -
+            // passing them here throws an uncaught IntegrationError that
+            // silently kills the click before any wallet sheet can open.
             event.resolve({
-              allowedShippingCountries: ["NZ"],
-              billingAddressRequired: true,
-              emailRequired: true,
-              phoneNumberRequired: true,
-              shippingAddressRequired: true,
               shippingRates: [activeShippingRate],
             })
           }}
