@@ -86,10 +86,12 @@ export const StripeCardContainer = ({
   cart,
   setError,
   setPaymentComplete,
+  onPaymentMethodTypeChange,
 }: Omit<PaymentContainerProps, "children"> & {
   cart: HttpTypes.StoreCart
   setError: (error: string | null) => void
   setPaymentComplete: (complete: boolean) => void
+  onPaymentMethodTypeChange?: (type: string | null) => void
 }) => {
   const stripeReady = useContext(StripeContext)
   const [stripeLoadMessage, setStripeLoadMessage] = useState<string | null>(null)
@@ -140,6 +142,7 @@ export const StripeCardContainer = ({
   useEffect(() => {
     if (!isSelected) {
       setStripeLoadMessage(null)
+      onPaymentMethodTypeChange?.(null)
       return
     }
 
@@ -166,7 +169,7 @@ export const StripeCardContainer = ({
     }, 8000)
 
     return () => window.clearTimeout(timeout)
-  }, [isSelected, setError, setPaymentComplete, stripeReady])
+  }, [isSelected, setError, setPaymentComplete, stripeReady, onPaymentMethodTypeChange])
 
   return (
     <PaymentContainer
@@ -183,6 +186,7 @@ export const StripeCardContainer = ({
               setStripeLoadMessage(null)
               setError(null)
               setPaymentComplete(e.complete)
+              onPaymentMethodTypeChange?.(e.value?.type ?? null)
             }}
             onLoadError={(event) => {
               setError(

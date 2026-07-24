@@ -3,10 +3,12 @@
 import { isManual, isStripeLike } from "@lib/constants"
 import { placeOrder } from "@lib/data/cart"
 import { HttpTypes } from "@medusajs/types"
-import { Button } from "@modules/common/components/ui"
 import { useElements, useStripe } from "@stripe/react-stripe-js"
 import React, { useState } from "react"
 import ErrorMessage from "../error-message"
+
+const placeOrderButtonClassName =
+  "w-full rounded-full bg-muse-black py-4 text-[13px] font-extrabold uppercase tracking-widest text-muse-cream transition hover:bg-muse-orange disabled:opacity-50 disabled:pointer-events-none"
 
 type PaymentButtonProps = {
   cart: HttpTypes.StoreCart
@@ -42,7 +44,11 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
         <ManualTestPaymentButton notReady={notReady} data-testid={dataTestId} />
       )
     default:
-      return <Button disabled>Select a payment method</Button>
+      return (
+        <button type="button" disabled className={placeOrderButtonClassName}>
+          Select a payment method
+        </button>
+      )
   }
 }
 
@@ -162,15 +168,15 @@ const StripePaymentButton = ({
 
   return (
     <>
-      <Button
-        disabled={disabled || notReady}
+      <button
+        type="button"
+        disabled={disabled || notReady || submitting}
         onClick={handlePayment}
-        size="large"
-        isLoading={submitting}
+        className={placeOrderButtonClassName}
         data-testid={dataTestId}
       >
-        Place order
-      </Button>
+        {submitting ? "Placing order..." : "Place order"}
+      </button>
       <ErrorMessage
         error={errorMessage}
         data-testid="stripe-payment-error-message"
@@ -201,15 +207,15 @@ const ManualTestPaymentButton = ({ notReady }: { notReady: boolean }) => {
 
   return (
     <>
-      <Button
-        disabled={notReady}
-        isLoading={submitting}
+      <button
+        type="button"
+        disabled={notReady || submitting}
         onClick={handlePayment}
-        size="large"
+        className={placeOrderButtonClassName}
         data-testid="submit-order-button"
       >
-        Place order
-      </Button>
+        {submitting ? "Placing order..." : "Place order"}
+      </button>
       <ErrorMessage
         error={errorMessage}
         data-testid="manual-payment-error-message"

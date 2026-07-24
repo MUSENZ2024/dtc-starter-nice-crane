@@ -13,6 +13,13 @@ import { HttpTypes } from "@medusajs/types"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
+const stripePaymentMethodTypeLabels: Record<string, string> = {
+  card: "Credit card",
+  afterpay_clearpay: "Afterpay",
+  klarna: "Klarna",
+  link: "Link",
+}
+
 const Payment = ({
   cart,
   availablePaymentMethods,
@@ -32,8 +39,8 @@ const Payment = ({
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState(
     activeSession?.provider_id ?? ""
   )
+  const [stripeMethodType, setStripeMethodType] = useState<string | null>(null)
   const didAutoSelectPayment = useRef(false)
-  const didAutoAdvance = useRef(false)
 
   const searchParams = useSearchParams()
   const router = useRouter()
@@ -71,6 +78,13 @@ const Payment = ({
     (activePaymentDetailsComplete &&
       (cart?.shipping_methods?.length ?? 0) !== 0) ||
     paidByGiftcard
+
+  const canContinue =
+    paidByGiftcard ||
+    Boolean(
+      selectedPaymentMethod &&
+        (!isStripeLike(selectedPaymentMethod) || paymentComplete)
+    )
 
   const createQueryString = useCallback(
     (name: string, value: string) => {
@@ -122,30 +136,6 @@ const Payment = ({
   useEffect(() => {
     setError(null)
   }, [isOpen])
-
-  useEffect(() => {
-    if (!isOpen) {
-      didAutoAdvance.current = false
-      return
-    }
-
-    if (didAutoAdvance.current || isLoading || !selectedPaymentMethod) {
-      return
-    }
-
-    const ready =
-      paidByGiftcard ||
-      !isStripeLike(selectedPaymentMethod) ||
-      paymentComplete
-
-    if (!ready) {
-      return
-    }
-
-    didAutoAdvance.current = true
-    handleSubmit()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, isLoading, paidByGiftcard, paymentComplete, selectedPaymentMethod])
 
   useEffect(() => {
     if (
@@ -218,6 +208,7 @@ const Payment = ({
                         cart={cart}
                         setError={setError}
                         setPaymentComplete={setPaymentComplete}
+                        onPaymentMethodTypeChange={setStripeMethodType}
                       />
                     ) : (
                       <PaymentContainer
@@ -251,14 +242,16 @@ const Payment = ({
             data-testid="payment-method-error-message"
           />
 
-          {isLoading && (
-            <div
-              className="mt-6 flex items-center justify-center gap-2 text-[12.5px] font-semibold text-muse-text-muted"
+          {(paidByGiftcard || availablePaymentMethods?.length) && (
+            <button
+              type="button"
+              disabled={!canContinue || isLoading}
+              onClick={handleSubmit}
+              className="mt-6 w-full rounded-full bg-muse-black py-4 text-[13px] font-extrabold uppercase tracking-widest text-muse-cream transition hover:bg-muse-orange disabled:opacity-50"
               data-testid="submit-payment-button"
             >
-              <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-muse-border border-t-muse-black" />
-              Continuing to review...
-            </div>
+              {isLoading ? "Continuing to review..." : "Continue to review"}
+            </button>
           )}
         </div>
 
@@ -299,7 +292,10 @@ const Payment = ({
                   className="text-[14px] font-bold text-muse-black"
                   data-testid="payment-method-summary"
                 >
-                  {paymentInfoMap[activeSession?.provider_id]?.title ||
+                  {(isStripeLike(activeSession?.provider_id) &&
+                    stripeMethodType &&
+                    stripePaymentMethodTypeLabels[stripeMethodType]) ||
+                    paymentInfoMap[activeSession?.provider_id]?.title ||
                     activeSession?.provider_id}
                 </Text>
               </div>

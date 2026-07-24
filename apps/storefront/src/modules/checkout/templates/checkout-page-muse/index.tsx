@@ -50,8 +50,16 @@ export default function CheckoutPageMuse({
     const params = new URLSearchParams(searchParams)
     params.set("muse_step", activeStep)
 
-    if (activeStep === "payment" && params.get("step") !== "review") {
-      params.set("step", "payment")
+    if (activeStep === "payment") {
+      if (params.get("step") !== "review") {
+        params.set("step", "payment")
+      }
+    } else {
+      // "step" (payment/review) only means anything while payment is the
+      // active top-level step. Leaving it set to a stale "review" here
+      // makes Payment/Review render out of sync when the shopper comes
+      // back after editing an earlier step.
+      params.delete("step")
     }
 
     if (params.toString() === searchParams.toString()) {
