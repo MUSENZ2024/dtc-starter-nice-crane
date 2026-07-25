@@ -50,7 +50,7 @@ export function buildAbandonedCartRecoveryUrl(
   trackingToken: string,
 ) {
   const storefrontUrl = (
-    process.env.STOREFRONT_URL || "https://store.musenz.com"
+    process.env.STOREFRONT_URL || "https://musenz.com"
   ).replace(/\/$/, "");
   return `${storefrontUrl}/nz/cart/recover/${encodeURIComponent(cartId)}?ac=${encodeURIComponent(trackingToken)}`;
 }

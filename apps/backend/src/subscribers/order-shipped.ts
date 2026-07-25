@@ -90,7 +90,7 @@ function getTrackingUrl(trackingNumber: string, trackingUrl?: string | null): st
   if (trackingUrl) {
     return trackingUrl
   }
-  return `https://store.musenz.com/nz/track?number=${encodeURIComponent(trackingNumber)}`
+  return `https://musenz.com/track?number=${encodeURIComponent(trackingNumber)}`
 }
 
 const FULFILLMENT_EMAIL_FIELDS = [

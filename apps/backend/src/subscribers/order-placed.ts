@@ -458,7 +458,7 @@ export default async function orderPlacedHandler({
       billingAddressLines: billingAddressDetail?.lines ?? null,
       billingPhone: billingAddressDetail?.phone ?? null,
       shipments,
-      trackingUrl: `https://store.musenz.com/nz/track`,
+      trackingUrl: `https://musenz.com/track`,
       shippingMethodLabel: getShippingMethodLabel(order.shipping_methods?.[0]?.name),
       paymentMethodLabel,
       musePay: isMusePay

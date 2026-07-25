@@ -34,7 +34,7 @@ export type OrderArrivedNzProps = {
 }
 
 const nzPostLogoUrl =
-  process.env.MUSE_NZ_POST_LOGO_URL || "https://store.musenz.com/email-icons/nz-post-logo-vertical-red.png"
+  process.env.MUSE_NZ_POST_LOGO_URL || "https://musenz.com/email-icons/nz-post-logo-vertical-red.png"
 
 const textStyle = {
   fontFamily: FONT_STACK,
@@ -461,9 +461,9 @@ export function OrderArrivedNzTemplate({
                     <SocialIcon href="https://facebook.com/muse.nz" src={icons.facebook} alt="Facebook" />
                   </Section>
                   <Text style={{ textAlign: "center", fontSize: "11.5px", color: "#999999", margin: "0 0 20px" }}>
-                    <a href="https://store.musenz.com/faq" style={{ color: "#999999", marginRight: "16px" }}>FAQ</a>
+                    <a href="https://musenz.com/faq" style={{ color: "#999999", marginRight: "16px" }}>FAQ</a>
                     <a href={trackingUrl} style={{ color: "#999999", marginRight: "16px" }}>Track Order</a>
-                    <a href="https://store.musenz.com/returns" style={{ color: "#999999", marginRight: "16px" }}>Returns</a>
+                    <a href="https://musenz.com/returns" style={{ color: "#999999", marginRight: "16px" }}>Returns</a>
                     <a href="mailto:support@musenz.com" style={{ color: "#999999" }}>Contact Us</a>
                   </Text>
                   <Text style={{ textAlign: "center", fontSize: "11px", color: "#555555", margin: 0 }}>

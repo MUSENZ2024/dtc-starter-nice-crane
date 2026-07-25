@@ -97,7 +97,7 @@ export const DARK_MODE_OVERRIDE_STYLE = `
 `
 
 export const logoUrl =
-  process.env.MUSE_EMAIL_LOGO_URL || "https://store.musenz.com/muse-logo-long.png"
+  process.env.MUSE_EMAIL_LOGO_URL || "https://musenz.com/muse-logo-long.png"
 
 // Real hosted PNG icons — Gmail strips inline <svg> from email bodies and
 // doesn't reliably render .svg <img> sources either, so every icon (social
@@ -105,7 +105,7 @@ export const logoUrl =
 // (see apps/storefront/public/email-icons/generate_icons.py) rather than
 // guessed at a third-party icon CDN URL.
 const EMAIL_ICON_BASE_URL =
-  process.env.MUSE_EMAIL_ICON_BASE_URL || "https://store.musenz.com/email-icons"
+  process.env.MUSE_EMAIL_ICON_BASE_URL || "https://musenz.com/email-icons"
 
 export const icons = {
   instagram: `${EMAIL_ICON_BASE_URL}/social-instagram.png`,

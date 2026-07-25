@@ -427,9 +427,9 @@ export function OrderPreparingTemplate({
                     <SocialIcon href="https://facebook.com/muse.nz" src={icons.facebook} alt="Facebook" />
                   </Section>
                   <Text style={{ textAlign: "center", fontSize: "11.5px", color: "#999999", margin: "0 0 20px" }}>
-                    <a href="https://store.musenz.com/faq" style={{ color: "#999999", marginRight: "16px" }}>FAQ</a>
-                    <a href="https://store.musenz.com/nz/track" style={{ color: "#999999", marginRight: "16px" }}>Track Order</a>
-                    <a href="https://store.musenz.com/returns" style={{ color: "#999999", marginRight: "16px" }}>Returns</a>
+                    <a href="https://musenz.com/faq" style={{ color: "#999999", marginRight: "16px" }}>FAQ</a>
+                    <a href="https://musenz.com/track" style={{ color: "#999999", marginRight: "16px" }}>Track Order</a>
+                    <a href="https://musenz.com/returns" style={{ color: "#999999", marginRight: "16px" }}>Returns</a>
                     <a href="mailto:support@musenz.com" style={{ color: "#999999" }}>Contact Us</a>
                   </Text>
                   <Text style={{ textAlign: "center", fontSize: "11px", color: "#555555", margin: 0 }}>

@@ -452,7 +452,7 @@ export function OrderConfirmationTemplate({
                 ))}
               </Section>
               <Text style={{ ...textStyle, fontSize: "13.5px", margin: 0 }}>
-                <a href="https://store.musenz.com/faq#split-pay" style={{ color: colors.text, fontWeight: "bold" }}>Read more about MUSE Pay in our FAQ →</a>
+                <a href="https://musenz.com/faq#split-pay" style={{ color: colors.text, fontWeight: "bold" }}>Read more about MUSE Pay in our FAQ →</a>
               </Text>
             </Section>
           ) : null}
@@ -545,7 +545,7 @@ export function OrderConfirmationTemplate({
                   : (
                     <>
                       Unworn, tags intact, full refund.{" "}
-                      <a href="https://store.musenz.com/returns" style={{ color: colors.text, fontWeight: "bold" }}>Start a return</a>
+                      <a href="https://musenz.com/returns" style={{ color: colors.text, fontWeight: "bold" }}>Start a return</a>
                     </>
                   )}
               </Text>
@@ -594,9 +594,9 @@ export function OrderConfirmationTemplate({
             </Section>
 
             <Text style={{ textAlign: "center", fontSize: "11.5px", color: "#999999", margin: "0 0 20px" }}>
-              <a href="https://store.musenz.com/faq" style={{ color: "#999999", marginRight: "16px" }}>FAQ</a>
+              <a href="https://musenz.com/faq" style={{ color: "#999999", marginRight: "16px" }}>FAQ</a>
               <a href={trackingUrl} style={{ color: "#999999", marginRight: "16px" }}>Track Order</a>
-              <a href="https://store.musenz.com/returns" style={{ color: "#999999", marginRight: "16px" }}>Returns</a>
+              <a href="https://musenz.com/returns" style={{ color: "#999999", marginRight: "16px" }}>Returns</a>
               <a href="mailto:support@musenz.com" style={{ color: "#999999" }}>Contact Us</a>
             </Text>
             <Text style={{ textAlign: "center", fontSize: "11px", color: "#555555", margin: 0 }}>

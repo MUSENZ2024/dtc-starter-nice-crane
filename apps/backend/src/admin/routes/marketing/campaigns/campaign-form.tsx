@@ -5,7 +5,7 @@ import { Link, useNavigate } from "react-router-dom"
 import { sdk } from "../../../lib/sdk"
 
 type Block = { type: string; headline?: string; heading?: string; body?: string; image_url?: string; cta_label?: string; cta_url?: string; quote?: string; author?: string; code?: string }
-const blankBlock = (type:string):Block => type === "hero" ? { type, headline:"New from MUSE", body:"The latest drop is live.", image_url:"https://store.musenz.com/images/placeholder.jpg", cta_label:"SHOP NOW", cta_url:"https://store.musenz.com/store" } : type === "trust" || type === "divider" ? { type } : { type, heading:"A MUSE update", body:"Add campaign copy here." }
+const blankBlock = (type:string):Block => type === "hero" ? { type, headline:"New from MUSE", body:"The latest drop is live.", image_url:"https://musenz.com/images/placeholder.jpg", cta_label:"SHOP NOW", cta_url:"https://musenz.com/store" } : type === "trust" || type === "divider" ? { type } : { type, heading:"A MUSE update", body:"Add campaign copy here." }
 
 export const CampaignForm = ({ id }: { id?: string }) => {
   const navigate=useNavigate(); const queryClient=useQueryClient(); const [name,setName]=useState(""); const [subject,setSubject]=useState(""); const [preview,setPreview]=useState(""); const [utm,setUtm]=useState(""); const [segmentId,setSegmentId]=useState(""); const [blocks,setBlocks]=useState<Block[]>([blankBlock("hero"),blankBlock("trust")]); const [testTo,setTestTo]=useState(""); const [testConfirmation,setTestConfirmation]=useState(""); const [scheduleAt,setScheduleAt]=useState(""); const [scheduleConfirmation,setScheduleConfirmation]=useState("")

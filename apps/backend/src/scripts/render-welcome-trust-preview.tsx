@@ -9,8 +9,8 @@ const preview = {
   firstName: "Ana",
   code: "MUSE20-TRUST",
   expiresAt: "29 Jul 2026, 10:30 am",
-  unsubscribeUrl: "https://store.musenz.com/marketing/unsubscribe?preview=1",
-  shopUrl: "https://store.musenz.com/store?preview=1",
+  unsubscribeUrl: "https://musenz.com/marketing/unsubscribe?preview=1",
+  shopUrl: "https://musenz.com/store?preview=1",
 }
 
 async function main() {
@@ -26,8 +26,8 @@ async function main() {
   const htmlMarkers = [
     preview.code,
     preview.shopUrl,
-    "https://store.musenz.com/faq",
-    "https://store.musenz.com/track",
+    "https://musenz.com/faq",
+    "https://musenz.com/track",
     "mailto:support@musenz.com",
     preview.unsubscribeUrl,
     "social-instagram-transparent.png",

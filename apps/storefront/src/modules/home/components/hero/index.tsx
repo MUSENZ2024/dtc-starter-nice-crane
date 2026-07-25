@@ -28,7 +28,7 @@ const Hero = () => {
               Shop best sellers
             </LocalizedClientLink>
             <a
-              href="https://www.musenz.com/track"
+              href="https://musenz.com/track"
               className="inline-flex h-14 items-center justify-center rounded-full border border-black/15 bg-white/70 px-8 text-[12px] font-bold uppercase tracking-[0.16em] text-black transition hover:border-black"
             >
               Track an order

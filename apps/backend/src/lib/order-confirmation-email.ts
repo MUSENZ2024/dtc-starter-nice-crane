@@ -84,7 +84,7 @@ export const createOrderConfirmationEmail = async (
   note?: string
 ) => {
   const storefrontUrl = (
-    process.env.MUSE_STOREFRONT_URL || "https://store.musenz.com"
+    process.env.MUSE_STOREFRONT_URL || "https://musenz.com"
   ).replace(/\/$/, "")
   const trackUrl = `${storefrontUrl}/nz/track`
   const firstName =

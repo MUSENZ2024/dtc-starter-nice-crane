@@ -153,7 +153,7 @@ export function getTrackingUrl(trackingNumber: string, trackingUrl?: string | nu
     return trackingUrl
   }
 
-  return `https://store.musenz.com/nz/track?number=${encodeURIComponent(trackingNumber)}`
+  return `https://musenz.com/track?number=${encodeURIComponent(trackingNumber)}`
 }
 
 function metadataValueIncludes(metadata: Record<string, unknown> | null | undefined, needles: string[]): boolean {
