@@ -27,8 +27,11 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
-    images?: { url?: string | null }[] | null
-    product?: { thumbnail?: string | null } | null
+    images?: { id?: string | null }[] | null
+    product?: {
+      thumbnail?: string | null
+      images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
+    } | null
   } | null
 }
 
@@ -77,8 +80,11 @@ export const ORDER_MANUAL_UPDATE_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
-  "items.variant.images.url",
+  "items.variant.images.id",
   "items.variant.product.thumbnail",
+  "items.variant.product.images.id",
+  "items.variant.product.images.url",
+  "items.variant.product.images.rank",
   "shipping_methods.name",
   "shipping_address.first_name",
   "shipping_address.last_name",

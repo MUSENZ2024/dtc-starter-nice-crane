@@ -20,8 +20,11 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
-    images?: { url?: string | null }[] | null
-    product?: { thumbnail?: string | null } | null
+    images?: { id?: string | null }[] | null
+    product?: {
+      thumbnail?: string | null
+      images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
+    } | null
   } | null
 }
 
@@ -221,8 +224,11 @@ const ORDER_EMAIL_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
-  "items.variant.images.url",
+  "items.variant.images.id",
   "items.variant.product.thumbnail",
+  "items.variant.product.images.id",
+  "items.variant.product.images.url",
+  "items.variant.product.images.rank",
   "shipping_address.first_name",
   "shipping_address.last_name",
   "shipping_address.address_1",

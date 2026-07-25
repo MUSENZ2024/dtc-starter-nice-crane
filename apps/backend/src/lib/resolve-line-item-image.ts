@@ -8,23 +8,50 @@
 // a separate opt-in field that's easy to leave unset even when a variant has
 // its own image gallery — in which case that baked-in thumbnail silently
 // falls back to the product's main image regardless of which variant/color
-// was actually selected. Query the variant's own image gallery alongside the
-// stored thumbnail and prefer it, so the abandoned-cart, order-confirmation,
-// and shipping emails all show the color/variant the customer actually chose.
+// was actually selected.
+//
+// `variant.images` (the ProductVariantProductImage pivot) comes back with no
+// guaranteed order, so picking its first entry can surface any photo tagged
+// to the variant — a macro/detail shot, not the canonical hero image. Ranking
+// only lives on the image row itself (image.rank, the product's overall
+// gallery order), so — exactly like the storefront does — filter the
+// product's rank-ordered image list down to the ones tagged to this variant
+// and take the lowest-ranked (first) one.
+type ImageRef = {
+  id?: string | null;
+  url?: string | null;
+  rank?: number | null;
+};
+
 type LineItemImageInput = {
   thumbnail?: string | null;
   variant?: {
-    images?: { url?: string | null }[] | null;
-    product?: { thumbnail?: string | null } | null;
+    images?: ImageRef[] | null;
+    product?: {
+      thumbnail?: string | null;
+      images?: ImageRef[] | null;
+    } | null;
   } | null;
 };
 
 export function resolveLineItemImage(
   item: LineItemImageInput,
 ): string | null | undefined {
-  const variantImage = item.variant?.images?.[0]?.url;
-  if (variantImage) {
-    return variantImage;
+  const variantImageIds = new Set(
+    (item.variant?.images ?? [])
+      .map((image) => image.id)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const productImages = item.variant?.product?.images ?? [];
+
+  if (variantImageIds.size && productImages.length) {
+    const rankedVariantImages = productImages
+      .filter((image) => image.id && variantImageIds.has(image.id))
+      .sort((a, b) => (a.rank ?? 0) - (b.rank ?? 0));
+    if (rankedVariantImages[0]?.url) {
+      return rankedVariantImages[0].url;
+    }
   }
+
   return item.thumbnail ?? item.variant?.product?.thumbnail ?? null;
 }

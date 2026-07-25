@@ -69,8 +69,11 @@ type CartRecord = {
     unit_price: unknown
     thumbnail?: string | null
     variant?: {
-      images?: { url?: string | null }[] | null
-      product?: { thumbnail?: string | null } | null
+      images?: { id?: string | null }[] | null
+      product?: {
+        thumbnail?: string | null
+        images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
+      } | null
     } | null
   }> | null
   customer?: { id?: string; first_name?: string | null; last_name?: string | null } | null
@@ -155,7 +158,8 @@ export default async function sendAbandonedCartEmails(container: MedusaContainer
       fields: [
         "id", "email", "customer_id", "currency_code", "total", "item_subtotal", "created_at", "updated_at",
         "items.id", "items.title", "items.product_title", "items.variant_title", "items.quantity", "items.unit_price", "items.thumbnail",
-        "items.variant.images.url", "items.variant.product.thumbnail",
+        "items.variant.images.id", "items.variant.product.thumbnail",
+        "items.variant.product.images.id", "items.variant.product.images.url", "items.variant.product.images.rank",
         "customer.id", "customer.first_name", "customer.last_name",
         "shipping_address.*", "billing_address.*", "shipping_methods.id", "shipping_methods.name", "shipping_methods.amount",
         "payment_collection.id", "payment_collection.status",

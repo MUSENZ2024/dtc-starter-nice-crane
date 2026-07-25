@@ -23,8 +23,11 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
-    images?: { url?: string | null }[] | null
-    product?: { thumbnail?: string | null } | null
+    images?: { id?: string | null }[] | null
+    product?: {
+      thumbnail?: string | null
+      images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
+    } | null
   } | null
 }
 
@@ -128,8 +131,11 @@ export const ORDER_ARRIVED_NZ_FULFILLMENT_FIELDS = [
   "order.items.unit_price",
   "order.items.thumbnail",
   "order.items.metadata",
-  "order.items.variant.images.url",
+  "order.items.variant.images.id",
   "order.items.variant.product.thumbnail",
+  "order.items.variant.product.images.id",
+  "order.items.variant.product.images.url",
+  "order.items.variant.product.images.rank",
   "order.shipping_methods.name",
   "order.shipping_address.first_name",
   "order.shipping_address.last_name",
