@@ -2,6 +2,7 @@ import type { MedusaContainer } from "@medusajs/framework/types"
 import { ABANDONED_CART_MODULE } from "../modules/abandoned-cart"
 import AbandonedCartModuleService from "../modules/abandoned-cart/service"
 import type { AbandonedCartSnapshot } from "../lib/abandoned-cart-email"
+import { resolveLineItemImage } from "../lib/resolve-line-item-image"
 import { scheduleAbandonedCartCampaignWorkflow } from "../workflows/schedule-abandoned-cart-campaign"
 import { sendAbandonedCartEmailEventWorkflow } from "../workflows/send-abandoned-cart-email-event"
 
@@ -67,6 +68,10 @@ type CartRecord = {
     quantity: unknown
     unit_price: unknown
     thumbnail?: string | null
+    variant?: {
+      images?: { url?: string | null }[] | null
+      product?: { thumbnail?: string | null } | null
+    } | null
   }> | null
   customer?: { id?: string; first_name?: string | null; last_name?: string | null } | null
   shipping_address?: Record<string, unknown> | null
@@ -127,7 +132,7 @@ async function toSnapshot(query: any, cart: CartRecord): Promise<AbandonedCartSn
       variantTitle: item.variant_title,
       quantity: toNumber(item.quantity) || 1,
       unitPrice: toNumber(item.unit_price),
-      thumbnail: item.thumbnail,
+      thumbnail: resolveLineItemImage(item),
     })),
   }
 }
@@ -150,6 +155,7 @@ export default async function sendAbandonedCartEmails(container: MedusaContainer
       fields: [
         "id", "email", "customer_id", "currency_code", "total", "item_subtotal", "created_at", "updated_at",
         "items.id", "items.title", "items.product_title", "items.variant_title", "items.quantity", "items.unit_price", "items.thumbnail",
+        "items.variant.images.url", "items.variant.product.thumbnail",
         "customer.id", "customer.first_name", "customer.last_name",
         "shipping_address.*", "billing_address.*", "shipping_methods.id", "shipping_methods.name", "shipping_methods.amount",
         "payment_collection.id", "payment_collection.status",

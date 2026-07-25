@@ -1,6 +1,7 @@
 import { Modules } from "@medusajs/framework/utils"
 import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
+import { resolveLineItemImage } from "./resolve-line-item-image"
 import {
   MANUAL_ORDER_UPDATE_TEMPLATES,
   ManualOrderUpdateKey,
@@ -25,6 +26,10 @@ type OrderLine = {
   unit_price: number
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
+  variant?: {
+    images?: { url?: string | null }[] | null
+    product?: { thumbnail?: string | null } | null
+  } | null
 }
 
 type AddressFields = {
@@ -72,6 +77,8 @@ export const ORDER_MANUAL_UPDATE_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
+  "items.variant.images.url",
+  "items.variant.product.thumbnail",
   "shipping_methods.name",
   "shipping_address.first_name",
   "shipping_address.last_name",
@@ -135,7 +142,7 @@ export function buildOrderManualUpdateProps(
     variantTitle: item.variant_title,
     quantity: toNumber(item.quantity) || 1,
     unitPrice: toNumber(item.unit_price),
-    thumbnail: item.thumbnail,
+    thumbnail: resolveLineItemImage(item),
     fulfillmentType: getFulfillmentType(item.metadata),
   }))
 

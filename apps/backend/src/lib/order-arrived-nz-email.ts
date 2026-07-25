@@ -3,6 +3,7 @@ import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
 import type { OrderArrivedNzProps } from "../emails/OrderArrivedNzTemplate"
 import getOrderArrivedNzTemplate from "../emails/order-arrived-nz"
+import { resolveLineItemImage } from "./resolve-line-item-image"
 import {
   formatAddressLines,
   getFulfillmentType,
@@ -21,6 +22,10 @@ type OrderLine = {
   unit_price: number
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
+  variant?: {
+    images?: { url?: string | null }[] | null
+    product?: { thumbnail?: string | null } | null
+  } | null
 }
 
 type AddressFields = {
@@ -123,6 +128,8 @@ export const ORDER_ARRIVED_NZ_FULFILLMENT_FIELDS = [
   "order.items.unit_price",
   "order.items.thumbnail",
   "order.items.metadata",
+  "order.items.variant.images.url",
+  "order.items.variant.product.thumbnail",
   "order.shipping_methods.name",
   "order.shipping_address.first_name",
   "order.shipping_address.last_name",
@@ -354,7 +361,7 @@ export function buildOrderArrivedNzProps(
     variantTitle: item.variant_title,
     quantity: toNumber(item.quantity) || 1,
     unitPrice: toNumber(item.unit_price),
-    thumbnail: item.thumbnail,
+    thumbnail: resolveLineItemImage(item),
     fulfillmentType: getFulfillmentType(item.metadata),
   }))
 

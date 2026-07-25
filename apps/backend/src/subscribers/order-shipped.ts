@@ -2,6 +2,7 @@ import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
 import getOrderShippedTemplate from "../emails/order-shipped"
+import { resolveLineItemImage } from "../lib/resolve-line-item-image"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -18,6 +19,10 @@ type OrderLine = {
   unit_price: number
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
+  variant?: {
+    images?: { url?: string | null }[] | null
+    product?: { thumbnail?: string | null } | null
+  } | null
 }
 
 type AddressFields = {
@@ -101,6 +106,8 @@ const FULFILLMENT_EMAIL_FIELDS = [
   "order.items.unit_price",
   "order.items.thumbnail",
   "order.items.metadata",
+  "order.items.variant.images.url",
+  "order.items.variant.product.thumbnail",
   "order.shipping_methods.name",
   "order.shipping_address.first_name",
   "order.shipping_address.last_name",
@@ -165,7 +172,7 @@ export default async function orderShippedHandler({
       variantTitle: item.variant_title,
       quantity: toNumber(item.quantity) || 1,
       unitPrice: toNumber(item.unit_price),
-      thumbnail: item.thumbnail,
+      thumbnail: resolveLineItemImage(item),
       fulfillmentType: getFulfillmentType(item.metadata),
     }))
 

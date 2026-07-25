@@ -3,6 +3,7 @@ import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
 import type { OrderPreparingProps } from "../emails/OrderPreparingTemplate"
 import getOrderPreparingTemplate from "../emails/order-preparing"
+import { resolveLineItemImage } from "./resolve-line-item-image"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -15,6 +16,10 @@ type OrderLine = {
   unit_price: number
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
+  variant?: {
+    images?: { url?: string | null }[] | null
+    product?: { thumbnail?: string | null } | null
+  } | null
 }
 
 type AddressFields = {
@@ -72,6 +77,8 @@ export const ORDER_PREPARING_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
+  "items.variant.images.url",
+  "items.variant.product.thumbnail",
   "shipping_methods.name",
   "shipping_address.first_name",
   "shipping_address.last_name",
@@ -184,7 +191,7 @@ export function buildOrderPreparingProps(order: PreparingEmailOrder): OrderPrepa
     variantTitle: item.variant_title,
     quantity: toNumber(item.quantity) || 1,
     unitPrice: toNumber(item.unit_price),
-    thumbnail: item.thumbnail,
+    thumbnail: resolveLineItemImage(item),
     fulfillmentType: getFulfillmentType(item.metadata),
   }))
 

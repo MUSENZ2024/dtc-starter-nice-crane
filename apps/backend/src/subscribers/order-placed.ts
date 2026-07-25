@@ -6,6 +6,7 @@ import type { EmailItem, OrderConfirmationProps, Shipment } from "../emails/Orde
 import getOrderPlacedMixedTemplate from "../emails/order-placed-mixed"
 import getOrderPlacedNZStockTemplate from "../emails/order-placed-nzstock"
 import getOrderPlacedStandardTemplate from "../emails/order-placed-standard"
+import { resolveLineItemImage } from "../lib/resolve-line-item-image"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -18,6 +19,10 @@ type OrderLine = {
   unit_price: number
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
+  variant?: {
+    images?: { url?: string | null }[] | null
+    product?: { thumbnail?: string | null } | null
+  } | null
 }
 
 type AddressFields = {
@@ -216,6 +221,8 @@ const ORDER_EMAIL_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
+  "items.variant.images.url",
+  "items.variant.product.thumbnail",
   "shipping_address.first_name",
   "shipping_address.last_name",
   "shipping_address.address_1",
@@ -394,7 +401,7 @@ export default async function orderPlacedHandler({
       variantTitle: item.variant_title,
       quantity: item.quantity,
       unitPrice: item.unit_price,
-      thumbnail: item.thumbnail,
+      thumbnail: resolveLineItemImage(item),
       fulfillmentType: getFulfillmentType(item.metadata),
     }))
 

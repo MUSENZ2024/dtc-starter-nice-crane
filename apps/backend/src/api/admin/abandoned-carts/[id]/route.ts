@@ -5,6 +5,7 @@ import {
 import { MedusaError } from "@medusajs/framework/utils";
 import { ABANDONED_CART_MODULE } from "../../../../modules/abandoned-cart";
 import AbandonedCartModuleService from "../../../../modules/abandoned-cart/service";
+import { resolveLineItemImage } from "../../../../lib/resolve-line-item-image";
 
 const numeric = (value: unknown) => {
   if (value && typeof value === "object" && "numeric_" in value)
@@ -58,6 +59,8 @@ export async function GET(
       "items.thumbnail",
       "items.product_id",
       "items.variant_id",
+      "items.variant.images.url",
+      "items.variant.product.thumbnail",
       "shipping_address.*",
       "billing_address.*",
       "shipping_methods.id",
@@ -101,7 +104,15 @@ export async function GET(
           : numeric(campaign.recovered_revenue),
     },
     events,
-    cart: carts[0] || null,
+    cart: carts[0]
+      ? {
+          ...carts[0],
+          items: (carts[0].items || []).map((item: any) => ({
+            ...item,
+            thumbnail: resolveLineItemImage(item),
+          })),
+        }
+      : null,
     customer_orders: orders.map((order) => ({
       ...order,
       total: numeric(order.total),
