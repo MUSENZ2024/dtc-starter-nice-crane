@@ -55,7 +55,7 @@ type TrackInfo = {
   }
 }
 
-type LookupMessageKind = "invalid" | "not-found" | "error"
+type LookupMessageKind = "invalid" | "not-found" | "registered" | "error"
 
 const isSupportedTrackingNumber = (value: string) => {
   if (/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(value)) return true
@@ -474,10 +474,22 @@ export default function TrackingClient() {
         | undefined
 
       if (!track?.tracking?.providers?.length) {
-        setMessageKind("not-found")
-        setMessage(
-          "We could not find a shipment for that tracking number. Check the number in your shipping confirmation email, or contact us if it still cannot be found."
-        )
+        // 17track only has data for numbers it has been told to poll. A
+        // number it hasn't seen before returns no providers here even
+        // though it's valid, so register it and ask the user to check
+        // back once the carrier has been polled.
+        try {
+          await api("register", [{ number: cleanTrackingNumber }])
+          setMessageKind("registered")
+          setMessage(
+            "This is the first time we've looked up that number, so we've just registered it with the carrier. Tracking data usually appears within 5-10 minutes - please check back shortly."
+          )
+        } catch {
+          setMessageKind("not-found")
+          setMessage(
+            "We could not find a shipment for that tracking number. Check the number in your shipping confirmation email, or contact us if it still cannot be found."
+          )
+        }
         return
       }
 
@@ -688,12 +700,18 @@ export default function TrackingClient() {
                     <div className="eta-label">
                       {loading && <span className="eta-pulse" />}
                       <span>
-                        {loading ? "Fetching tracking" : "Shipment not found"}
+                        {loading
+                          ? "Fetching tracking"
+                          : messageKind === "registered"
+                          ? "Tracking registered"
+                          : "Shipment not found"}
                       </span>
                     </div>
                     <div className="eta-date">
                       {loading
                         ? "Checking your parcel..."
+                        : messageKind === "registered"
+                        ? "Check back in 5-10 minutes"
                         : "Check the number and try again"}
                     </div>
                   </div>
@@ -824,6 +842,8 @@ export default function TrackingClient() {
                     <p className="lookup-summary-text">
                       {loading
                         ? "We are checking this number with the carrier now."
+                        : messageKind === "registered"
+                        ? "Just registered with the carrier - check back in 5-10 minutes."
                         : "No shipment was found for this number. Check your shipping confirmation email or contact support for help."}
                     </p>
                   )}
