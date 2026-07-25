@@ -112,7 +112,7 @@ const getCardFromProduct = (
       cheapestPrice?.original_price &&
       cheapestPrice.original_price !== cheapestPrice.calculated_price
         ? cheapestPrice.original_price
-        : "NZ$500",
+        : undefined,
     badge: fulfilment.shortLabel,
     href: `/products/${product.handle}`,
     image: getPrimaryImage(product),
@@ -163,7 +163,6 @@ export default async function Home(props: Props) {
     id: "home-fallback-puffer",
     title: "TNF 1996 Retro Nuptse - Black",
     price: "NZ$180",
-    compareAt: "NZ$500",
     badge: "Standard",
     href: `/products/${FEATURED_BLACK_NUPTSE_HANDLE}`,
     placeholder: "01",
