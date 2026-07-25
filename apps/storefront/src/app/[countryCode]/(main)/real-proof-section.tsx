@@ -1,8 +1,10 @@
+import RealProofVideo from "./real-proof-video"
+
 const PROOF_ITEMS = [
   {
     type: "video" as const,
     src: "/realproof/AQMKmIY6p2tnns4X9_1j51oMyymyQFEug_wvLVLswh3iK96VFFgmywO92ZyA1dQC9V-rcOO5X0bfaJ_T0DURtHXRXg6L-2moXTCR1W8.mp4",
-    poster: "/realproof/videoframe_755.png",
+    poster: "/realproof/videoframe_755.jpg",
   },
   {
     type: "image" as const,
@@ -24,12 +26,12 @@ const PROOF_ITEMS = [
     type: "image" as const,
     src: "/realproof/564831123_18047441489347978_1608318233264721454_n.jpg",
   },
-  { type: "image" as const, src: "/realproof/videoframe_755.png" },
+  { type: "image" as const, src: "/realproof/videoframe_755.jpg" },
   {
     type: "image" as const,
     src: "/realproof/626459852_17962257686994934_6931010819832897641_n.jpg",
   },
-  { type: "image" as const, src: "/realproof/videoframe_938.png" },
+  { type: "image" as const, src: "/realproof/videoframe_938.jpg" },
   {
     type: "image" as const,
     src: "/realproof/631274563_17963408489994934_4220081347609135448_n.jpg",
@@ -74,15 +76,7 @@ export default function RealProofSection() {
             className="flex-shrink-0 overflow-hidden rounded-[18px] bg-[#0A0A0A] [aspect-ratio:9/16] [scroll-snap-align:start] [width:calc((100vw-18px-24px)/3.15)] small:w-[220px] small:rounded-[22px] large:w-[260px]"
           >
             {item.type === "video" ? (
-              <video
-                src={item.src}
-                poster={item.poster}
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="h-full w-full object-cover"
-              />
+              <RealProofVideo src={item.src} poster={item.poster} />
             ) : (
               <img
                 src={item.src}

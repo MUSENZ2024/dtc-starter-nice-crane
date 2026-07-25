@@ -1,9 +1,9 @@
 "use client"
 
 import { Elements, PaymentMethodMessagingElement } from "@stripe/react-stripe-js"
-import { loadStripe } from "@stripe/stripe-js"
+import { loadStripe, type Stripe } from "@stripe/stripe-js"
 import type { StripeElementsOptions } from "@stripe/stripe-js"
-import { useMemo } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 
 type StripePaymentMessagingProps = {
   amount: number
@@ -16,12 +16,87 @@ const stripeKey =
   process.env.NEXT_PUBLIC_MEDUSA_PAYMENTS_PUBLISHABLE_KEY
 
 const medusaAccountId = process.env.NEXT_PUBLIC_MEDUSA_PAYMENTS_ACCOUNT_ID
-const stripePromise = stripeKey
-  ? loadStripe(
+
+// Loading Stripe.js here pulls in Stripe's fraud-detection bundle (which in
+// turn loads an hCaptcha challenge script that has been observed burning
+// 20s+ of main-thread CPU time). This widget is just a promotional line of
+// text ("or 4x interest-free payments with Afterpay"), so we must not pay
+// that cost during initial page load on every product page. `loadStripe` is
+// only invoked lazily, once the widget is actually visible and the browser
+// is idle — see `useDeferredStripe` below.
+let stripePromiseSingleton: Promise<Stripe | null> | null = null
+function getStripe(): Promise<Stripe | null> | null {
+  if (!stripeKey) return null
+  if (!stripePromiseSingleton) {
+    stripePromiseSingleton = loadStripe(
       stripeKey,
       medusaAccountId ? { stripeAccount: medusaAccountId } : undefined
     )
-  : null
+  }
+  return stripePromiseSingleton
+}
+
+function useDeferredStripe(enabled: boolean) {
+  const [stripePromise, setStripePromise] = useState<Promise<Stripe | null> | null>(
+    null
+  )
+  const containerRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!enabled || stripePromise) return
+
+    let cancelled = false
+    let idleHandle: number | undefined
+    const win = window as typeof window & {
+      requestIdleCallback?: (cb: () => void) => number
+      cancelIdleCallback?: (handle: number) => void
+    }
+
+    const load = () => {
+      if (cancelled) return
+      const promise = getStripe()
+      if (promise) setStripePromise(promise)
+    }
+
+    const scheduleIdleLoad = () => {
+      if (win.requestIdleCallback) {
+        idleHandle = win.requestIdleCallback(load)
+      } else {
+        idleHandle = window.setTimeout(load, 1500) as unknown as number
+      }
+    }
+
+    const node = containerRef.current
+    if (!node || typeof IntersectionObserver === "undefined") {
+      scheduleIdleLoad()
+      return () => {
+        cancelled = true
+      }
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          scheduleIdleLoad()
+          observer.disconnect()
+        }
+      },
+      { rootMargin: "200px" }
+    )
+    observer.observe(node)
+
+    return () => {
+      cancelled = true
+      observer.disconnect()
+      if (idleHandle !== undefined) {
+        if (win.cancelIdleCallback) win.cancelIdleCallback(idleHandle)
+        else window.clearTimeout(idleHandle)
+      }
+    }
+  }, [enabled, stripePromise])
+
+  return { stripePromise, containerRef }
+}
 
 type MessagingCurrency =
   | "AUD"
@@ -146,9 +221,11 @@ export default function StripePaymentMessaging({
     [normalizedCurrency, roundedAmount]
   )
 
+  const { stripePromise, containerRef } = useDeferredStripe(!!stripeKey)
+
   if (!stripePromise) {
     return (
-      <div className="text-[13px] text-[#666]">
+      <div ref={containerRef} className="text-[13px] text-[#666]">
         or 4x <strong className="font-bold text-[#0A0A0A]">interest-free</strong>{" "}
         payments with <strong className="font-bold text-[#0A0A0A]">Afterpay</strong>
       </div>

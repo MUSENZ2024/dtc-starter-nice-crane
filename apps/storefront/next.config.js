@@ -52,6 +52,34 @@ const nextConfig = {
         : []),
     ],
   },
+  // `images.minimumCacheTTL` above should already make Next.js send a long
+  // Cache-Control on /_next/image responses, but PageSpeed Insights on the
+  // deployed site showed "Cache TTL: None" for these and other static
+  // assets, which costs 300 KiB-4 MB of re-download on every repeat visit.
+  // Setting the header explicitly here guarantees it regardless of any
+  // proxy/CDN in front of the app not fully honoring the images config.
+  async headers() {
+    return [
+      {
+        source: "/_next/image",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=2678400, immutable",
+          },
+        ],
+      },
+      {
+        source: "/:all*(svg|jpg|jpeg|png|webp|avif|gif|ico|woff|woff2|mp4)",
+        headers: [
+          {
+            key: "Cache-Control",
+            value: "public, max-age=2678400, immutable",
+          },
+        ],
+      },
+    ]
+  },
 }
 
 module.exports = nextConfig
