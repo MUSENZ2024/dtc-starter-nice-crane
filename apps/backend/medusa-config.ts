@@ -60,5 +60,23 @@ module.exports = defineConfig({
         ],
       },
     },
+    // Only registers the "telegram" channel — the "email" channel stays
+    // unconfigured here so Medusa Cloud's managed Medusa Emails keeps
+    // handling customer order-confirmation emails as before.
+    {
+      resolve: "@medusajs/medusa/notification",
+      options: {
+        providers: [
+          {
+            resolve: "./src/modules/telegram-notification",
+            id: "telegram-notification",
+            options: {
+              channels: ["telegram"],
+              botToken: process.env.TELEGRAM_BOT_TOKEN,
+            },
+          },
+        ],
+      },
+    },
   ],
 })
