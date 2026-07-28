@@ -15,6 +15,7 @@ import { bgcolor, colors, DARK_MODE_OVERRIDE_STYLE, FONT_STACK, formatMoney, ico
 import type { EmailItem } from "./OrderConfirmationTemplate"
 
 export type ManualOrderUpdateKey =
+  | "order_confirmation"
   | "order_edited"
   | "order_invoice"
   | "order_payment_receipt"
@@ -76,6 +77,15 @@ export const MANUAL_ORDER_UPDATE_TEMPLATES: Record<
     ctaLabel?: string
   }
 > = {
+  order_confirmation: {
+    label: "Order confirmation",
+    subject: "MUSE NZ: Order Confirmation",
+    eyebrow: "ORDER CONFIRMED",
+    heading: "Your order is confirmed.",
+    intro: "Thanks {name}, we've got your order.",
+    detail: "Your order details are shown below. If anything looks off, reply to this email and we will help.",
+    ctaLabel: "View order",
+  },
   order_edited: {
     label: "Order edited",
     subject: "MUSE NZ: Your order has been updated",

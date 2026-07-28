@@ -6,6 +6,7 @@ import { useState } from "react"
 import { sdk } from "../lib/sdk"
 
 type OrderEmailTemplateKey =
+  | "order_confirmation"
   | "order_edited"
   | "order_invoice"
   | "order_payment_receipt"
@@ -44,6 +45,12 @@ type OrderEmailTemplate = {
 }
 
 const TEMPLATES: OrderEmailTemplate[] = [
+  {
+    key: "order_confirmation",
+    label: "Order confirmation",
+    subject: "MUSE NZ: Order Confirmation",
+    description: "Resend the order confirmation with items, address, and totals.",
+  },
   {
     key: "order_edited",
     label: "Order edited",
@@ -222,7 +229,7 @@ const TEMPLATES: OrderEmailTemplate[] = [
 
 const OrderEmailActions = ({ data: order }: DetailWidgetProps<HttpTypes.AdminOrder>) => {
   const [open, setOpen] = useState(false)
-  const [templateKey, setTemplateKey] = useState<OrderEmailTemplateKey>("order_edited")
+  const [templateKey, setTemplateKey] = useState<OrderEmailTemplateKey>("order_confirmation")
   const [note, setNote] = useState("")
   const selectedTemplate = TEMPLATES.find((template) => template.key === templateKey) || TEMPLATES[0]
 
