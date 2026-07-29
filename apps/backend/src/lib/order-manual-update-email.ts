@@ -1,7 +1,7 @@
 import { Modules } from "@medusajs/framework/utils"
 import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
-import { resolveLineItemImage } from "./resolve-line-item-image"
+import { resolveLineItemImages } from "./resolve-line-item-image"
 import {
   MANUAL_ORDER_UPDATE_TEMPLATES,
   ManualOrderUpdateKey,
@@ -27,8 +27,10 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
+    thumbnail?: string | null
     images?: { id?: string | null }[] | null
     product?: {
+      id?: string | null
       thumbnail?: string | null
       images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
     } | null
@@ -80,7 +82,9 @@ export const ORDER_MANUAL_UPDATE_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
+  "items.variant.thumbnail",
   "items.variant.images.id",
+  "items.variant.product.id",
   "items.variant.product.thumbnail",
   "items.variant.product.images.id",
   "items.variant.product.images.url",
@@ -129,11 +133,13 @@ export async function fetchAuthoritativeManualUpdateOrderTotals(
   }
 }
 
-export function buildOrderManualUpdateProps(
+export async function buildOrderManualUpdateProps(
   order: ManualUpdateEmailOrder,
   templateKey: ManualOrderUpdateKey,
-  note?: string | null
-): ManualOrderUpdateProps | null {
+  note: string | null | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any
+): Promise<ManualOrderUpdateProps | null> {
   if (!order.email) {
     return null
   }
@@ -141,6 +147,7 @@ export function buildOrderManualUpdateProps(
   const { items: itemsWithoutProtection, protectionAmount } = splitShippingProtection(order.items || [])
   const safeItems = withSafePricing(itemsWithoutProtection, toNumber(order.item_total ?? order.total))
   const addressDetail = formatAddressLines(order.shipping_address)
+  const itemThumbnails = await resolveLineItemImages(safeItems, query)
 
   const items: EmailItem[] = safeItems.map((item) => ({
     id: item.id,
@@ -148,7 +155,7 @@ export function buildOrderManualUpdateProps(
     variantTitle: item.variant_title,
     quantity: toNumber(item.quantity) || 1,
     unitPrice: toNumber(item.unit_price),
-    thumbnail: resolveLineItemImage(item),
+    thumbnail: itemThumbnails[item.id],
     fulfillmentType: getFulfillmentType(item.metadata),
   }))
 
@@ -175,9 +182,11 @@ export function buildOrderManualUpdateProps(
 export async function renderOrderManualUpdateEmail(
   order: ManualUpdateEmailOrder,
   templateKey: ManualOrderUpdateKey,
-  note?: string | null
+  note: string | null | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any
 ) {
-  const props = buildOrderManualUpdateProps(order, templateKey, note)
+  const props = await buildOrderManualUpdateProps(order, templateKey, note, query)
   if (!props) {
     return null
   }

@@ -48,7 +48,7 @@ export async function POST(
   }
 
   const order = await fetchAuthoritativeManualUpdateOrderTotals(req.scope, rawOrder)
-  const html = await renderOrderManualUpdateEmail(order, templateKey, note)
+  const html = await renderOrderManualUpdateEmail(order, templateKey, note, query)
   const template = MANUAL_ORDER_UPDATE_TEMPLATES[templateKey]
 
   if (!html || !order.email) {

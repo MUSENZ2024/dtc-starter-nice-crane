@@ -2,7 +2,7 @@ import type { MedusaContainer } from "@medusajs/framework/types"
 import { ABANDONED_CART_MODULE } from "../modules/abandoned-cart"
 import AbandonedCartModuleService from "../modules/abandoned-cart/service"
 import type { AbandonedCartSnapshot } from "../lib/abandoned-cart-email"
-import { resolveLineItemImage } from "../lib/resolve-line-item-image"
+import { resolveLineItemImages } from "../lib/resolve-line-item-image"
 import { scheduleAbandonedCartCampaignWorkflow } from "../workflows/schedule-abandoned-cart-campaign"
 import { sendAbandonedCartEmailEventWorkflow } from "../workflows/send-abandoned-cart-email-event"
 
@@ -69,8 +69,10 @@ type CartRecord = {
     unit_price: unknown
     thumbnail?: string | null
     variant?: {
+      thumbnail?: string | null
       images?: { id?: string | null }[] | null
       product?: {
+        id?: string | null
         thumbnail?: string | null
         images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
       } | null
@@ -110,6 +112,7 @@ async function toSnapshot(query: any, cart: CartRecord): Promise<AbandonedCartSn
     ? cart.shipping_address.last_name
     : cart.customer?.last_name
   const customerName = [firstName, lastName].filter(Boolean).join(" ") || "Guest customer"
+  const thumbnails = await resolveLineItemImages(cart.items || [], query)
 
   return {
     cart_id: cart.id,
@@ -135,7 +138,7 @@ async function toSnapshot(query: any, cart: CartRecord): Promise<AbandonedCartSn
       variantTitle: item.variant_title,
       quantity: toNumber(item.quantity) || 1,
       unitPrice: toNumber(item.unit_price),
-      thumbnail: resolveLineItemImage(item),
+      thumbnail: thumbnails[item.id],
     })),
   }
 }
@@ -158,7 +161,8 @@ export default async function sendAbandonedCartEmails(container: MedusaContainer
       fields: [
         "id", "email", "customer_id", "currency_code", "total", "item_subtotal", "created_at", "updated_at",
         "items.id", "items.title", "items.product_title", "items.variant_title", "items.quantity", "items.unit_price", "items.thumbnail",
-        "items.variant.images.id", "items.variant.product.thumbnail",
+        "items.variant.thumbnail", "items.variant.images.id",
+        "items.variant.product.id", "items.variant.product.thumbnail",
         "items.variant.product.images.id", "items.variant.product.images.url", "items.variant.product.images.rank",
         "customer.id", "customer.first_name", "customer.last_name",
         "shipping_address.*", "billing_address.*", "shipping_methods.id", "shipping_methods.name", "shipping_methods.amount",

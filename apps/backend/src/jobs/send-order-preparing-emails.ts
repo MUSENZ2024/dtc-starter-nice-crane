@@ -68,7 +68,7 @@ export default async function sendOrderPreparingEmails(container: MedusaContaine
       }
 
       const order = await fetchAuthoritativeOrderTotals(container, rawOrder)
-      const html = await renderOrderPreparingEmail(order)
+      const html = await renderOrderPreparingEmail(order, query)
 
       if (!html || !order.email) {
         logger.warn(`Skipping preparing email for ${order.id}: missing email or renderable template props.`)

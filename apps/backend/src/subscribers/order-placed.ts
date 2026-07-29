@@ -6,7 +6,7 @@ import type { EmailItem, OrderConfirmationProps, Shipment } from "../emails/Orde
 import getOrderPlacedMixedTemplate from "../emails/order-placed-mixed"
 import getOrderPlacedNZStockTemplate from "../emails/order-placed-nzstock"
 import getOrderPlacedStandardTemplate from "../emails/order-placed-standard"
-import { resolveLineItemImage } from "../lib/resolve-line-item-image"
+import { resolveLineItemImages } from "../lib/resolve-line-item-image"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -20,8 +20,10 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
+    thumbnail?: string | null
     images?: { id?: string | null }[] | null
     product?: {
+      id?: string | null
       thumbnail?: string | null
       images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
     } | null
@@ -224,7 +226,9 @@ const ORDER_EMAIL_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
+  "items.variant.thumbnail",
   "items.variant.images.id",
+  "items.variant.product.id",
   "items.variant.product.thumbnail",
   "items.variant.product.images.id",
   "items.variant.product.images.url",
@@ -401,13 +405,14 @@ export default async function orderPlacedHandler({
     // shipping timeline, since these orders don't ship until paid off.
     const isMusePay = order.metadata?.muse_split_pay === "true"
 
+    const itemThumbnails = await resolveLineItemImages(safeItems, query)
     const items: EmailItem[] = (safeItems).map((item) => ({
       id: item.id,
       title: item.product_title,
       variantTitle: item.variant_title,
       quantity: item.quantity,
       unitPrice: item.unit_price,
-      thumbnail: resolveLineItemImage(item),
+      thumbnail: itemThumbnails[item.id],
       fulfillmentType: getFulfillmentType(item.metadata),
     }))
 

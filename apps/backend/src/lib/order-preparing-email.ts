@@ -3,7 +3,7 @@ import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
 import type { OrderPreparingProps } from "../emails/OrderPreparingTemplate"
 import getOrderPreparingTemplate from "../emails/order-preparing"
-import { resolveLineItemImage } from "./resolve-line-item-image"
+import { resolveLineItemImages } from "./resolve-line-item-image"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -17,8 +17,10 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
+    thumbnail?: string | null
     images?: { id?: string | null }[] | null
     product?: {
+      id?: string | null
       thumbnail?: string | null
       images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
     } | null
@@ -80,7 +82,9 @@ export const ORDER_PREPARING_FIELDS = [
   "items.unit_price",
   "items.thumbnail",
   "items.metadata",
+  "items.variant.thumbnail",
   "items.variant.images.id",
+  "items.variant.product.id",
   "items.variant.product.thumbnail",
   "items.variant.product.images.id",
   "items.variant.product.images.url",
@@ -183,13 +187,18 @@ export async function fetchAuthoritativeOrderTotals(
   }
 }
 
-export function buildOrderPreparingProps(order: PreparingEmailOrder): OrderPreparingProps | null {
+export async function buildOrderPreparingProps(
+  order: PreparingEmailOrder,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any
+): Promise<OrderPreparingProps | null> {
   if (!order.email) {
     return null
   }
 
   const { items: itemsWithoutProtection, protectionAmount } = splitShippingProtection(order.items || [])
   const safeItems = withSafePricing(itemsWithoutProtection, toNumber(order.item_total ?? order.total))
+  const itemThumbnails = await resolveLineItemImages(safeItems, query)
 
   const items: EmailItem[] = safeItems.map((item) => ({
     id: item.id,
@@ -197,7 +206,7 @@ export function buildOrderPreparingProps(order: PreparingEmailOrder): OrderPrepa
     variantTitle: item.variant_title,
     quantity: toNumber(item.quantity) || 1,
     unitPrice: toNumber(item.unit_price),
-    thumbnail: resolveLineItemImage(item),
+    thumbnail: itemThumbnails[item.id],
     fulfillmentType: getFulfillmentType(item.metadata),
   }))
 
@@ -224,8 +233,12 @@ export function buildOrderPreparingProps(order: PreparingEmailOrder): OrderPrepa
   }
 }
 
-export async function renderOrderPreparingEmail(order: PreparingEmailOrder): Promise<string | null> {
-  const props = buildOrderPreparingProps(order)
+export async function renderOrderPreparingEmail(
+  order: PreparingEmailOrder,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any
+): Promise<string | null> {
+  const props = await buildOrderPreparingProps(order, query)
   if (!props) {
     return null
   }

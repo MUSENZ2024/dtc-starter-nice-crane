@@ -3,7 +3,7 @@ import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
 import type { OrderArrivedNzProps } from "../emails/OrderArrivedNzTemplate"
 import getOrderArrivedNzTemplate from "../emails/order-arrived-nz"
-import { resolveLineItemImage } from "./resolve-line-item-image"
+import { resolveLineItemImages } from "./resolve-line-item-image"
 import {
   formatAddressLines,
   getFulfillmentType,
@@ -23,8 +23,10 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
+    thumbnail?: string | null
     images?: { id?: string | null }[] | null
     product?: {
+      id?: string | null
       thumbnail?: string | null
       images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
     } | null
@@ -131,7 +133,9 @@ export const ORDER_ARRIVED_NZ_FULFILLMENT_FIELDS = [
   "order.items.unit_price",
   "order.items.thumbnail",
   "order.items.metadata",
+  "order.items.variant.thumbnail",
   "order.items.variant.images.id",
+  "order.items.variant.product.id",
   "order.items.variant.product.thumbnail",
   "order.items.variant.product.images.id",
   "order.items.variant.product.images.url",
@@ -345,10 +349,12 @@ export function hasArrivedInNzSignal(fulfillment: ArrivedNzFulfillment): boolean
   })
 }
 
-export function buildOrderArrivedNzProps(
+export async function buildOrderArrivedNzProps(
   order: ArrivedNzEmailOrder,
-  label: ArrivedNzFulfillmentLabel
-): OrderArrivedNzProps | null {
+  label: ArrivedNzFulfillmentLabel,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any
+): Promise<OrderArrivedNzProps | null> {
   if (!order.email) {
     return null
   }
@@ -360,6 +366,7 @@ export function buildOrderArrivedNzProps(
 
   const { items: itemsWithoutProtection, protectionAmount } = splitShippingProtection(order.items || [])
   const safeItems = withSafePricing(itemsWithoutProtection, toNumber(order.item_total ?? order.total))
+  const itemThumbnails = await resolveLineItemImages(safeItems, query)
 
   const items: EmailItem[] = safeItems.map((item) => ({
     id: item.id,
@@ -367,7 +374,7 @@ export function buildOrderArrivedNzProps(
     variantTitle: item.variant_title,
     quantity: toNumber(item.quantity) || 1,
     unitPrice: toNumber(item.unit_price),
-    thumbnail: resolveLineItemImage(item),
+    thumbnail: itemThumbnails[item.id],
     fulfillmentType: getFulfillmentType(item.metadata),
   }))
 
@@ -419,9 +426,11 @@ export async function fetchAuthoritativeArrivedNzOrderTotals(
 
 export async function renderOrderArrivedNzEmail(
   order: ArrivedNzEmailOrder,
-  label: ArrivedNzFulfillmentLabel
+  label: ArrivedNzFulfillmentLabel,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  query: any
 ): Promise<string | null> {
-  const props = buildOrderArrivedNzProps(order, label)
+  const props = await buildOrderArrivedNzProps(order, label, query)
   if (!props) {
     return null
   }

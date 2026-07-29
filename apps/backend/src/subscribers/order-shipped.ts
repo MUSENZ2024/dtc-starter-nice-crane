@@ -2,7 +2,7 @@ import type { SubscriberArgs, SubscriberConfig } from "@medusajs/framework"
 import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
 import getOrderShippedTemplate from "../emails/order-shipped"
-import { resolveLineItemImage } from "../lib/resolve-line-item-image"
+import { resolveLineItemImages } from "../lib/resolve-line-item-image"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -20,8 +20,10 @@ type OrderLine = {
   thumbnail?: string | null
   metadata?: Record<string, unknown> | null
   variant?: {
+    thumbnail?: string | null
     images?: { id?: string | null }[] | null
     product?: {
+      id?: string | null
       thumbnail?: string | null
       images?: { id?: string | null; url?: string | null; rank?: number | null }[] | null
     } | null
@@ -109,7 +111,9 @@ const FULFILLMENT_EMAIL_FIELDS = [
   "order.items.unit_price",
   "order.items.thumbnail",
   "order.items.metadata",
+  "order.items.variant.thumbnail",
   "order.items.variant.images.id",
+  "order.items.variant.product.id",
   "order.items.variant.product.thumbnail",
   "order.items.variant.product.images.id",
   "order.items.variant.product.images.url",
@@ -172,13 +176,14 @@ export default async function orderShippedHandler({
     const addressDetail = formatAddressLines(shippingAddress)
     const shippingMethodLabel = getShippingMethodLabel(order.shipping_methods?.[0]?.name)
 
+    const itemThumbnails = await resolveLineItemImages(order.items || [], query)
     const items: EmailItem[] = (order.items || []).map((item) => ({
       id: item.id,
       title: item.product_title,
       variantTitle: item.variant_title,
       quantity: toNumber(item.quantity) || 1,
       unitPrice: toNumber(item.unit_price),
-      thumbnail: resolveLineItemImage(item),
+      thumbnail: itemThumbnails[item.id],
       fulfillmentType: getFulfillmentType(item.metadata),
     }))
 

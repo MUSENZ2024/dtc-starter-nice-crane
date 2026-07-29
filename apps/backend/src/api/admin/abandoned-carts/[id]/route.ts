@@ -5,7 +5,7 @@ import {
 import { MedusaError } from "@medusajs/framework/utils";
 import { ABANDONED_CART_MODULE } from "../../../../modules/abandoned-cart";
 import AbandonedCartModuleService from "../../../../modules/abandoned-cart/service";
-import { resolveLineItemImage } from "../../../../lib/resolve-line-item-image";
+import { resolveLineItemImages } from "../../../../lib/resolve-line-item-image";
 
 const numeric = (value: unknown) => {
   if (value && typeof value === "object" && "numeric_" in value)
@@ -59,7 +59,9 @@ export async function GET(
       "items.thumbnail",
       "items.product_id",
       "items.variant_id",
+      "items.variant.thumbnail",
       "items.variant.images.id",
+      "items.variant.product.id",
       "items.variant.product.thumbnail",
       "items.variant.product.images.id",
       "items.variant.product.images.url",
@@ -96,6 +98,13 @@ export async function GET(
     pagination: { take: 20, skip: 0, order: { created_at: "DESC" } },
   });
 
+  const cartThumbnails = carts[0]
+    ? await resolveLineItemImages(
+        ((carts[0].items || []) as any[]).filter(Boolean),
+        query,
+      )
+    : {};
+
   res.json({
     campaign: {
       ...campaign,
@@ -112,7 +121,7 @@ export async function GET(
           ...carts[0],
           items: (carts[0].items || []).map((item: any) => ({
             ...item,
-            thumbnail: resolveLineItemImage(item),
+            thumbnail: cartThumbnails[item.id],
           })),
         }
       : null,

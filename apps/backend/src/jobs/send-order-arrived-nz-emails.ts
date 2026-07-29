@@ -78,7 +78,7 @@ export default async function sendOrderArrivedNzEmails(container: MedusaContaine
       }
 
       const orderWithTotals = await fetchAuthoritativeArrivedNzOrderTotals(container, order)
-      const html = await renderOrderArrivedNzEmail(orderWithTotals, label)
+      const html = await renderOrderArrivedNzEmail(orderWithTotals, label, query)
 
       if (!html || !orderWithTotals.email) {
         logger.warn(`Skipping arrived-in-NZ email for ${order.id}: missing email, tracking, or renderable props.`)
