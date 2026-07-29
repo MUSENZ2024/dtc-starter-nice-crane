@@ -1,6 +1,6 @@
 export type CampaignBlock = { type: "hero" | "text" | "product_grid" | "category_row" | "review" | "offer" | "trust" | "divider"; [key: string]: unknown }
 const escape = (value: unknown) => String(value || "").replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]!))
-const allowUrl = (value: unknown) => { const url = String(value || ""); return /^(https:\/\/([a-z0-9-]+\.)*musenz\.com|https?:\/\/localhost(?::\d+)?)(\/|$)/i.test(url) ? url : "https://musenz.com" }
+const allowUrl = (value: unknown) => { const url = String(value || ""); return /^https:\/\/([a-z0-9-]+\.)*musenz\.com(\/|$)/i.test(url) ? url : "https://musenz.com" }
 
 export const validateCampaignContent = (content: unknown) => {
   if (!Array.isArray(content) || !content.length) return ["At least one structured content block is required."]

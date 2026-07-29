@@ -9,7 +9,7 @@ export const testMarketingCampaignStep = createStep("test-marketing-campaign", a
   if (!/^\S+@\S+\.\S+$/.test(to)) throw new MedusaError(MedusaError.Types.INVALID_DATA, "A valid test recipient is required.")
   const service: MarketingModuleService = container.resolve(MARKETING_MODULE)
   const campaign = await service.retrieveMarketingCampaign(campaign_id)
-  const html = renderCampaignEmail({ subject: `[TEST] ${campaign.subject}`, previewText: campaign.preview_text, blocks: (campaign.content.blocks || []) as CampaignBlock[], unsubscribeUrl: `${process.env.STOREFRONT_URL || "http://localhost:8000"}/marketing/unsubscribe?preview=1`, utmCampaign: campaign.utm_campaign })
+  const html = renderCampaignEmail({ subject: `[TEST] ${campaign.subject}`, previewText: campaign.preview_text, blocks: (campaign.content.blocks || []) as CampaignBlock[], unsubscribeUrl: `${process.env.STOREFRONT_URL || "https://musenz.com"}/marketing/unsubscribe?preview=1`, utmCampaign: campaign.utm_campaign })
   const notifications = await container.resolve(Modules.NOTIFICATION).createNotifications({ to, from: process.env.MUSE_EMAIL_FROM || "MUSE NZ <orders@musenz.com>", channel: "email", content: { subject: `[TEST] ${campaign.subject}`, html } })
   await service.updateMarketingCampaigns({ id: campaign.id, test_sent_at: new Date() })
   const notification = Array.isArray(notifications) ? notifications[0] : notifications

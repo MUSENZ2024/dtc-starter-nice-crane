@@ -25,7 +25,7 @@ export const dispatchMarketingCampaignsStep = createStep("dispatch-marketing-cam
       if (!event) { await service.updateMarketingCampaignRecipients({ id: recipient.id, status: "failed", exclusion_reason: "missing_email_event" }); failed++; continue }
       try {
         await service.updateMarketingEmailEvents({ id: event.id, status: "sending", send_started_at: new Date(), attempt_count: event.attempt_count + 1 })
-        const html = renderCampaignEmail({ subject: campaign.subject, previewText: campaign.preview_text, blocks: (campaign.content.blocks || []) as CampaignBlock[], unsubscribeUrl: `${process.env.STOREFRONT_URL || "http://localhost:8000"}/marketing/unsubscribe?token=${event.tracking_token}`, utmCampaign: campaign.utm_campaign })
+        const html = renderCampaignEmail({ subject: campaign.subject, previewText: campaign.preview_text, blocks: (campaign.content.blocks || []) as CampaignBlock[], unsubscribeUrl: `${process.env.STOREFRONT_URL || "https://musenz.com"}/marketing/unsubscribe?token=${event.tracking_token}`, utmCampaign: campaign.utm_campaign })
         const notifications = await container.resolve(Modules.NOTIFICATION).createNotifications({ to: recipient.email, from: process.env.MUSE_EMAIL_FROM || "MUSE NZ <orders@musenz.com>", channel: "email", content: { subject: campaign.subject, html } })
         const notification = Array.isArray(notifications) ? notifications[0] : notifications
         await service.updateMarketingEmailEvents({ id: event.id, status: "sent", sent_at: new Date(), provider_notification_id: notification?.id || null })
