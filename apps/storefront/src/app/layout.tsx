@@ -1,7 +1,10 @@
 import { getBaseURL } from "@lib/util/env"
 import { Metadata } from "next"
 import { Inter } from "next/font/google"
+import Script from "next/script"
 import "styles/globals.css"
+
+const GOOGLE_TAG_ID = "GT-M638GBXN"
 
 export const metadata: Metadata = {
   metadataBase: new URL(getBaseURL()),
@@ -72,6 +75,18 @@ export default function RootLayout(props: { children: React.ReactNode }) {
     <html lang="en" data-mode="light" className={inter.variable}>
       <body className="bg-muse-cream font-inter text-muse-black antialiased">
         <main className="relative">{props.children}</main>
+        <Script
+          src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_TAG_ID}`}
+          strategy="afterInteractive"
+        />
+        <Script id="google-tag" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+            gtag('config', '${GOOGLE_TAG_ID}');
+          `}
+        </Script>
       </body>
     </html>
   )
