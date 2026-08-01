@@ -1,0 +1,62 @@
+diff --git a/.medusa/server/src/admin/index.js b/.medusa/server/src/admin/index.js
+index 4666c074c8135537188db0d22de7dccd18a32cf1..2662384ba327282cf961b099a67afbfec035c59e 100644
+--- a/.medusa/server/src/admin/index.js
++++ b/.medusa/server/src/admin/index.js
+@@ -2079,24 +2079,10 @@ const config = adminSdk.defineRouteConfig({
+ });
+ const widgetModule = { widgets: [] };
+ const routeModule = {
+-  routes: [
+-    {
+-      Component: AnalyticsPage,
+-      path: "/analytics"
+-    }
+-  ]
++  routes: []
+ };
+ const menuItemModule = {
+-  menuItems: [
+-    {
+-      label: config.label,
+-      icon: config.icon,
+-      path: "/analytics",
+-      nested: void 0,
+-      rank: void 0,
+-      translationNs: void 0
+-    }
+-  ]
++  menuItems: []
+ };
+ const formModule = { customFields: {} };
+ const displayModule = {
+diff --git a/.medusa/server/src/admin/index.mjs b/.medusa/server/src/admin/index.mjs
+index 322606636035c41e3825e49030cbc6b2c6ebf890..527c923fd69e0910115bd4b75f9026009999dca3 100644
+--- a/.medusa/server/src/admin/index.mjs
++++ b/.medusa/server/src/admin/index.mjs
+@@ -2059,24 +2059,10 @@ const config = defineRouteConfig({
+ });
+ const widgetModule = { widgets: [] };
+ const routeModule = {
+-  routes: [
+-    {
+-      Component: AnalyticsPage,
+-      path: "/analytics"
+-    }
+-  ]
++  routes: []
+ };
+ const menuItemModule = {
+-  menuItems: [
+-    {
+-      label: config.label,
+-      icon: config.icon,
+-      path: "/analytics",
+-      nested: void 0,
+-      rank: void 0,
+-      translationNs: void 0
+-    }
+-  ]
++  menuItems: []
+ };
+ const formModule = { customFields: {} };
+ const displayModule = {

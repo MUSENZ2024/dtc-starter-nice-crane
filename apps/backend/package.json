@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "@agilo/medusa-analytics-plugin": "1.4.0",
+    "@google-analytics/data": "5.2.0",
     "@medusajs/admin-sdk": "2.15.5",
     "@medusajs/admin-shared": "2.15.5",
     "@medusajs/caching": "2.15.5",
