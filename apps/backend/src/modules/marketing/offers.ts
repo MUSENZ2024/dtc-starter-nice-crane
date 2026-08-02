@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto"
+import { randomInt } from "node:crypto"
 
 export const WELCOME_OFFER_KEY = "welcome_nzd20_150_v1"
 export const WELCOME_OFFER_DEFAULTS = {
@@ -18,8 +18,19 @@ export const WELCOME_OFFER_DEFAULTS = {
   metadata: { version: 1, purpose: "welcome" },
 }
 
-export const generateWelcomeOfferCode = () =>
-  `MUSE20-${randomBytes(4).toString("hex").toUpperCase()}`
+const welcomeCodeName = (firstName?: string | null) => {
+  const normalized = (firstName || "")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 20)
+
+  return normalized || "MUSE"
+}
+
+export const generateWelcomeOfferCode = (firstName?: string | null) =>
+  `${welcomeCodeName(firstName)}${randomInt(0, 10_000).toString().padStart(4, "0")}`
 
 export const offerExpiry = (issuedAt: Date, hours: number) =>
   new Date(issuedAt.getTime() + hours * 60 * 60 * 1000)

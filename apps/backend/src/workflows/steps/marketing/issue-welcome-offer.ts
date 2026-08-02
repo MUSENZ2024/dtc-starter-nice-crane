@@ -43,7 +43,7 @@ export const issueWelcomeOfferStep = createStep(
 
     const issuedAt = new Date()
     const expiresAt = offerExpiry(issuedAt, offer.expires_after_hours)
-    const code = generateWelcomeOfferCode()
+    const code = generateWelcomeOfferCode(subscriber.first_name)
     const rules: Array<{ attribute: string; operator: "eq" | "gte"; values: string[] }> = [
       { attribute: "item_subtotal", operator: "gte", values: [String(offer.minimum_spend)] },
     ]
