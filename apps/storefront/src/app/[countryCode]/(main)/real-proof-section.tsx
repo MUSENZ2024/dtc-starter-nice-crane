@@ -47,11 +47,11 @@ export default function RealProofSection() {
             Real proof
           </p>
           <h2 className="text-[34px] font-black leading-[0.98] tracking-[-0.045em] small:text-[52px]">
-            Straight from our customers.
+            Real orders. Real customers.
           </h2>
           <p className="mt-3 max-w-[560px] text-[15px] leading-[1.65] text-[#666]">
-            Real orders, real unboxings, and real fit photos from people who
-            have shopped with us.
+            Unboxings, deliveries and customer photos from people who have
+            shopped with MUSE.
           </p>
         </div>
         <a

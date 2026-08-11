@@ -9,10 +9,11 @@ type ImageGalleryProps = {
   images: HttpTypes.StoreProductImage[]
   fulfilment: FulfilmentState
   productTitle: string
+  outOfStock: boolean
   colourImageMap?: Record<string, string>
 }
 
-const ImageGallery = ({ images, fulfilment, productTitle, colourImageMap }: ImageGalleryProps) => {
+const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImageMap }: ImageGalleryProps) => {
   const galleryImages = useMemo(
     () =>
       images.length > 0
@@ -70,7 +71,12 @@ const ImageGallery = ({ images, fulfilment, productTitle, colourImageMap }: Imag
             01
           </span>
         )}
-        <span className="absolute left-4 top-4 inline-flex items-center gap-2 rounded-full bg-[#F4F2ED]/95 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#0A0A0A] backdrop-blur">
+        {outOfStock && (
+          <span className="absolute left-4 top-4 z-[2] rounded-full bg-[#0A0A0A] px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#F4F2ED]">
+            Out of stock
+          </span>
+        )}
+        <span className={`absolute left-4 inline-flex items-center gap-2 rounded-full bg-[#F4F2ED]/95 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#0A0A0A] backdrop-blur ${outOfStock ? "top-14" : "top-4"}`}>
           <span className={`h-[7px] w-[7px] rounded-full ${fulfilment.dotClassName}`} />
           {fulfilment.label}
         </span>

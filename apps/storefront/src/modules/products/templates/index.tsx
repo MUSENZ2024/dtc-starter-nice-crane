@@ -11,6 +11,8 @@ import { getProductPrice } from "@lib/util/get-product-price"
 import CompleteTheFit from "@modules/products/components/complete-the-fit"
 import ReviewSubmission from "@modules/products/components/review-submission"
 import PhotoReviews from "@modules/products/components/photo-reviews"
+import RealProofSection from "../../../app/[countryCode]/(main)/real-proof-section"
+import { isProductOutOfStock } from "@lib/util/product-availability"
 import { getStoreReviewsWithin } from "@lib/data/reviews"
 import {
   allWrittenMuseReviews,
@@ -113,6 +115,7 @@ const ProductTemplate = async ({
 
   const { cheapestPrice } = getProductPrice({ product })
   const fulfilment = getFulfilmentState(product)
+  const outOfStock = isProductOutOfStock(product)
   const textReviews = getProductTextReviews(product)
   // Reviews are below the purchase controls and have a complete local
   // fallback. Do not make the primary PDP wait on a slow reviews service.
@@ -171,6 +174,7 @@ const ProductTemplate = async ({
           <ImageGallery
             images={images}
             fulfilment={fulfilment}
+            outOfStock={outOfStock}
             productTitle={product.title}
             colourImageMap={
               (product.metadata?.colour_image_map as Record<string, string> | undefined) ??
@@ -378,6 +382,8 @@ const ProductTemplate = async ({
 
         <ReviewSubmission productId={product.id} />
       </section>
+
+      <RealProofSection />
 
       <React.Suspense
         fallback={

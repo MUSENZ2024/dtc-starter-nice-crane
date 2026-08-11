@@ -3,6 +3,7 @@
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart, replaceLineItem } from "@lib/data/cart"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
+import { isProductOutOfStock } from "@lib/util/product-availability"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { HttpTypes } from "@medusajs/types"
 import PaymentBadges from "@modules/common/components/payment-badges"
@@ -937,6 +938,7 @@ export default function ProductActions({
   const disabledCta =
     !selectedVariant || !inStock || !isValidVariant || !!disabled
   const fulfilment = getFulfilmentState(product)
+  const productOutOfStock = isProductOutOfStock(product)
 
   const promptForSize = () => {
     sizeSelectionRef.current?.scrollIntoView({
@@ -980,6 +982,11 @@ export default function ProductActions({
         />
         {fulfilment.eyebrow}
       </div>
+      {productOutOfStock && (
+        <div className="mb-3 w-fit rounded-full bg-[#0A0A0A] px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.08em] text-[#F4F2ED]">
+          Out of stock
+        </div>
+      )}
       <h1 className="mb-3 text-[26px] font-black leading-[1.08] tracking-[-0.03em] text-[#0A0A0A] small:text-[38px]">
         {product.title}
       </h1>

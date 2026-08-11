@@ -10,6 +10,7 @@ import { getDeliveredByLabel } from "@lib/util/delivery-estimate"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { getProductColourSwatches } from "@lib/util/product-colours"
+import { isProductOutOfStock } from "@lib/util/product-availability"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
 import {
@@ -51,6 +52,7 @@ type HomeCard = {
   placeholder: string
   eta: string
   colours: { label: string; hex: string }[]
+  outOfStock: boolean
 }
 
 const HOW_STEPS = [
@@ -120,6 +122,7 @@ const getCardFromProduct = (
     placeholder: String(index + 1).padStart(2, "0"),
     eta: fulfilment.deliveryLabel || deliveryLabel,
     colours: getProductColourSwatches(product),
+    outOfStock: isProductOutOfStock(product),
   }
 }
 
@@ -185,6 +188,7 @@ export default async function Home(props: Props) {
     placeholder: "01",
     eta: deliveryLabel,
     colours: [],
+    outOfStock: false,
   }
 
   const [bestSellerTag, collectionsResult, productTypesResult] =
@@ -767,7 +771,12 @@ function ProductCard({ product }: { product: HomeCard }) {
               {product.placeholder}
             </span>
           )}
-          <span className="absolute left-3 top-3 z-[2] inline-flex items-center gap-1.5 rounded-full bg-[#F4F2ED]/90 px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#0A0A0A] backdrop-blur">
+          {product.outOfStock && (
+            <span className="absolute left-3 top-3 z-[3] rounded-full bg-[#0A0A0A] px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#F4F2ED]">
+              Out of stock
+            </span>
+          )}
+          <span className={`absolute left-3 z-[2] inline-flex items-center gap-1.5 rounded-full bg-[#F4F2ED]/90 px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#0A0A0A] backdrop-blur ${product.outOfStock ? "top-12" : "top-3"}`}>
             <span
               className={`h-[7px] w-[7px] rounded-full ${
                 product.badge === "NZ Stock" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"

@@ -3,6 +3,10 @@
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
 import { getProductColourSwatches } from "@lib/util/product-colours"
+import {
+  isProductOutOfStock,
+  isVariantPurchasable,
+} from "@lib/util/product-availability"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
 import Image from "next/image"
@@ -89,14 +93,6 @@ const getVariantSize = (
   return undefined
 }
 
-const variantInStock = (variant: ProductCardMuseVariant) => {
-  if (!variant.manage_inventory || variant.allow_backorder) {
-    return true
-  }
-
-  return (variant.inventory_quantity ?? 0) > 0
-}
-
 const parsePrice = (price?: string) => {
   if (!price) {
     return 0
@@ -123,6 +119,7 @@ export default function ProductCardMuse({
   const fulfilment = product.fulfilment
   const brand = product.brand
   const promotionalBadge = product.promotionalBadge
+  const outOfStock = isProductOutOfStock(product)
   const sizes = getSizes(product)
   const hasSizes = sizes.length > 0
   const colours = getProductColourSwatches(product)
@@ -134,8 +131,8 @@ export default function ProductCardMuse({
     const variant =
       product.variants?.find(
         (item) =>
-          getVariantSize(item, product) === size && variantInStock(item),
-      ) ?? product.variants?.find(variantInStock)
+          getVariantSize(item, product) === size && isVariantPurchasable(item),
+      ) ?? product.variants?.find(isVariantPurchasable)
 
     if (!variant?.id) {
       return
@@ -177,6 +174,11 @@ export default function ProductCardMuse({
     <div className="group relative overflow-hidden rounded-[20px] bg-muse-cream-warm transition duration-200 hover:-translate-y-[5px] hover:shadow-[0_18px_36px_rgba(0,0,0,0.08)]">
       <div className="relative">
         <div className="absolute left-3 top-3 z-[2] flex flex-col items-start gap-1.5">
+          {outOfStock && (
+            <span className="rounded-full bg-muse-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-cream">
+              Out of stock
+            </span>
+          )}
           <span className="inline-flex items-center gap-1.5 rounded-full bg-muse-cream/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black backdrop-blur">
             <span
               className={`h-[7px] w-[7px] rounded-full ${
@@ -248,10 +250,11 @@ export default function ProductCardMuse({
 
         <button
           type="button"
+          disabled={outOfStock}
           onClick={() => setQuickAddOpen((current) => !current)}
-          className="absolute bottom-3 left-3 right-3 z-[2] rounded-full bg-muse-black px-4 py-3 text-center text-[11px] font-bold uppercase tracking-[0.08em] text-muse-cream opacity-100 transition hover:bg-muse-orange small:translate-y-2 small:opacity-0 small:group-hover:translate-y-0 small:group-hover:opacity-100"
+          className="absolute bottom-3 left-3 right-3 z-[2] rounded-full bg-muse-black px-4 py-3 text-center text-[11px] font-bold uppercase tracking-[0.08em] text-muse-cream opacity-100 transition hover:bg-muse-orange disabled:cursor-not-allowed disabled:bg-muse-black/65 small:translate-y-2 small:opacity-0 small:group-hover:translate-y-0 small:group-hover:opacity-100"
         >
-          {hasSizes ? "+ Quick add" : "Add to bag"}
+          {outOfStock ? "Out of stock" : hasSizes ? "+ Quick add" : "Add to bag"}
         </button>
 
         {quickAddOpen && (
@@ -351,7 +354,7 @@ function getSizes(product: ProductCardMuseProduct) {
     }
 
     const quantity = variant.inventory_quantity ?? 0
-    const inStock = variantInStock(variant)
+    const inStock = isVariantPurchasable(variant)
     const current = sizeValues.get(label)
 
     sizeValues.set(label, {
