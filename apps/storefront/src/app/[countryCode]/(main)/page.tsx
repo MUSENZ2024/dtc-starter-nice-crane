@@ -146,6 +146,23 @@ export default async function Home(props: Props) {
       "https://www.instagram.com/muse.nz/",
       "https://www.facebook.com/musenz/",
     ],
+    contactPoint: {
+      "@type": "ContactPoint",
+      contactType: "customer support",
+      email: "support@musenz.com",
+      areaServed: "NZ",
+      availableLanguage: "English",
+    },
+    hasMerchantReturnPolicy: {
+      "@type": "MerchantReturnPolicy",
+      merchantReturnLink: `${baseUrl}/terms`,
+      applicableCountry: "NZ",
+      returnPolicyCategory:
+        "https://schema.org/MerchantReturnFiniteReturnWindow",
+      merchantReturnDays: 30,
+      returnMethod: "https://schema.org/ReturnByMail",
+      returnFees: "https://schema.org/FreeReturn",
+    },
   }
   const websiteJsonLd = {
     "@context": "https://schema.org",

@@ -8,6 +8,7 @@ import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
 import { getBaseURL } from "@lib/util/env"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -151,6 +152,11 @@ export default async function ProductPage(props: Props) {
         ]
       : []
   const { cheapestPrice } = getProductPrice({ product: pricedProduct })
+  const fulfilment = getFulfilmentState(pricedProduct)
+  const deliveryDays =
+    fulfilment.kind === "nz-stock"
+      ? { minValue: 1, maxValue: 3 }
+      : { minValue: 13, maxValue: 16 }
   const inStock =
     pricedProduct.variants?.some(
       (variant) =>
@@ -181,6 +187,24 @@ export default async function ProductPage(props: Props) {
           availability: `https://schema.org/${inStock ? "InStock" : "OutOfStock"}`,
           itemCondition: "https://schema.org/NewCondition",
           url: `${getBaseURL()}/products/${params.handle}`,
+          seller: {
+            "@id": `${getBaseURL()}/#organization`,
+          },
+          shippingDetails: {
+            "@type": "OfferShippingDetails",
+            shippingDestination: {
+              "@type": "DefinedRegion",
+              addressCountry: "NZ",
+            },
+            deliveryTime: {
+              "@type": "ShippingDeliveryTime",
+              transitTime: {
+                "@type": "QuantitativeValue",
+                ...deliveryDays,
+                unitCode: "DAY",
+              },
+            },
+          },
         }
       : undefined,
   }

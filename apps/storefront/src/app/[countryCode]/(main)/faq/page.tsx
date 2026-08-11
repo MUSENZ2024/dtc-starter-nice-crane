@@ -6,6 +6,9 @@ export const metadata: Metadata = {
   title: "Frequently Asked Questions",
   description:
     "Got a question about your order, shipping, returns, or our products? Find your answer here. MUSE NZ help centre.",
+  alternates: {
+    canonical: "/faq",
+  },
 }
 
 const faqSchema = {
@@ -14,7 +17,7 @@ const faqSchema = {
   mainEntity: [
     ["Are your products authentic?", "All MUSE NZ products are Unauthorized Authentic (UA). They are made with the same materials and in the same factories as officially branded items, just without brand authorisation. That is how we keep prices well below retail."],
     ["How long does Standard Delivery take?", "Standard Delivery orders take 13 to 16 business days from when you order to when it arrives at your door in New Zealand. Every order is fully tracked the whole way."],
-    ["How do I return or exchange my order?", "Email support@musenz.com within 7 business days of receiving your order. Include your order number and reason. Items must be unworn, in brand-new condition, with the original box undamaged."],
+    ["How do I return or exchange my order?", "Email support@musenz.com within 7 business days of receiving your order to start the return or exchange. Once approved, the item must be returned within 30 days of delivery. Include your order number and reason. Items must be unworn, in brand-new condition, with the original box undamaged."],
     ["Do I need an account to order?", "No. Guest checkout is fine. Your order confirmation and tracking will be sent to your email."],
     ["Is GST included in the price?", "Yes. All prices include NZ GST (15%). No extra charges at checkout."],
     ["Will I pay customs or import duties?", "No. For NZ buyers there are no customs charges. The price at checkout is the total you pay."],
