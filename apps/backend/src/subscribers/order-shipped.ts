@@ -9,6 +9,7 @@ type FulfillmentType = "nzstock" | "standard"
 type FulfillmentEventData = {
   id?: string
   fulfillment_id?: string
+  no_notification?: boolean
 }
 
 type OrderLine = {
@@ -138,6 +139,11 @@ export default async function orderShippedHandler({
   const query = container.resolve("query")
 
   try {
+    if (data.no_notification) {
+      logger.info("Skipping shipped email: shipment notification was disabled.")
+      return
+    }
+
     const fulfillmentId = data.id || data.fulfillment_id
     if (!fulfillmentId) {
       logger.warn("Skipping shipped email: fulfillment event had no fulfillment id.")
