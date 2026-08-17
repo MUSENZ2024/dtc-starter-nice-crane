@@ -5,6 +5,7 @@ import { addToCart, replaceLineItem } from "@lib/data/cart"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { isProductOutOfStock } from "@lib/util/product-availability"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { trackMetaAddToCart } from "@lib/meta-pixel"
 import { HttpTypes } from "@medusajs/types"
 import PaymentBadges from "@modules/common/components/payment-badges"
 import StripePaymentMessaging from "@modules/products/components/stripe-payment-messaging"
@@ -892,6 +893,12 @@ export default function ProductActions({
         quantity: 1,
         countryCode,
       })
+      trackMetaAddToCart({
+        contentId: product.id,
+        contentName: product.title,
+        currency: region.currency_code ?? "nzd",
+        value: numericPrice,
+      })
       setAddedToCart(true)
       router.refresh()
 
@@ -919,6 +926,12 @@ export default function ProductActions({
         variantId: selectedVariant.id,
         quantity: 1,
         countryCode,
+      })
+      trackMetaAddToCart({
+        contentId: product.id,
+        contentName: product.title,
+        currency: region.currency_code ?? "nzd",
+        value: numericPrice,
       })
       router.push("/checkout")
     } finally {

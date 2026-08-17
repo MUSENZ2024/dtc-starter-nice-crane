@@ -2,6 +2,8 @@ import { getBaseURL } from "@lib/util/env"
 import { Metadata } from "next"
 import { Inter } from "next/font/google"
 import Script from "next/script"
+import MetaPixel from "@modules/analytics/components/meta-pixel"
+import { META_PIXEL_ID } from "@lib/meta-pixel"
 import "styles/globals.css"
 
 const GOOGLE_TAG_ID = "GT-M638GBXN"
@@ -87,6 +89,17 @@ export default function RootLayout(props: { children: React.ReactNode }) {
             gtag('config', '${GOOGLE_TAG_ID}');
           `}
         </Script>
+        <MetaPixel />
+        <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
+            alt=""
+          />
+        </noscript>
       </body>
     </html>
   )

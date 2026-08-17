@@ -9,6 +9,7 @@ import { HttpTypes } from "@medusajs/types"
 import { getBaseURL } from "@lib/util/env"
 import { getProductPrice } from "@lib/util/get-product-price"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
+import MetaViewContentTracker from "@modules/analytics/components/meta-view-content-tracker"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -240,6 +241,12 @@ export default async function ProductPage(props: Props) {
         dangerouslySetInnerHTML={{
           __html: JSON.stringify([productJsonLd, breadcrumbJsonLd]),
         }}
+      />
+      <MetaViewContentTracker
+        contentId={pricedProduct.id}
+        contentName={pricedProduct.title}
+        currency={cheapestPrice?.currency_code ?? region.currency_code ?? "nzd"}
+        value={cheapestPrice?.calculated_price_number ?? 0}
       />
       <ProductTemplate
         product={pricedProduct}

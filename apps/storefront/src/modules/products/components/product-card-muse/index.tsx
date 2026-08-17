@@ -2,6 +2,7 @@
 
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
+import { trackMetaAddToCart } from "@lib/meta-pixel"
 import { getProductColourSwatches } from "@lib/util/product-colours"
 import {
   isProductOutOfStock,
@@ -159,6 +160,12 @@ export default function ProductCardMuse({
           variantId,
           quantity: 1,
           countryCode,
+        })
+        trackMetaAddToCart({
+          contentId: product.id,
+          contentName: product.title,
+          currency: "nzd",
+          value: parsePrice(product.price),
         })
         setQuickAddOpen(false)
       } catch (error) {

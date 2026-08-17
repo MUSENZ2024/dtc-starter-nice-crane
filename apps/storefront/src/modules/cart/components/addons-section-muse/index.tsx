@@ -6,6 +6,7 @@ import { HttpTypes } from "@medusajs/types"
 import { addToCart } from "@lib/data/cart"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { trackMetaAddToCart } from "@lib/meta-pixel"
 
 type Props = {
   products: HttpTypes.StoreProduct[]
@@ -60,6 +61,12 @@ function AddonCard({
 
     startTransition(async () => {
       await addToCart({ variantId: variant.id, quantity: 1, countryCode })
+      trackMetaAddToCart({
+        contentId: product.id,
+        contentName: product.title,
+        currency: cheapestPrice?.currency_code ?? "nzd",
+        value: cheapestPrice?.calculated_price_number ?? 0,
+      })
       setAdded(true)
       router.refresh()
       window.setTimeout(() => setAdded(false), 2000)

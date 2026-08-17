@@ -11,6 +11,7 @@ import { getShippingProtectionItem } from "@modules/checkout/components/step-del
 import StepPaymentMuse from "@modules/checkout/components/step-payment-muse"
 import StepShipping from "@modules/checkout/components/step-shipping"
 import PaymentWrapper from "@modules/checkout/components/payment-wrapper"
+import MetaCheckoutTracker from "@modules/analytics/components/meta-checkout-tracker"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useEffect, useMemo, useState } from "react"
 
@@ -88,6 +89,7 @@ export default function CheckoutPageMuse({
 
   return (
     <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
+      <MetaCheckoutTracker cart={cart} />
       <CheckoutHeaderMuse />
 
       <div className="border-b border-muse-border bg-muse-cream-warm px-4 py-4 small:hidden">
