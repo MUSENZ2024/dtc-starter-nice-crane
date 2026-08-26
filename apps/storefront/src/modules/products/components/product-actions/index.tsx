@@ -309,6 +309,23 @@ const isSalomonProduct = (product: HttpTypes.StoreProduct) => {
   return /\bsalomon\b/.test(searchable)
 }
 
+const isVejaProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    typeof product.metadata?.model === "string" ? product.metadata.model : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\bveja\b/.test(searchable)
+}
+
 const getUsMensWomensSizeButtonLabel = (value: string) => {
   const mensSize = Number(value)
 
@@ -464,6 +481,23 @@ const adidasShoeSizeRows = [
   ["9.5", "11", "43", "28", "9"],
   ["10", "11.5", "44", "28.5", "9.5"],
   ["11", "12.5", "45", "29", "10.5"],
+]
+
+// Exact conversion values from the customer-supplied VEJA chart.
+const vejaShoeSizeRows = [
+  ["35", "—", "—", "4", "2", "21.5", "8.66"],
+  ["36", "—", "—", "5", "3", "22", "8.9"],
+  ["37", "—", "—", "6", "4", "23", "9.17"],
+  ["38", "—", "—", "7", "5", "24", "9.45"],
+  ["39", "—", "—", "8", "6", "25", "9.69"],
+  ["40", "7", "6", "9", "7", "25.5", "9.96"],
+  ["41", "8", "7", "10", "8", "26.5", "10.24"],
+  ["42", "9", "8", "11", "8.5", "27.5", "10.47"],
+  ["43", "10", "9", "—", "—", "28", "10.75"],
+  ["44", "11", "10", "—", "—", "28.5", "11.02"],
+  ["45", "11.5", "11", "—", "—", "29", "11.26"],
+  ["46", "12", "12", "—", "—", "30", "11.54"],
+  ["47", "12.5", "13", "—", "—", "30.5", "11.81"],
 ]
 
 // Dr Martens products are listed in EU sizing. The US, CM, and UK conversions
@@ -684,6 +718,7 @@ export default function ProductActions({
   const useAdidasSizing = isAdidasProduct(product)
   const useDrMartensSizing = isDrMartensProduct(product)
   const useSalomonSizing = isSalomonProduct(product)
+  const useVejaSizing = isVejaProduct(product)
   const useTimberlandSizing = isTimberlandProduct(product)
   const useHokaSizing = isHokaProduct(product)
   const sizeValues =
@@ -700,6 +735,8 @@ export default function ProductActions({
     ? "True to size — 53% got their usual Dr Martens size"
     : useSalomonSizing
     ? "True to size — 88% got their usual Salomon size"
+    : useVejaSizing
+    ? "True to size — 92% got their usual VEJA size"
     : useTimberlandSizing
     ? "True to size — 91% got their usual Timberland size"
     : useHokaSizing
@@ -719,6 +756,8 @@ export default function ProductActions({
     ? "Dr Martens are listed in EU sizing. Use the chart to compare your usual men's, women's, CM, or UK size."
     : useSalomonSizing
     ? "Salomon sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
+    : useVejaSizing
+    ? "VEJA sizes are shown in EU. Use the chart to compare men's and women's US and UK conversions."
     : useTimberlandSizing
     ? "Timberland sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
     : useHokaSizing
@@ -738,6 +777,8 @@ export default function ProductActions({
     ? "1%"
     : useSalomonSizing
     ? "1%"
+    : useVejaSizing
+    ? "0%"
     : useTimberlandSizing
     ? "1%"
     : useHokaSizing
@@ -748,6 +789,8 @@ export default function ProductActions({
     ? "1%"
     : "9%"
   const fitTrueToSize = useBirkenstockSizing
+    ? "92%"
+    : useVejaSizing
     ? "92%"
     : useDrMartensSizing
     ? "53%"
@@ -768,6 +811,8 @@ export default function ProductActions({
     ? "56%"
     : useSalomonSizing
     ? "11%"
+    : useVejaSizing
+    ? "8%"
     : useTimberlandSizing
     ? "8%"
     : useHokaSizing
@@ -788,6 +833,8 @@ export default function ProductActions({
       ]
     : useBirkenstockSizing
     ? ["Birkenstock EU", "Women U.S.", "Men U.S."]
+    : useVejaSizing
+    ? ["EU/IT", "Men US", "Men UK", "Women US", "Women UK", "CM", "Inches"]
     : useAsicsSizing ||
       useNikeJordanSizing ||
       useAdidasSizing ||
@@ -811,13 +858,15 @@ export default function ProductActions({
     ? drMartensShoeSizeRows
     : useSalomonSizing
     ? salomonShoeSizeRows
+    : useVejaSizing
+    ? vejaShoeSizeRows
     : useTimberlandSizing
     ? timberlandShoeSizeRows
     : useHokaSizing
     ? hokaShoeSizeRows
     : defaultSizeRows
   const sizeGuideLabel =
-    useBirkenstockSizing || useAsicsSizing || useDrMartensSizing
+    useBirkenstockSizing || useAsicsSizing || useDrMartensSizing || useVejaSizing
       ? "EU sizing · Size guide"
       : "US sizing · Size guide"
 
@@ -1192,6 +1241,11 @@ export default function ProductActions({
               Sizes are shown as US Men's / US Women's.
             </p>
           )}
+          {useVejaSizing && (
+            <p className="mt-2 text-[12.5px] font-semibold text-[#666]">
+              Sizes are shown in EU.
+            </p>
+          )}
           <div className="mt-3 flex items-center justify-between text-[12.5px] text-[#666]">
             <span>
               <strong className="font-semibold text-[#0A0A0A]">
@@ -1395,6 +1449,8 @@ export default function ProductActions({
                     ? "This Dr Martens style fits true to size."
                     : useSalomonSizing
                     ? "Salomon footwear fits true to size for most buyers."
+                    : useVejaSizing
+                    ? "VEJA footwear fits true to size for most buyers."
                     : useTimberlandSizing
                     ? "Timberland footwear fits true to size for most buyers."
                     : useHokaSizing
@@ -1537,7 +1593,9 @@ export default function ProductActions({
                     ? "adidas footwear fits true to size for most buyers."
                     : "This style fits true to size."}
                 </strong>{" "}
-                {useNikeJordanSizing || useAdidasSizing || useSalomonSizing
+                {useVejaSizing
+                  ? "Based on fit feedback, 0% sized down, 92% got their usual size, and 8% sized up."
+                  : useNikeJordanSizing || useAdidasSizing || useSalomonSizing
                   ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
                   : useTimberlandSizing
                   ? "Based on fit feedback, 1% sized down, 91% got their usual size, and 8% sized up."
@@ -1574,6 +1632,8 @@ export default function ProductActions({
                     ? "size up if you prefer extra toe room"
                     : useSalomonSizing
                     ? "size up if you prefer extra toe room"
+                    : useVejaSizing
+                    ? "choose the larger EU size if you are between sizes"
                     : useTimberlandSizing
                     ? "size up if you prefer extra toe room"
                     : useHokaSizing
