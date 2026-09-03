@@ -15,19 +15,22 @@ export default function MetaPixel() {
   const lastTrackedPath = useRef<string | null>(null)
 
   useEffect(() => {
-    if (!ready || lastTrackedPath.current === pathname) {
+    if (lastTrackedPath.current === pathname) {
       return
     }
 
     lastTrackedPath.current = pathname
     trackMetaEvent("PageView")
-    flushMetaPixelEvents()
-  }, [pathname, ready])
+  }, [pathname])
+
+  useEffect(() => {
+    if (ready) flushMetaPixelEvents()
+  }, [ready])
 
   return (
     <Script
       id="meta-pixel-base"
-      strategy="afterInteractive"
+      strategy="lazyOnload"
       onReady={() => setReady(true)}
     >
       {`

@@ -1,3 +1,4 @@
+import { logo } from "assets/performance/brand"
 import { Suspense } from "react"
 
 import { listCategories } from "@lib/data/categories"
@@ -188,7 +189,7 @@ export default async function Nav() {
               data-testid="nav-store-link"
             >
               <img
-                src="/muse-logo-long.png"
+                src={logo.src} width={logo.width} height={logo.height}
                 alt="MUSE"
                 className="h-7 w-auto large:h-[30px]"
               />

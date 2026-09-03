@@ -73,6 +73,7 @@ const ImageGallery = ({
           <Image
             src={activeImage.url}
             priority
+            fetchPriority="high"
             className="absolute inset-0"
             alt={`${productTitle}, photo ${activeIndex + 1} of ${
               galleryImages.length

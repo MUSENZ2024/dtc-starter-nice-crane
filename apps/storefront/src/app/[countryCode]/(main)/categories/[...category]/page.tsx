@@ -50,7 +50,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     const title = productCategory.name
 
     const description =
-      productCategory.description ??
+      productCategory.description?.trim() ||
       `Shop ${productCategory.name.toLowerCase()} at MUSE NZ with tracked delivery and clear fulfilment estimates.`
 
     return {

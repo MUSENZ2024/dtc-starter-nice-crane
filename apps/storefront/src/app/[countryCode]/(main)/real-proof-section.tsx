@@ -1,3 +1,4 @@
+import { instagram } from "assets/performance/brand"
 import RealProofVideo from "./real-proof-video"
 
 const PROOF_ITEMS = [
@@ -61,7 +62,7 @@ export default function RealProofSection() {
           className="inline-flex h-11 shrink-0 items-center gap-2.5 self-center rounded-full bg-[#0A0A0A] px-5 text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-[#F4F2ED] transition hover:bg-[#C1440E] small:h-[52px] small:self-end small:px-6 small:text-[12px]"
         >
           <img
-            src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/ffa7a5bb-412b-4863-8621-280e76f1ffa1.png"
+            src={instagram.src} width={instagram.width} height={instagram.height} loading="lazy"
             alt=""
             className="h-5 w-5 object-contain"
           />

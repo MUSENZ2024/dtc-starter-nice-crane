@@ -1,16 +1,17 @@
+import { visa, mastercard, amex, applepay, gpay, afterpay, klarna, paypal, logo, instagram, facebook } from "assets/performance/brand"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import NewsletterForm from "@modules/marketing/components/newsletter-form"
 
 const PAYMENT_BADGES = [
-  ["Visa", "/payment-badges/Visa.png"],
-  ["Mastercard", "/payment-badges/mastercard.png"],
-  ["Amex", "/payment-badges/Amex.png"],
-  ["Apple Pay", "/payment-badges/Applepay.png"],
-  ["Google Pay", "/payment-badges/Gpay.png"],
-  ["Afterpay", "/payment-badges/Afterpay.png"],
-  ["Klarna", "/payment-badges/Klarna.png"],
-  ["PayPal", "/payment-badges/paypal.png"],
-]
+  ["Visa", visa],
+  ["Mastercard", mastercard],
+  ["Amex", amex],
+  ["Apple Pay", applepay],
+  ["Google Pay", gpay],
+  ["Afterpay", afterpay],
+  ["Klarna", klarna],
+  ["PayPal", paypal],
+] as const
 
 export default async function Footer() {
   return (
@@ -34,7 +35,7 @@ export default async function Footer() {
           <div className="max-w-[340px]">
             <LocalizedClientLink href="/" className="mb-5 inline-flex">
               <img
-                src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
+                src={logo.src} width={logo.width} height={logo.height} loading="lazy"
                 alt="MUSE"
                 className="h-[34px] w-auto"
               />
@@ -56,7 +57,7 @@ export default async function Footer() {
                 className="opacity-65 transition hover:opacity-100"
               >
                 <img
-                  src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/ffa7a5bb-412b-4863-8621-280e76f1ffa1.png"
+                  src={instagram.src} width={instagram.width} height={instagram.height} loading="lazy"
                   alt=""
                   className="h-[22px] w-auto"
                 />
@@ -69,7 +70,7 @@ export default async function Footer() {
                 className="opacity-65 transition hover:opacity-100"
               >
                 <img
-                  src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/8d169842-5280-4499-9d29-d46b1a2a6a0f.png"
+                  src={facebook.src} width={facebook.width} height={facebook.height} loading="lazy"
                   alt=""
                   className="h-[22px] w-auto"
                 />
@@ -185,9 +186,11 @@ export default async function Footer() {
             {PAYMENT_BADGES.map(([alt, src]) => (
               <img
                 key={alt}
-                src={src}
+                src={src.src}
+                width={src.width}
+                height={src.height}
                 alt={alt}
-                className="h-6 bg-white px-1.5 py-1"
+                className="h-6 w-auto bg-white px-1.5 py-1"
                 loading="lazy"
               />
             ))}

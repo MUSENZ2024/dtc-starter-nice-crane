@@ -1,3 +1,5 @@
+import HoverImage from "@modules/products/components/hover-image"
+import CampaignImage from "@modules/common/components/campaign-image"
 import { RetailBenefits, RetailEditorial, RetailCategories } from "@modules/home/components/retail-sections"
 import DeliveryBadge from "@modules/products/components/delivery-badge"
 import { Metadata } from "next"
@@ -346,12 +348,10 @@ export default async function Home(props: Props) {
           href="/collections/spring-rotation"
           className="relative block min-h-[440px] overflow-hidden bg-[#EBE4D7] small:min-h-[620px]"
         >
-          <Image
-            src="/campaigns/spring-rotation/artboard-1.jpg"
+          <CampaignImage
+            campaign={1}
             alt="Selection of trending footwear in the MUSE Spring Rotation"
-            fill
             priority
-            quality={75}
             sizes="(max-width: 1023px) 100vw, 42vw"
             className="object-cover"
           />
@@ -663,22 +663,10 @@ function ProductCard({ product }: { product: HomeCard }) {
                 fill
                 quality={60}
                 sizes="(max-width: 767px) calc((100vw - 46px) / 2), 25vw"
-                className={`relative z-[1] object-cover transition duration-500 ${
-                  product.hoverImage
-                    ? "motion-safe:group-hover:opacity-0"
-                    : "motion-safe:group-hover:scale-105"
-                }`}
+                className="relative z-[1] object-cover transition duration-500 motion-safe:group-hover:scale-105"
               />
               {product.hoverImage && (
-                <Image
-                  src={product.hoverImage}
-                  alt=""
-                  aria-hidden="true"
-                  fill
-                  quality={60}
-                  sizes="(max-width: 767px) calc((100vw - 46px) / 2), 25vw"
-                  className="pointer-events-none relative z-[1] object-cover opacity-0 transition duration-500 motion-safe:group-hover:scale-105 motion-safe:group-hover:opacity-100"
-                />
+                <HoverImage src={product.hoverImage} sizes="(max-width: 767px) calc((100vw - 46px) / 2), 25vw" />
               )}
             </>
           ) : (

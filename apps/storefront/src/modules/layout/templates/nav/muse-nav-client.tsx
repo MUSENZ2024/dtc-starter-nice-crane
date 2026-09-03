@@ -1,5 +1,6 @@
 "use client"
 
+import { logo } from "assets/performance/brand"
 import {
   useCallback,
   useEffect,
@@ -580,7 +581,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
             >
               <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-5">
                 <img
-                  src="/muse-logo-long.png"
+                  src={logo.src} width={logo.width} height={logo.height}
                   alt="MUSE"
                   className="h-[22px] w-auto"
                 />

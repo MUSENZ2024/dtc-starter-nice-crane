@@ -1,3 +1,4 @@
+import CampaignImage from "@modules/common/components/campaign-image"
 import Image from "next/image"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 
@@ -23,7 +24,7 @@ export function RetailEditorial() {
   ]
   return <section className="muse-retail-editorial" aria-label="Featured campaigns">
     {campaigns.map((campaign, index) => <LocalizedClientLink href={campaign.href} key={campaign.href} className="muse-editorial-tile">
-      <Image src={campaign.image} alt={campaign.alt} fill quality={75} sizes="(max-width: 767px) 100vw, 50vw" className="object-cover"/>
+      <CampaignImage campaign={index === 0 ? 2 : 3} alt={campaign.alt} sizes="(max-width: 767px) calc(100vw - 32px), (max-width: 1440px) calc((100vw - 80px) / 2), 680px"/>
       <div className={index === 1 ? "muse-editorial-copy light" : "muse-editorial-copy"}>
         <p>{campaign.eyebrow}</p><h2>{campaign.title}</h2><span>{campaign.action}</span>
       </div>
@@ -42,7 +43,7 @@ export function RetailCategories() {
   return <section className="muse-retail-categories" aria-labelledby="retail-category-title">
     <div className="muse-retail-section-head"><div><p>Browse faster</p><h2 id="retail-category-title">Shop by category</h2></div><LocalizedClientLink href="/store">Shop all</LocalizedClientLink></div>
     <div className="muse-category-rail">{tiles.map(([title, image, href]) => <LocalizedClientLink key={title} href={href} className="muse-category-tile">
-      <Image src={image} alt={title} fill quality={60} sizes="(max-width: 767px) 72vw, 20vw" className="object-cover"/><span>{title}</span>
+      {image.includes("/campaigns/") ? <CampaignImage campaign={title === "Sneakers" ? 4 : 5} alt={title} sizes="(max-width: 767px) 68vw, (max-width: 1440px) 18vw, 260px"/> : <Image src={image} alt={title} fill quality={60} sizes="(max-width: 767px) 68vw, (max-width: 1440px) 18vw, 260px" className="object-cover"/>}<span>{title}</span>
     </LocalizedClientLink>)}</div>
   </section>
 }

@@ -1,0 +1,12 @@
+import gpay from "./payment-gpay.webp"
+import visa from "./payment-visa.webp"
+import applepay from "./payment-applepay.webp"
+import amex from "./payment-amex.webp"
+import mastercard from "./payment-mastercard.webp"
+import afterpay from "./payment-afterpay.webp"
+import klarna from "./payment-klarna.webp"
+import paypal from "./payment-paypal.webp"
+import logo from "./logo.webp"
+import instagram from "./instagram.webp"
+import facebook from "./facebook.webp"
+export { visa, mastercard, amex, applepay, gpay, afterpay, klarna, paypal, logo, instagram, facebook }

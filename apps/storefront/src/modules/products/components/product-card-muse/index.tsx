@@ -111,6 +111,8 @@ export default function ProductCardMuse({
   countryCode,
   position,
 }: Props) {
+  const [hoverRequested, setHoverRequested] = useState(false)
+  const [hoverReady, setHoverReady] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const {
@@ -180,7 +182,7 @@ export default function ProductCardMuse({
   }
 
   return (
-    <div className="muse-retail-product-card group relative overflow-hidden rounded-none bg-white transition duration-200">
+    <div onPointerEnter={(event) => { if (event.pointerType === "mouse") setHoverRequested(true) }} className="muse-retail-product-card group relative overflow-hidden rounded-none bg-white transition duration-200">
       <div className="relative">
         <DeliveryBadge label={fulfilment.shortLabel} />
         <div className="absolute left-9 top-3 z-[2] flex flex-col items-start gap-1.5">
@@ -207,10 +209,11 @@ export default function ProductCardMuse({
                 alt={product.title}
                 fill
                 priority={position <= 2}
+                fetchPriority={position <= 2 ? "high" : undefined}
                 quality={60}
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                sizes="(max-width: 640px) calc((100vw - 48px) / 2), (max-width: 1024px) 30vw, (max-width: 1400px) 22vw, 300px"
                 className={`object-cover transition duration-500 ${
-                  hoverImage
+                  hoverReady
                     ? "motion-safe:group-hover:opacity-0"
                     : "motion-safe:group-hover:scale-105"
                 }`}
@@ -220,14 +223,15 @@ export default function ProductCardMuse({
                 {String(position).padStart(2, "0")}
               </span>
             )}
-            {hoverImage && (
+            {hoverImage && hoverRequested && (
               <Image
                 src={hoverImage}
+                onLoad={() => setHoverReady(true)}
                 alt=""
                 aria-hidden="true"
                 fill
                 quality={60}
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                sizes="(max-width: 640px) calc((100vw - 48px) / 2), (max-width: 1024px) 30vw, (max-width: 1400px) 22vw, 300px"
                 className="pointer-events-none object-cover opacity-0 transition duration-500 motion-safe:group-hover:scale-105 motion-safe:group-hover:opacity-100"
               />
             )}

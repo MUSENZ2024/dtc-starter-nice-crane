@@ -63,12 +63,14 @@ export default function FilterBarMobileMuse({
         onClick={() => setOpen(false)}
       />
       <aside
+        inert={!open}
+        aria-hidden={!open}
         className={`fixed bottom-0 left-0 top-0 z-[201] flex w-[340px] max-w-[88vw] flex-col bg-muse-cream transition-transform duration-300 small:hidden ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex items-center justify-between border-b border-muse-border px-6 py-5">
-          <h3 className="text-[17px] font-black tracking-[-0.02em]">Filter</h3>
+          <h2 className="text-[17px] font-black tracking-[-0.02em]">Filter</h2>
           <button
             type="button"
             onClick={() => setOpen(false)}
@@ -79,7 +81,7 @@ export default function FilterBarMobileMuse({
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-4">
-          <FilterRailMuse
+          {open && <FilterRailMuse
             brands={brands}
             lines={lines}
             badges={badges}
@@ -88,7 +90,7 @@ export default function FilterBarMobileMuse({
             colours={colours}
             categories={categories}
             searchParams={searchParams}
-          />
+          />}
         </div>
         <div className="border-t border-muse-border bg-white px-6 py-4">
           <button
