@@ -18,7 +18,7 @@ const AccountLayout: React.FC<AccountLayoutProps> = ({
       ?.orders?.length ?? 0
 
   return (
-    <div className="min-h-screen bg-muse-cream" data-testid="account-page">
+    <div className="muse-account-restyle min-h-screen bg-muse-cream" data-testid="account-page">
       <div className={customer ? "muse-account-layout" : ""}>
         {customer && (
           <MuseAccountSidebar customer={customer} orderCount={orderCount} />

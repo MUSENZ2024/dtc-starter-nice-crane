@@ -88,7 +88,7 @@ export default function CheckoutPageMuse({
   }
 
   return (
-    <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
+    <div className="min-h-screen bg-white font-inter text-muse-black">
       <MetaCheckoutTracker cart={cart} />
       <CheckoutHeaderMuse />
 

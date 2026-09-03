@@ -9,11 +9,11 @@ export default function FreeShippingBar({ subtotal, threshold }: Props) {
   const unlocked = gap === 0
 
   return (
-    <div className="mb-5 rounded-[18px] border border-muse-border bg-muse-cream-warm px-5 py-4">
+    <div className="muse-cart-delivery-progress mb-5 border border-muse-border bg-muse-cream-warm px-5 py-4">
       <p className="mb-2.5 text-[13px] leading-snug text-muse-text">
         {unlocked ? (
           <strong className="text-muse-green">
-            🎉 You&apos;ve unlocked free NZ delivery!
+            You&apos;ve unlocked free NZ delivery!
           </strong>
         ) : (
           <>

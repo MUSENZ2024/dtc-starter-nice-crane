@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 
 export default function SavedItemsPage() {
   return (
-    <div className="bg-[#F4F2ED] text-[#1A1A1A]">
+    <div className="muse-saved-restyle bg-white text-[#1A1A1A]">
       <SavedItemsClient />
     </div>
   )

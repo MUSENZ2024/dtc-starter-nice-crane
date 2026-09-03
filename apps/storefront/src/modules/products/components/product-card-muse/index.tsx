@@ -1,5 +1,7 @@
 "use client"
 
+import DeliveryBadge from "@modules/products/components/delivery-badge"
+
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
 import { trackMetaAddToCart } from "@lib/meta-pixel"
@@ -60,10 +62,10 @@ const isSizeOption = (title?: string | null) =>
 
 const getVariantSize = (
   variant: ProductCardMuseVariant,
-  product: ProductCardMuseProduct,
+  product: ProductCardMuseProduct
 ) => {
   const sizeOptionId = product.options?.find((option) =>
-    isSizeOption(option.title),
+    isSizeOption(option.title)
   )?.id
 
   const sizeValue = variant.options?.find((option) => {
@@ -132,7 +134,7 @@ export default function ProductCardMuse({
     const variant =
       product.variants?.find(
         (item) =>
-          getVariantSize(item, product) === size && isVariantPurchasable(item),
+          getVariantSize(item, product) === size && isVariantPurchasable(item)
       ) ?? product.variants?.find(isVariantPurchasable)
 
     if (!variant?.id) {
@@ -178,22 +180,15 @@ export default function ProductCardMuse({
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-[20px] bg-muse-cream-warm transition duration-200 hover:-translate-y-[5px] hover:shadow-[0_18px_36px_rgba(0,0,0,0.08)]">
+    <div className="muse-retail-product-card group relative overflow-hidden rounded-none bg-white transition duration-200">
       <div className="relative">
-        <div className="absolute left-3 top-3 z-[2] flex flex-col items-start gap-1.5">
+        <DeliveryBadge label={fulfilment.shortLabel} />
+        <div className="absolute left-9 top-3 z-[2] flex flex-col items-start gap-1.5">
           {outOfStock && (
             <span className="rounded-full bg-muse-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-cream">
               Out of stock
             </span>
           )}
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muse-cream/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black backdrop-blur">
-            <span
-              className={`h-[7px] w-[7px] rounded-full ${
-                fulfilment.dotClassName
-              }`}
-            />
-            {fulfilment.shortLabel}
-          </span>
           {promotionalBadge && (
             <span className="rounded-full bg-muse-yellow px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black">
               {promotionalBadge}
@@ -261,7 +256,11 @@ export default function ProductCardMuse({
           onClick={() => setQuickAddOpen((current) => !current)}
           className="absolute bottom-3 left-3 right-3 z-[2] rounded-full bg-muse-black px-4 py-3 text-center text-[11px] font-bold uppercase tracking-[0.08em] text-muse-cream opacity-100 transition hover:bg-muse-orange disabled:cursor-not-allowed disabled:bg-muse-black/65 small:translate-y-2 small:opacity-0 small:group-hover:translate-y-0 small:group-hover:opacity-100"
         >
-          {outOfStock ? "Out of stock" : hasSizes ? "+ Quick add" : "Add to bag"}
+          {outOfStock
+            ? "Out of stock"
+            : hasSizes
+            ? "+ Quick add"
+            : "Add to bag"}
         </button>
 
         {quickAddOpen && (
@@ -295,7 +294,7 @@ export default function ProductCardMuse({
                   >
                     {label}
                   </button>
-                ),
+                )
               )}
             </div>
           </div>

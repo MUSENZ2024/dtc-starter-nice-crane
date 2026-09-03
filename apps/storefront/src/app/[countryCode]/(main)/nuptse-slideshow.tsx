@@ -10,9 +10,10 @@ type Props = {
 
 export default function NuptseSlideshow({ images, titles = [] }: Props) {
   const [current, setCurrent] = useState(0)
+  const [paused, setPaused] = useState(false)
 
   useEffect(() => {
-    if (images.length < 2) {
+    if (images.length < 2 || paused) {
       return
     }
 
@@ -21,14 +22,14 @@ export default function NuptseSlideshow({ images, titles = [] }: Props) {
     }, 2000)
 
     return () => clearInterval(interval)
-  }, [images.length])
+  }, [images.length, paused])
 
   if (!images.length) {
     return null
   }
 
   return (
-    <div className="relative hidden h-full w-full items-center justify-center small:flex">
+    <div className="relative hidden h-full w-full flex-col items-center justify-center small:flex">
       <div className="relative aspect-square w-full max-w-[420px] overflow-hidden rounded-[28px]">
         <Image
           key={`${images[current]}-${current}`}
@@ -48,22 +49,19 @@ export default function NuptseSlideshow({ images, titles = [] }: Props) {
           </div>
         )}
 
-        <div className="absolute bottom-14 left-0 right-0 flex justify-center gap-1.5">
-          {images.map((_, index) => (
-            <button
-              key={index}
-              type="button"
-              onClick={() => setCurrent(index)}
-              aria-label={`Go to colour ${index + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
-                index === current
-                  ? "w-5 bg-[#C8D050]"
-                  : "w-1.5 bg-white/40 hover:bg-white/70"
-              }`}
-            />
-          ))}
-        </div>
       </div>
+      {images.length > 1 && (
+        <div className="muse-slideshow-controls" aria-label="Nuptse colour navigation">
+          <button type="button" aria-label="Previous colour" onClick={() => { setPaused(true); setCurrent((current + images.length - 1) % images.length) }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m14 6-6 6 6 6"/></svg>
+          </button>
+          <span className="muse-slideshow-count" aria-live={paused ? "polite" : "off"}>{String(current + 1).padStart(2, "0")} / {String(images.length).padStart(2, "0")}</span>
+          <button type="button" aria-label="Next colour" onClick={() => { setPaused(true); setCurrent((current + 1) % images.length) }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m10 6 6 6-6 6"/></svg>
+          </button>
+          <button type="button" aria-label={paused ? "Play slideshow" : "Pause slideshow"} onClick={() => setPaused(!paused)}>{paused ? "Play" : "Pause"}</button>
+        </div>
+      )}
     </div>
   )
 }

@@ -52,7 +52,7 @@ export default function FilterBarMobileMuse({
           )}
         </button>
         <div className="relative flex flex-1 items-center justify-center rounded-full bg-white">
-          <SortSelectMuse currentSort={searchParams.sortBy ?? "created_at"} />
+          <SortSelectMuse currentSort={searchParams.sortBy ?? "random"} />
         </div>
       </div>
 

@@ -40,7 +40,7 @@ const PROOF_ITEMS = [
 
 export default function RealProofSection() {
   return (
-    <section className="mb-20 overflow-hidden">
+    <section className="muse-real-proof mb-20 overflow-hidden">
       <div className="mx-auto mb-7 flex max-w-[1320px] flex-col gap-4 px-[18px] small:flex-row small:items-end small:justify-between small:px-8">
         <div>
           <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#C1440E]">

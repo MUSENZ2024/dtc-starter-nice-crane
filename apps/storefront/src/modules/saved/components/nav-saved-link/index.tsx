@@ -21,7 +21,7 @@ export default function NavSavedLink() {
       }
       data-testid="nav-saved-link"
     >
-      <HeartIcon saved={hasItems} className="h-[18px] w-[18px]" />
+      <HeartIcon saved={false} className="h-[18px] w-[18px]" />
       {hasItems && (
         <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#0A0A0A] px-1 text-[9px] font-black text-[#C8D050]">
           {count}

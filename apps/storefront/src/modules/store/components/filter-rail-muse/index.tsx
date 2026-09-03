@@ -174,7 +174,7 @@ export default function FilterRailMuse({
     <>
       <StoreUpdatingIndicator active={isPending} />
       <div
-        className="sticky top-[88px] overflow-hidden rounded-[20px] border border-muse-border bg-muse-cream-warm"
+        className="muse-filter-rail sticky top-[140px] overflow-hidden border border-muse-border bg-white"
         aria-busy={isPending}
       >
         <div className="flex items-center justify-between border-b border-muse-border px-5 py-4">

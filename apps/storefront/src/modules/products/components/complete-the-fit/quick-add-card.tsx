@@ -1,5 +1,7 @@
 "use client"
 
+import DeliveryBadge from "@modules/products/components/delivery-badge"
+
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
@@ -168,14 +170,7 @@ export default function CompleteTheFitCard({
           </div>
         </LocalizedClientLink>
 
-        <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#F4F2ED]/90 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.05em] text-[#1A1A1A] backdrop-blur">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              fulfilment.labelColor === "green" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"
-            }`}
-          />
-          {fulfilment.shortLabel}
-        </span>
+        <DeliveryBadge label={fulfilment.shortLabel} />
 
         {hasQuickAdd ? (
           <button

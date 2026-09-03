@@ -2,7 +2,11 @@
 
 import { sdk } from "@lib/config"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
-import { sortProducts } from "@lib/util/sort-products"
+import {
+  getRandomRotationSeed,
+  mulberry32,
+  sortProducts,
+} from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { ProductFilterParams, SortOptions } from "./products.types"
 import { getAuthHeaders } from "./cookies"
@@ -126,7 +130,40 @@ export const listProducts = async ({
         next,
       }
     )
-    .then(({ products, count }) => {
+    .then(async ({ products, count }) => {
+      // Lightweight listing queries omit galleries. Resolve only products
+      // missing a thumbnail so every consumer gets the same primary image.
+      const missingImages = products.filter(
+        (product) => !product.thumbnail && !product.images?.length
+      )
+      const galleries = missingImages.length
+        ? await sdk.client.fetch<{ products: HttpTypes.StoreProduct[] }>(
+            `/store/products`,
+            {
+              method: "GET",
+              query: {
+                id: missingImages.map((product) => product.id),
+                fields: "id,*images",
+                limit: missingImages.length,
+              },
+              headers,
+              next,
+            }
+          )
+        : { products: [] }
+      const imagesById = new Map(
+        galleries.products.map((product) => [product.id, product.images])
+      )
+      products = products.map((product) => {
+        const images = product.images?.length
+          ? product.images
+          : imagesById.get(product.id)
+        return {
+          ...product,
+          ...(images ? { images } : {}),
+          thumbnail: product.thumbnail || images?.find((image) => image.url)?.url || null,
+        }
+      })
       const discoverableProducts = products.filter(
         (product) =>
           isPublishedProduct(product) &&
@@ -149,6 +186,60 @@ export const listProducts = async ({
     })
 }
 
+// How many products the "random" default samples from and shuffles. Kept in
+// line with the other client-sorted paths' 200-product cap for cost, but the
+// window rotates around the catalogue (see fetchRandomWindow) instead of
+// always sitting on the first ~200 products the backend returns by default
+// (effectively "most recently uploaded first").
+const RANDOM_SAMPLE_SIZE = 200
+
+const fetchRandomWindow = async ({
+  queryParams,
+  countryCode,
+  revalidateSeconds,
+}: {
+  queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
+  countryCode: string
+  revalidateSeconds?: number
+}) => {
+  const fields = queryParams?.fields ?? PRODUCT_LIST_FIELDS
+
+  const countProbe = await listProducts({
+    pageParam: 1,
+    queryParams: { ...queryParams, fields, limit: 1 },
+    countryCode,
+    revalidateSeconds,
+  })
+
+  const count = countProbe.response.count
+  const sampleSize = Math.min(count, RANDOM_SAMPLE_SIZE)
+  const maxWindowOffset = Math.max(0, count - sampleSize)
+  const random = mulberry32(getRandomRotationSeed())
+  const windowOffset =
+    maxWindowOffset > 0 ? Math.floor(random() * (maxWindowOffset + 1)) : 0
+
+  const pageSize = 100
+  const chunkCount = Math.max(1, Math.ceil(sampleSize / pageSize))
+
+  const productGroups = await Promise.all(
+    Array.from({ length: chunkCount }, (_, index) => index).map((index) =>
+      listProducts({
+        pageParam: 1,
+        queryParams: {
+          ...queryParams,
+          fields,
+          limit: Math.min(pageSize, sampleSize - index * pageSize),
+          offset: windowOffset + index * pageSize,
+        },
+        countryCode,
+        revalidateSeconds,
+      }).then(({ response }) => response.products)
+    )
+  )
+
+  return { products: productGroups.flat(), count }
+}
+
 export const listProductsWithSort = async ({
   page = 0,
   queryParams,
@@ -167,6 +258,29 @@ export const listProductsWithSort = async ({
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
 }> => {
   const limit = queryParams?.limit || 12
+  const requestedPageForRandom = Math.max(page, 1)
+
+  if (sortBy === "random") {
+    const { products: windowProducts, count } = await fetchRandomWindow({
+      queryParams,
+      countryCode,
+      revalidateSeconds,
+    })
+
+    const sortedProducts = sortProducts(windowProducts, sortBy)
+    const pageParam = (requestedPageForRandom - 1) * limit
+    const nextPage = count > pageParam + limit ? pageParam + limit : null
+
+    return {
+      response: {
+        products: sortedProducts.slice(pageParam, pageParam + limit),
+        count,
+      },
+      nextPage,
+      queryParams,
+    }
+  }
+
   // Medusa accepts up to 100 products per catalogue request. The old 24-item
   // batch size made a price/fulfilment sort pay for as many as five backend
   // round trips before it could render anything. Two larger batches cover
@@ -500,13 +614,17 @@ export async function listProductsFiltered({
       priceMax !== undefined ||
       sortBy === "ships_soonest" ||
       productTagIdsToFetch.length ||
-      !["created_at", "best_sellers", "price_asc", "price_desc"].includes(
-        sortBy
-      )
+      ![
+        "created_at",
+        "best_sellers",
+        "price_asc",
+        "price_desc",
+        "random",
+      ].includes(sortBy)
   )
 
   if (!needsClientFiltering) {
-    if (sortBy === "price_asc" || sortBy === "price_desc") {
+    if (sortBy === "price_asc" || sortBy === "price_desc" || sortBy === "random") {
       const { response, nextPage } = await listProductsWithSort({
         page,
         queryParams: {

@@ -3,6 +3,7 @@
 import { HttpTypes } from "@medusajs/types"
 import { FulfilmentState } from "@lib/util/fulfilment-state"
 import Image from "next/image"
+import DeliveryBadge from "@modules/products/components/delivery-badge"
 import { useEffect, useMemo, useState } from "react"
 
 type ImageGalleryProps = {
@@ -13,7 +14,13 @@ type ImageGalleryProps = {
   colourImageMap?: Record<string, string>
 }
 
-const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImageMap }: ImageGalleryProps) => {
+const ImageGallery = ({
+  images,
+  fulfilment,
+  productTitle,
+  outOfStock,
+  colourImageMap,
+}: ImageGalleryProps) => {
   const galleryImages = useMemo(
     () =>
       images.length > 0
@@ -35,11 +42,17 @@ const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImag
     const handleColourChange = (event: Event) => {
       const colour = (event as CustomEvent<{ colour?: string }>).detail?.colour
       const url = colour ? colourImageMap?.[colour] : undefined
-      const index = url ? galleryImages.findIndex((image) => image.url === url) : -1
+      const index = url
+        ? galleryImages.findIndex((image) => image.url === url)
+        : -1
       if (index >= 0) setActiveIndex(index)
     }
     window.addEventListener("muse:product-colour-change", handleColourChange)
-    return () => window.removeEventListener("muse:product-colour-change", handleColourChange)
+    return () =>
+      window.removeEventListener(
+        "muse:product-colour-change",
+        handleColourChange
+      )
   }, [colourImageMap, galleryImages])
   const activeImage = galleryImages[activeIndex] ?? galleryImages[0]
   const thumbSlots = galleryImages.slice(0, 5)
@@ -54,14 +67,16 @@ const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImag
     )
 
   return (
-    <div>
-      <div className="relative mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-[26px] bg-gradient-to-br from-[#ECE9E2] via-[#F8F7F4] to-[#ECE9E2]">
+    <div className="muse-product-gallery">
+      <div className="relative mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-none bg-[#F4F5F7]">
         {activeImage?.url ? (
           <Image
             src={activeImage.url}
             priority
             className="absolute inset-0"
-            alt={`${productTitle}, photo ${activeIndex + 1} of ${galleryImages.length}`}
+            alt={`${productTitle}, photo ${activeIndex + 1} of ${
+              galleryImages.length
+            }`}
             fill
             sizes="(max-width: 900px) 100vw, 720px"
             style={{ objectFit: "cover" }}
@@ -72,15 +87,12 @@ const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImag
           </span>
         )}
         {outOfStock && (
-          <span className="absolute left-4 top-4 z-[2] rounded-full bg-[#0A0A0A] px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#F4F2ED]">
+          <span className="absolute left-10 top-4 z-[2] rounded-none bg-[#0A0A0A] px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#F4F2ED]">
             Out of stock
           </span>
         )}
-        <span className={`absolute left-4 inline-flex items-center gap-2 rounded-full bg-[#F4F2ED]/95 px-3.5 py-2 text-[11px] font-bold uppercase tracking-[0.06em] text-[#0A0A0A] backdrop-blur ${outOfStock ? "top-14" : "top-4"}`}>
-          <span className={`h-[7px] w-[7px] rounded-full ${fulfilment.dotClassName}`} />
-          {fulfilment.label}
-        </span>
-        <span className="absolute bottom-4 right-4 rounded-full bg-[#0A0A0A]/70 px-3 py-1.5 text-[11px] font-semibold tracking-[0.05em] text-[#F4F2ED] backdrop-blur">
+        <DeliveryBadge label={fulfilment.shortLabel} />
+        <span className="absolute bottom-4 right-4 rounded-none bg-[#0A0A0A]/70 px-3 py-1.5 text-[11px] font-semibold tracking-[0.05em] text-[#F4F2ED] backdrop-blur">
           {activeIndex + 1} / {galleryImages.length}
         </span>
         {hasMultipleImages && (
@@ -88,7 +100,7 @@ const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImag
             <button
               type="button"
               onClick={showPrevious}
-              className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
+              className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-none bg-white/90 text-[24px] leading-none text-[#0A0A0A] backdrop-blur transition hover:bg-white"
               aria-label={`Previous photo of ${productTitle}`}
             >
               ‹
@@ -96,28 +108,26 @@ const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImag
             <button
               type="button"
               onClick={showNext}
-              className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-[#F4F2ED]/90 text-[24px] leading-none text-[#0A0A0A] shadow-sm backdrop-blur transition hover:bg-white"
+              className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-none bg-white/90 text-[24px] leading-none text-[#0A0A0A] backdrop-blur transition hover:bg-white"
               aria-label={`Next photo of ${productTitle}`}
             >
               ›
             </button>
           </>
         )}
-        <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-1.5">
+      </div>
+      {hasMultipleImages && (
+        <div className="muse-gallery-pagination" aria-label="Product photo navigation">
           {galleryImages.map((image, index) => (
-            <button
-              key={image.id}
-              type="button"
+            <button key={image.id} type="button"
               aria-label={`View photo ${index + 1} of ${productTitle}`}
               aria-current={index === activeIndex ? "true" : undefined}
-              onClick={() => setActiveIndex(index)}
-              className={`h-[7px] rounded-full transition-all ${
-                index === activeIndex ? "w-5 bg-[#0A0A0A]" : "w-[7px] bg-black/15"
-              }`}
-            />
+              onClick={() => setActiveIndex(index)}>
+              <span aria-hidden="true" />
+            </button>
           ))}
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-5 gap-2.5">
         {thumbSlots.map((image, index) => (
@@ -127,7 +137,7 @@ const ImageGallery = ({ images, fulfilment, productTitle, outOfStock, colourImag
             onClick={() => setActiveIndex(index)}
             aria-label={`View photo ${index + 1} of ${productTitle}`}
             aria-current={index === activeIndex ? "true" : undefined}
-            className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-[14px] border-2 bg-gradient-to-br from-[#ECE9E2] to-[#F8F7F4] text-xl font-black text-black/10 transition hover:-translate-y-0.5 ${
+            className={`relative flex aspect-square items-center justify-center overflow-hidden rounded-none border-2 bg-[#F4F5F7] text-xl font-black text-black/10 transition hover:-translate-y-0.5 ${
               index === activeIndex ? "border-[#0A0A0A]" : "border-transparent"
             }`}
           >

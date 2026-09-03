@@ -8,6 +8,7 @@ import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { convertToLocale } from "@lib/util/money"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import DeliveryBadge from "@modules/products/components/delivery-badge"
 
 type Props = {
   item: HttpTypes.StoreCartLineItem
@@ -127,7 +128,7 @@ export default function CartItemMuse({ item, currencyCode }: Props) {
       }`}
     >
       <LocalizedClientLink href={`/products/${item.product_handle}`}>
-        <div className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[18px] bg-gradient-to-br from-muse-cream-deep to-muse-cream-warm small:h-[112px] small:w-[112px]">
+        <div className="muse-cart-thumbnail relative flex h-24 w-24 items-center justify-center overflow-hidden bg-muse-cream-warm small:h-[112px] small:w-[112px]">
           {item.thumbnail ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -140,12 +141,7 @@ export default function CartItemMuse({ item, currencyCode }: Props) {
               {(item.product_title ?? "").substring(0, 2).toUpperCase()}
             </span>
           )}
-          <span className="absolute bottom-[7px] left-[7px] flex items-center gap-1 rounded-full bg-muse-cream/95 px-[9px] py-[3px] text-[9.5px] font-bold uppercase tracking-[0.06em] backdrop-blur">
-            <span
-              className={`h-[5px] w-[5px] rounded-full ${fulfilment.dotClassName}`}
-            />
-            {fulfilment.shortLabel}
-          </span>
+          <DeliveryBadge label={fulfilment.shortLabel} />
         </div>
       </LocalizedClientLink>
 

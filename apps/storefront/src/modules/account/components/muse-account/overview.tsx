@@ -31,7 +31,7 @@ export default function MuseOverview({
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 small:grid-cols-3">
+      <div className="muse-account-stats grid grid-cols-1 gap-4 small:grid-cols-3">
         <div className="muse-stat-card">
           <div className="muse-stat-label">Total orders</div>
           <div className="muse-stat-number">{orders.length}</div>

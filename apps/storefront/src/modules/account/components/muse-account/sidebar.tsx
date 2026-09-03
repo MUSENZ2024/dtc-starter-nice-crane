@@ -76,6 +76,7 @@ export default function MuseAccountSidebar({ customer, orderCount }: Props) {
             <LocalizedClientLink
               key={label}
               href={href}
+              aria-current={isActive ? "page" : undefined}
               className={`muse-account-link ${
                 isActive ? "muse-account-link-active" : ""
               }`}

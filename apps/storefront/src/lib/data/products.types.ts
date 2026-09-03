@@ -4,6 +4,7 @@ export type SortOptions =
   | "created_at"
   | "best_sellers"
   | "ships_soonest"
+  | "random"
 
 export type ProductFilterParams = {
   stock?: "nz-stock" | "standard-delivery"

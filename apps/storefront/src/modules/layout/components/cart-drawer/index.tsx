@@ -402,7 +402,7 @@ export default function CartDrawer({
         data-testid="nav-cart-link"
       >
         <svg
-          className="h-[17px] w-[17px] large:hidden"
+          className="h-[21px] w-[21px]"
           viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
@@ -411,11 +411,10 @@ export default function CartDrawer({
           strokeLinejoin="round"
           aria-hidden="true"
         >
-          <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
-          <line x1="3" y1="6" x2="21" y2="6" />
-          <path d="M16 10a4 4 0 0 1-8 0" />
+          <path d="M5 8h14l-1 12H6L5 8Z" />
+          <path d="M9 9V6a3 3 0 0 1 6 0v3" />
         </svg>
-        <span className="hidden large:inline">Bag</span>
+        <span className="sr-only">Bag</span>
         <span
           className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[9px] font-black text-muse-black large:static large:h-5 large:w-5 large:bg-muse-black large:text-[11px] large:font-extrabold large:text-muse-yellow"
           aria-hidden="true"
@@ -445,13 +444,13 @@ export default function CartDrawer({
                 aria-modal="true"
                 aria-hidden={!isOpen}
                 inert={!isOpen}
-                className={`fixed bottom-0 right-0 top-0 z-[160] flex w-[480px] max-w-full flex-col bg-muse-cream shadow-2xl transition-transform duration-300 ease-out ${
+                className={`muse-bag-drawer fixed bottom-0 right-0 top-0 z-[160] flex w-[480px] max-w-full flex-col bg-muse-cream shadow-2xl transition-transform duration-300 ease-out ${
                   isOpen ? "translate-x-0" : "translate-x-full"
                 }`}
               >
         <header className="flex flex-shrink-0 items-center justify-between border-b border-muse-border px-6 py-5">
           <div className="flex items-center gap-2 text-base font-black tracking-tight text-muse-black">
-            Your bag
+            <h2 className="muse-bag-title">Your bag</h2>
             <span className="flex h-[22px] w-[22px] items-center justify-center rounded-full bg-muse-black text-[11px] font-extrabold text-muse-cream">
               {itemCount}
             </span>
@@ -462,7 +461,7 @@ export default function CartDrawer({
             className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-muse-cream-deep p-0 text-xl leading-[1] text-muse-text-muted transition hover:bg-muse-border"
             aria-label="Close cart"
           >
-            x
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18" /></svg>
           </button>
         </header>
 
@@ -538,7 +537,7 @@ export default function CartDrawer({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1 truncate text-[13.5px] font-bold text-muse-black">
+                    <p className="mb-1 line-clamp-2 text-[14px] font-medium text-muse-black">
                       {item.product_title}
                     </p>
                     <div className="mb-2.5 flex items-center gap-2 text-xs text-muse-text-muted">
@@ -633,7 +632,7 @@ export default function CartDrawer({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <p className="mb-1 truncate text-[13.5px] font-bold text-muse-black">
+                    <p className="mb-1 line-clamp-2 text-[14px] font-medium text-muse-black">
                       {item.productTitle}
                     </p>
                     <div className="mb-2.5 flex items-center gap-2 text-xs text-muse-text-muted">

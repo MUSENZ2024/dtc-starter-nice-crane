@@ -37,7 +37,7 @@ const StripeWrapper: React.FC<StripeWrapperProps> = ({
       appearance: {
         theme: "stripe",
         variables: {
-          borderRadius: "14px",
+          borderRadius: "0px",
           colorBackground: "#FFFFFF",
           colorDanger: "#C1440E",
           colorPrimary: "#0A0A0A",

@@ -4,7 +4,7 @@ export default function CheckoutLayout({
   children: React.ReactNode
 }) {
   return (
-    <div className="relative w-full bg-muse-cream small:min-h-screen">
+    <div className="muse-checkout-restyle relative w-full bg-white small:min-h-screen">
       <div className="relative" data-testid="checkout-container">{children}</div>
     </div>
   )

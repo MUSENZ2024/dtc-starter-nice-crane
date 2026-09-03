@@ -115,11 +115,7 @@ body {
 }
 
 .muse-static-page .page-eyebrow::before {
-  display: inline-block;
-  width: 24px;
-  height: 1px;
-  background: var(--muse-text-light);
-  content: "";
+  content: none;
 }
 
 .muse-static-page .page-title {
@@ -867,8 +863,7 @@ body {
   }
 
   .muse-eyebrow::before {
-    content: "";
-    @apply block h-px w-5 bg-muse-text-light;
+    content: none;
   }
 
   .muse-auth-title,

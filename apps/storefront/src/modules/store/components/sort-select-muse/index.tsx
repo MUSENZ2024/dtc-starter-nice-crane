@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useTransition } from "react"
 import StoreUpdatingIndicator from "@modules/store/components/store-updating-indicator"
 
 const SORT_OPTIONS: { value: SortOptions; label: string }[] = [
+  { value: "random", label: "Featured" },
   { value: "best_sellers", label: "Best sellers" },
   { value: "created_at", label: "Newest first" },
   { value: "price_asc", label: "Price: low to high" },
@@ -26,7 +27,7 @@ export default function SortSelectMuse({
   const menuRef = useRef<HTMLDivElement>(null)
   const current =
     SORT_OPTIONS.find((option) => option.value === currentSort) ??
-    SORT_OPTIONS[1]
+    SORT_OPTIONS[0]
 
   useEffect(() => {
     const close = (event: MouseEvent) => {

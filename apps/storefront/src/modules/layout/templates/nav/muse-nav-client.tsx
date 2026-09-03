@@ -366,29 +366,6 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
     return () => clearInterval(interval)
   }, [])
 
-  useEffect(() => {
-    const nav = document.getElementById("muse-nav")
-
-    if (searchOpen) {
-      if (nav) {
-        nav.style.transform = ""
-      }
-      return
-    }
-
-    let lastY = window.scrollY
-
-    const onScroll = () => {
-      const y = window.scrollY
-      if (nav) {
-        nav.style.transform = y > lastY && y > 80 ? "translateY(-100%)" : ""
-      }
-      lastY = y
-    }
-
-    window.addEventListener("scroll", onScroll, { passive: true })
-    return () => window.removeEventListener("scroll", onScroll)
-  }, [searchOpen])
 
   useEffect(() => {
     document.body.style.overflow = menuOpen || searchOpen ? "hidden" : ""
@@ -530,16 +507,16 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   }
 
   const primaryLinks: DrawerLink[] = [
-    { label: "Home", href: "/" },
-    { label: "Shop All", href: "/store" },
+    { label: "New in", href: "/store?sortBy=created_at" },
     ...categoryLinks,
+    { label: "NZ Stock", href: "/store?stock=nz-stock" },
+    { label: "Brands", href: "/store" },
     { label: "Clearance", href: "/clearance", accent: "red" as const },
   ]
 
   const secondaryLinks = [
-    { label: "FAQ / Help", href: "/faq" },
-    { label: "Track Order", href: "/track" },
-    { label: "Account", href: "/account" },
+    { label: "Home", href: "/" },
+    { label: "Shop All", href: "/store" },
   ]
 
   return (
@@ -588,7 +565,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
           <div className="fixed inset-0 z-[250] large:hidden">
             <button
               type="button"
-              className="absolute inset-0 h-full w-full bg-black/60 backdrop-blur-sm"
+              className="absolute inset-0 h-full w-full bg-black/50"
               onClick={closeMenu}
               aria-label="Close menu backdrop"
             />
@@ -596,14 +573,14 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
             <aside
               ref={menuDialogRef}
               id="mobile-menu-dialog"
-              className="absolute bottom-0 left-0 top-0 flex h-dvh w-[min(340px,90vw)] flex-col bg-[#0A0A0A] text-white shadow-2xl"
+              className="absolute bottom-0 left-0 top-0 flex h-dvh w-[min(420px,90vw)] flex-col bg-[#0A0A0A] text-white shadow-2xl"
               role="dialog"
               aria-modal="true"
               aria-labelledby="mobile-menu-title"
             >
               <div className="flex items-center justify-between border-b border-white/[0.08] px-6 py-5">
                 <img
-                  src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
+                  src="/muse-logo-long.png"
                   alt="MUSE"
                   className="h-[22px] w-auto"
                 />
@@ -631,41 +608,27 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                 </button>
               </div>
 
-              <nav className="flex flex-1 flex-col gap-1 overflow-y-auto px-4 py-6">
+              <div className="muse-drawer-utilities">
+                <LocalizedClientLink href="/account" onClick={closeMenu}>Sign in</LocalizedClientLink>
+                <LocalizedClientLink href="/track" onClick={closeMenu}>Track order</LocalizedClientLink>
+                <LocalizedClientLink href="/faq" onClick={closeMenu}>Help</LocalizedClientLink>
+              </div>
+              <div className="muse-drawer-search">
+                <button type="button" onClick={() => openSearch(menuTriggerRef.current)} aria-label="Search MUSE">
+                  <span>Search MUSE</span>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="10" cy="10" r="6"/><path d="m15 15 5 5"/></svg>
+                </button>
+              </div>
+              <nav aria-label="Mobile shopping navigation" className="muse-drawer-links">
                 {primaryLinks.map((link) => (
-                  <LocalizedClientLink
-                    key={link.href}
-                    href={link.href}
-                    onClick={closeMenu}
-                    className={`rounded-[12px] px-4 py-[15px] text-[22px] font-black transition hover:bg-white/[0.05] ${
-                      link.accent === "red" ? "text-[#C1440E]" : "text-white"
-                    }`}
-                  >
-                    {link.label}
+                  <LocalizedClientLink key={link.href + link.label} href={link.href} onClick={closeMenu}>
+                    <span>{link.label}</span><span aria-hidden="true">›</span>
                   </LocalizedClientLink>
                 ))}
-
-                <div className="my-2 h-px bg-white/[0.08]" />
-
-                {secondaryLinks.map((link) => (
-                  <LocalizedClientLink
-                    key={link.href}
-                    href={link.href}
-                    onClick={closeMenu}
-                    className="rounded-[12px] px-4 py-[13px] text-[13px] font-black uppercase tracking-[0.1em] text-white/50 transition hover:bg-white/[0.05] hover:text-white"
-                  >
-                    {link.label}
-                  </LocalizedClientLink>
-                ))}
-
-                <div className="mt-4 rounded-[16px] border border-white/[0.08] bg-white/[0.04] px-[18px] py-4">
-                  <p className="mb-1.5 text-[10px] font-black uppercase tracking-[0.1em] text-[#C8D050]">
-                    Backed by our guarantee
-                  </p>
-                  <p className="text-[12px] leading-[1.6] text-white/70">
-                    30-day money-back - inspected before dispatch -
-                    Auckland-based
-                  </p>
+                <div className="muse-drawer-secondary">
+                  {secondaryLinks.map((link) => (
+                    <LocalizedClientLink key={link.href} href={link.href} onClick={closeMenu}>{link.label}</LocalizedClientLink>
+                  ))}
                 </div>
               </nav>
 

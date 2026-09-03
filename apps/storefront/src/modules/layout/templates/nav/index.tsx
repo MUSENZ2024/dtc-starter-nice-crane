@@ -99,27 +99,17 @@ export default async function Nav() {
   return (
     <>
       <div className="relative h-8 overflow-hidden bg-[#0A0A0A] text-[#F4F2ED]">
-        <MuseAnnouncementBar />
+        <div className="muse-utility-inner">
+          <div className="muse-utility-message"><MuseAnnouncementBar /></div>
+          <nav aria-label="Utility navigation" className="muse-utility-links">
+            <LocalizedClientLink href="/track">Track order</LocalizedClientLink>
+            <LocalizedClientLink href="/faq">Help</LocalizedClientLink>
+            <LocalizedClientLink href="/account">Sign in</LocalizedClientLink>
+          </nav>
+        </div>
       </div>
 
-      <div className="sticky inset-x-0 top-0 z-50">
-        <aside
-          aria-label="Old MUSE website notice"
-          className="flex min-h-10 items-center justify-center bg-muse-orange px-4 py-2 text-center text-[11px] font-bold leading-4 text-white small:text-[12px]"
-        >
-          <p>
-            You&apos;re browsing our new website. Prefer our old site?{" "}
-            <a
-              href="https://old.musenz.com"
-              target="_blank"
-              rel="noreferrer"
-              className="underline decoration-white/70 underline-offset-2 transition hover:decoration-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white"
-            >
-              Visit old.musenz.com
-            </a>{" "}
-            <span className="whitespace-nowrap">(closing 31 August)</span>
-          </p>
-        </aside>
+      <div className="muse-sticky-header sticky inset-x-0 top-0 z-50">
 
         <header
           id="muse-nav"
@@ -132,7 +122,7 @@ export default async function Nav() {
                 productLinks={productLinks}
               />
 
-              <div className="hidden h-16 items-center gap-[22px] large:flex">
+              <div className="hidden">
                 <LocalizedClientLink href="/store" className="muse-nav-link">
                   Shop All
                 </LocalizedClientLink>
@@ -196,7 +186,7 @@ export default async function Nav() {
               data-testid="nav-store-link"
             >
               <img
-                src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/18ad57dd-63d9-4151-9f41-dccf70026e4c.png"
+                src="/muse-logo-long.png"
                 alt="MUSE"
                 className="h-7 w-auto large:h-[30px]"
               />
@@ -228,8 +218,9 @@ export default async function Nav() {
                 href="/account"
                 className="hidden text-[11px] font-black uppercase tracking-[0.14em] text-white/60 transition hover:text-white large:block"
                 data-testid="nav-account-link"
+                aria-label="Account"
               >
-                Account
+                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5 20c.7-4 3.1-6 7-6s6.3 2 7 6"/></svg>
               </LocalizedClientLink>
 
               <NavSavedLink />
@@ -237,13 +228,12 @@ export default async function Nav() {
               <Suspense
                 fallback={
                   <button
-                    className="flex min-h-11 items-center gap-2 rounded-full bg-[#C8D050] px-4 py-2 text-[11px] font-black uppercase tracking-[0.14em] text-[#0A0A0A]"
+                    className="flex h-11 w-11 items-center justify-center text-[#0A0A0A]"
                     type="button"
+                    aria-label="Loading bag"
+                    disabled
                   >
-                    Bag
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#0A0A0A] text-[11px] font-extrabold text-[#C8D050]">
-                      0
-                    </span>
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden="true"><path d="M5 8h14l-1 12H6L5 8Z"/><path d="M9 9V6a3 3 0 0 1 6 0v3"/></svg>
                   </button>
                 }
               >
@@ -252,6 +242,34 @@ export default async function Nav() {
             </div>
           </div>
         </header>
+        <nav
+          aria-label="Main navigation"
+          className="hidden h-[53px] border-b border-muse-border bg-white large:block"
+        >
+          <div className="mx-auto flex h-full max-w-[1440px] items-center justify-center gap-1 px-8">
+            <LocalizedClientLink href="/store?sort=newest" className="muse-retail-nav-item">
+              New in
+            </LocalizedClientLink>
+            {categoryLinks.map((category) => (
+              <LocalizedClientLink
+                key={category.href}
+                href={category.href}
+                className="muse-retail-nav-item"
+              >
+                {category.label}
+              </LocalizedClientLink>
+            ))}
+            <LocalizedClientLink href="/store?stock=nz-stock" className="muse-retail-nav-item">
+              NZ Stock
+            </LocalizedClientLink>
+            <LocalizedClientLink href="/store" className="muse-retail-nav-item">
+              Brands
+            </LocalizedClientLink>
+            <LocalizedClientLink href="/clearance" className="muse-retail-nav-item text-muse-orange">
+              Clearance
+            </LocalizedClientLink>
+          </div>
+        </nav>
       </div>
     </>
   )

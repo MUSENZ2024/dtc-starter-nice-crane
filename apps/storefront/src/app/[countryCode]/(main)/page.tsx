@@ -1,3 +1,5 @@
+import { RetailBenefits, RetailEditorial, RetailCategories } from "@modules/home/components/retail-sections"
+import DeliveryBadge from "@modules/products/components/delivery-badge"
 import { Metadata } from "next"
 import Image from "next/image"
 import { HttpTypes } from "@medusajs/types"
@@ -54,29 +56,6 @@ type HomeCard = {
   colours: { label: string; hex: string }[]
   outOfStock: boolean
 }
-
-const HOW_STEPS = [
-  [
-    "1",
-    "Choose your item",
-    "Shop either our NZ Stock collection for faster delivery or our full catalogue for the widest range.",
-  ],
-  [
-    "2",
-    "We quality-check every order",
-    "Every order is inspected before dispatch to make sure everything arrives as expected.",
-  ],
-  [
-    "3",
-    "Tracked shipping",
-    "You'll receive tracking updates as your order moves through the delivery network.",
-  ],
-  [
-    "4",
-    "Delivered to your door",
-    "Most Standard Delivery orders arrive within 13-16 days. NZ Stock orders typically arrive within 1-3 business days.",
-  ],
-]
 
 const FEATURED_REVIEWS = allWrittenMuseReviews
   .filter((review) => review.rating === 5)
@@ -319,107 +298,70 @@ export default async function Home(props: Props) {
     .map((product, index) => getCardFromProduct(product, index, deliveryLabel))
 
   return (
-    <div className="bg-[#F4F2ED] text-[#0A0A0A]">
+    <div className="muse-home-restyle bg-white text-[#0A0A0A]">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
           __html: JSON.stringify([organizationJsonLd, websiteJsonLd]),
         }}
       />
-      <section className="mx-auto grid max-w-[1320px] gap-9 px-[18px] py-10 small:grid-cols-[0.9fr_1.1fr] small:gap-14 small:px-8 small:py-16">
-        <div className="flex flex-col justify-center">
-          <p className="mb-6 flex items-center gap-3 text-[11px] font-bold uppercase tracking-[0.18em] text-[#999]">
-            <span className="h-px w-8 bg-[#999]" />
-            Winter drop · live now
+      <a
+        href="#bestsellers"
+        className="flex min-h-10 items-center justify-center bg-[#C1440E] px-4 py-2 text-center text-[12px] font-medium tracking-[0.06em] text-white"
+      >
+        Spring rotation: trending footwear, now at MUSE
+      </a>
+
+      <section className="grid min-h-[620px] bg-[#F4F2ED] small:grid-cols-[1.2fr_0.8fr]">
+        <div className="flex flex-col justify-center px-[18px] py-12 small:px-[clamp(48px,7vw,112px)] small:py-20">
+          <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#C1440E]">
+            The spring rotation
           </p>
-          <h1 className="max-w-[760px] text-[44px] font-extrabold leading-[0.94] tracking-[-0.055em] xsmall:text-[48px] small:text-[84px]">
-            The Nuptse.
+          <h1 className="max-w-[760px] font-condensed text-[clamp(48px,7vw,98px)] font-normal uppercase leading-[0.92] tracking-[-0.035em]">
+            Trending <span className="text-[#C1440E]">now.</span>
             <br />
-            Finally priced like a&nbsp;jacket,{" "}
-            <span className="italic text-[#C1440E]">not a flex.</span>
+            Priced for MUSE.
           </h1>
-          <p className="mt-6 max-w-[610px] text-[17px] leading-[1.55] text-[#666] small:text-[22px]">
-            Premium winter essentials without the retail markup. Tracked
-            delivery. Real Kiwi support. 30-day money back.
+          <p className="mt-6 max-w-[580px] text-[16px] leading-[1.6] text-[#6F6B66] small:text-[18px]">
+            Affordable sneakers, shoes and streetwear with tracked delivery and
+            real support from MUSE NZ.
           </p>
-          <div className="mt-8 grid grid-cols-2 gap-3">
+          <div className="mt-8 grid max-w-[470px] grid-cols-2 gap-2.5">
             <LocalizedClientLink
-              href={featuredCard.href}
-              className="inline-flex h-[58px] items-center justify-center rounded-full bg-[#0A0A0A] px-4 text-center text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#F4F2ED] transition hover:bg-[#C1440E] small:px-8 small:text-[13px]"
+              href="/categories/footwear"
+              className="inline-flex min-h-[50px] items-center justify-center border border-[#0A0A0A] bg-[#0A0A0A] px-4 text-center text-[11px] font-bold uppercase tracking-[0.12em] text-white transition hover:border-[#C1440E] hover:bg-[#C1440E] small:px-7 small:text-[12px]"
             >
-              Shop Nuptse $180
+              Shop footwear
             </LocalizedClientLink>
             <LocalizedClientLink
-              href="/store"
-              className="inline-flex h-[58px] items-center justify-center rounded-full border-2 border-[#0A0A0A] px-4 text-center text-[12px] font-extrabold uppercase tracking-[0.12em] text-[#0A0A0A] transition hover:bg-white small:px-8 small:text-[13px]"
+              href="/store?stock=nz-stock"
+              className="inline-flex min-h-[50px] items-center justify-center border border-[#0A0A0A] bg-transparent px-4 text-center text-[11px] font-bold uppercase tracking-[0.12em] text-[#0A0A0A] transition hover:bg-white small:px-7 small:text-[12px]"
             >
-              Shop all
+              Shop NZ Stock
             </LocalizedClientLink>
           </div>
-          <p className="mt-8 text-[14px] text-[#666]">
-            Tracked delivery, NZ-based support, and 30-day returns.
-          </p>
         </div>
 
         <LocalizedClientLink
-          href={featuredCard.href}
-          className="relative block"
+          href="/collections/spring-rotation"
+          className="relative block min-h-[440px] overflow-hidden bg-[#EBE4D7] small:min-h-[620px]"
         >
-          <div className="relative aspect-[0.98] overflow-hidden rounded-[34px] bg-[#0A0A0A] shadow-[0_24px_80px_rgba(0,0,0,0.12)]">
-            {featuredCard.image ? (
-              <Image
-                src={featuredCard.image}
-                alt={featuredCard.title}
-                fill
-                priority
-                quality={65}
-                sizes="(max-width: 767px) calc(100vw - 36px), 52vw"
-                className="object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#2A2A2A,#0A0A0A)] text-[clamp(90px,16vw,190px)] font-extrabold tracking-[-0.08em] text-white/10">
-                MUSE
-              </div>
-            )}
-            <span className="absolute right-5 top-5 rounded-full bg-[#C8D050] px-6 py-3 text-[12px] font-extrabold uppercase tracking-[0.08em] text-[#0A0A0A]">
-              Winter Drop
-            </span>
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,transparent_45%,rgba(10,10,10,0.2))]" />
-            <div className="absolute bottom-5 left-5 max-w-[280px] rounded-[18px] bg-white/92 p-4 shadow-xl backdrop-blur-xl small:max-w-[330px] small:rounded-[24px] small:p-5">
-              <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-[#C1440E]">
-                Featured · Standard Delivery
-              </p>
-              <p className="mt-2 text-[18px] font-extrabold leading-[1.15] tracking-[-0.03em] small:text-[20px]">
-                TNF 1996 Retro Nuptse — Black
-              </p>
-              <p className="mt-2 text-[13px] text-[#666]">
-                <strong className="text-[#0A0A0A]">$180 NZD</strong> ·{" "}
-                {deliveryLabel}
-              </p>
-            </div>
-          </div>
+          <Image
+            src="/campaigns/spring-rotation/artboard-1.jpg"
+            alt="Selection of trending footwear in the MUSE Spring Rotation"
+            fill
+            priority
+            quality={75}
+            sizes="(max-width: 1023px) 100vw, 42vw"
+            className="object-cover"
+          />
+          <span className="absolute right-5 top-5 bg-[#C8D050] px-4 py-3 text-[11px] font-bold uppercase tracking-[0.1em] text-[#0A0A0A]">
+            New campaign
+          </span>
         </LocalizedClientLink>
       </section>
 
-      <section className="mx-auto mb-14 max-w-[1320px] px-[18px] small:mb-20 small:px-8">
-        <div className="grid grid-cols-2 gap-6 rounded-[20px] bg-[#0A0A0A] px-[18px] py-6 text-center text-[#F4F2ED] small:grid-cols-4 small:gap-4 small:rounded-[28px] small:p-8">
-          {[
-            [`${MUSE_REVIEW_SUMMARY.total}★`, "verified reviews"],
-            [`${MUSE_REVIEW_SUMMARY.average.toFixed(1)}★`, "verified rating"],
-            ["13-16", "days to your door"],
-            ["30-day", "money back"],
-          ].map(([value, label]) => (
-            <div key={label}>
-              <p className="text-[22px] font-extrabold leading-none tracking-[-0.025em] text-[#C8D050] small:text-[28px]">
-                {value}
-              </p>
-              <p className="mt-2 text-[11px] font-bold uppercase tracking-[0.12em] text-[#BBB]">
-                {label}
-              </p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <RetailBenefits />
 
       <section
         id="bestsellers"
@@ -441,35 +383,8 @@ export default async function Home(props: Props) {
         </div>
       </section>
 
-      <section
-        id="how"
-        className="mx-[18px] mb-14 max-w-[1320px] overflow-hidden rounded-[24px] bg-[#0A0A0A] px-6 py-12 text-[#F4F2ED] small:mx-auto small:mb-20 small:rounded-[32px] small:px-14 small:py-20"
-      >
-        <div className="relative z-[1] mb-10 text-center small:mb-12">
-          <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#C8D050]">
-            How it works
-          </p>
-          <h2 className="mx-auto max-w-[660px] text-[32px] font-extrabold leading-[1.05] tracking-[-0.03em] small:text-[48px]">
-            From our warehouse to&nbsp;your&nbsp;door
-          </h2>
-        </div>
-        <div className="relative z-[1] grid grid-cols-2 gap-2.5 small:grid-cols-4 small:gap-4">
-          {HOW_STEPS.map(([num, title, body]) => (
-            <div
-              key={num}
-              className="rounded-[16px] border border-white/10 bg-white/[0.04] p-5 small:rounded-[22px] small:p-7"
-            >
-              <div className="mb-5 flex h-9 w-9 items-center justify-center rounded-full bg-[#C8D050] text-sm font-extrabold text-[#0A0A0A]">
-                {num}
-              </div>
-              <h3 className="mb-1.5 text-[15px] font-bold text-[#F4F2ED]">
-                {title}
-              </h3>
-              <p className="text-[12.5px] leading-[1.6] text-[#999]">{body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
+      <RetailEditorial />
+      <RetailCategories />
 
       <section
         id="drops"
@@ -511,7 +426,7 @@ export default async function Home(props: Props) {
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#C1440E]">
               Real talk
             </p>
-            <h2 className="mb-4 text-[28px] font-extrabold leading-[1.05] tracking-[-0.025em] small:text-[42px]">
+            <h2 className="mb-4 text-[28px] font-normal uppercase leading-[1.05] tracking-[-0.025em] small:text-[42px]">
               Why our prices are different
             </h2>
             <p className="text-[15.5px] leading-[1.65] text-[#666]">
@@ -720,7 +635,7 @@ function SectionHead({
           )}
           {eyebrow}
         </p>
-        <h2 className="text-[28px] font-extrabold leading-[1.05] tracking-[-0.03em] small:text-[44px]">
+        <h2 className="text-[28px] font-normal uppercase leading-[1.05] tracking-[-0.03em] small:text-[44px]">
           {title}
         </h2>
       </div>
@@ -772,18 +687,11 @@ function ProductCard({ product }: { product: HomeCard }) {
             </span>
           )}
           {product.outOfStock && (
-            <span className="absolute left-3 top-3 z-[3] rounded-full bg-[#0A0A0A] px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#F4F2ED]">
+            <span className="absolute left-9 top-3 z-[3] rounded-full bg-[#0A0A0A] px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#F4F2ED]">
               Out of stock
             </span>
           )}
-          <span className={`absolute left-3 z-[2] inline-flex items-center gap-1.5 rounded-full bg-[#F4F2ED]/90 px-3 py-1.5 text-[10.5px] font-bold uppercase tracking-[0.06em] text-[#0A0A0A] backdrop-blur ${product.outOfStock ? "top-12" : "top-3"}`}>
-            <span
-              className={`h-[7px] w-[7px] rounded-full ${
-                product.badge === "NZ Stock" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"
-              }`}
-            />
-            {product.badge}
-          </span>
+          <DeliveryBadge label={product.badge} />
         </LocalizedClientLink>
         <SavedToggle
           item={{

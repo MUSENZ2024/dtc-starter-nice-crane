@@ -320,7 +320,7 @@ export default function StoreTemplateMuse({
       : stockCollectionIds
 
   const filters: ProductFilterParams = {
-    sortBy: (searchParams.sortBy as SortOptions) ?? "created_at",
+    sortBy: (searchParams.sortBy as SortOptions) ?? "random",
     page: parsedPage,
     limit: searchParams.grid === "dense" ? 20 : 12,
     q: searchParams.q,
@@ -371,7 +371,7 @@ export default function StoreTemplateMuse({
     : "store"
 
   return (
-    <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
+    <div className="muse-listing-restyle min-h-screen bg-white font-inter text-muse-black">
       <div className="mx-auto max-w-[1400px] px-[18px] pt-5 text-[12px] font-medium tracking-[0.03em] text-muse-text-light small:px-8">
         <LocalizedClientLink
           href="/"
@@ -511,9 +511,9 @@ function CategoryHero({
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[22px] bg-muse-black px-7 py-9 text-muse-cream small:grid small:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)] small:items-end small:gap-12 small:rounded-[28px] small:px-14 small:py-12">
+    <div className="muse-category-header relative overflow-hidden bg-[#F4F5F7] px-6 py-7 text-muse-black small:grid small:grid-cols-[minmax(0,1fr)_minmax(360px,0.85fr)] small:items-end small:gap-12 small:px-8 small:py-8">
       <div className="relative z-[1]">
-        <p className="mb-4 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-muse-yellow before:block before:h-px before:w-5 before:bg-muse-yellow">
+        <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.16em] text-muse-yellow">
           Shop the category
         </p>
         <h1 className="text-[clamp(40px,5.5vw,64px)] font-black leading-[0.97] tracking-[-0.04em]">
