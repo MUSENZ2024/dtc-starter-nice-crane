@@ -2,11 +2,7 @@
 
 import { sdk } from "@lib/config"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
-import {
-  getRandomRotationSeed,
-  mulberry32,
-  sortProducts,
-} from "@lib/util/sort-products"
+import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { ProductFilterParams, SortOptions } from "./products.types"
 import { getAuthHeaders } from "./cookies"
@@ -77,11 +73,8 @@ export const listProducts = async ({
   countryCode?: string
   regionId?: string
   /**
-   * Opt in to a short time-based cache instead of the default no-store
-   * fetch. Use only for non-critical, high-frequency call sites (nav search
-   * index, cart drawer upsells) where a brief delay before catalogue edits
-   * show up is an acceptable trade for not hitting the backend on every
-   * page render.
+   * Override the default 60-second time-based cache. Pass 0 when a caller
+   * explicitly needs fresh data. Cart writes always validate with Medusa.
    */
   revalidateSeconds?: number
 }): Promise<{
@@ -97,19 +90,25 @@ export const listProducts = async ({
   const _pageParam = Math.max(pageParam, 1)
   const offset = _pageParam === 1 ? 0 : (_pageParam - 1) * limit
 
+  const fields = withProductStatusField(queryParams?.fields)
+  // Medusa adds variant pricing context when region_id is supplied, even for
+  // identity-only queries. Keep navigation/search/shuffle indexes lightweight;
+  // every query that requests pricing, options or stock still gets its region.
+  const identityOnly = fields.split(",").every((field) =>
+    ["id", "title", "handle", "status", "created_at", "updated_at", "thumbnail", "*images"].includes(field.trim())
+  )
   let region: HttpTypes.StoreRegion | undefined | null
 
-  if (countryCode) {
-    region = await getRegion(countryCode)
-  } else {
-    region = await retrieveRegion(regionId!)
+  if (!identityOnly) {
+    region = countryCode
+      ? await getRegion(countryCode)
+      : await retrieveRegion(regionId!)
   }
 
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  const fields = withProductStatusField(queryParams?.fields)
   const next = {
     revalidate: revalidateSeconds ?? DEFAULT_PRODUCT_REVALIDATE_SECONDS,
   }
@@ -133,9 +132,12 @@ export const listProducts = async ({
     .then(async ({ products, count }) => {
       // Lightweight listing queries omit galleries. Resolve only products
       // missing a thumbnail so every consumer gets the same primary image.
-      const missingImages = products.filter(
-        (product) => !product.thumbnail && !product.images?.length
+      const requestsThumbnail = fields.split(",").some(
+        (field) => ["thumbnail", "+thumbnail", "*"].includes(field.trim())
       )
+      const missingImages = requestsThumbnail
+        ? products.filter((product) => !product.thumbnail && !product.images?.length)
+        : []
       const galleries = missingImages.length
         ? await sdk.client.fetch<{ products: HttpTypes.StoreProduct[] }>(
             `/store/products`,
@@ -186,14 +188,10 @@ export const listProducts = async ({
     })
 }
 
-// How many products the "random" default samples from and shuffles. Kept in
-// line with the other client-sorted paths' 200-product cap for cost, but the
-// window rotates around the catalogue (see fetchRandomWindow) instead of
-// always sitting on the first ~200 products the backend returns by default
-// (effectively "most recently uploaded first").
-const RANDOM_SAMPLE_SIZE = 200
-
-const fetchRandomWindow = async ({
+// Shuffle lightweight identities, then hydrate only the visible page. Downloading
+// prices, stock and size options for 200 candidates made every cold shuffle slow
+// and left later pages empty even though the UI advertised the full catalogue.
+const listRandomProductIdentities = async ({
   queryParams,
   countryCode,
   revalidateSeconds,
@@ -202,42 +200,34 @@ const fetchRandomWindow = async ({
   countryCode: string
   revalidateSeconds?: number
 }) => {
-  const fields = queryParams?.fields ?? PRODUCT_LIST_FIELDS
-
-  const countProbe = await listProducts({
-    pageParam: 1,
-    queryParams: { ...queryParams, fields, limit: 1 },
+  const pageSize = 100
+  const identityQuery = {
+    ...queryParams,
+    fields: "id,title,handle,status",
+    limit: pageSize,
+    offset: 0,
+    order: "id",
+  }
+  const firstPage = await listProducts({
+    queryParams: identityQuery,
     countryCode,
     revalidateSeconds,
   })
-
-  const count = countProbe.response.count
-  const sampleSize = Math.min(count, RANDOM_SAMPLE_SIZE)
-  const maxWindowOffset = Math.max(0, count - sampleSize)
-  const random = mulberry32(getRandomRotationSeed())
-  const windowOffset =
-    maxWindowOffset > 0 ? Math.floor(random() * (maxWindowOffset + 1)) : 0
-
-  const pageSize = 100
-  const chunkCount = Math.max(1, Math.ceil(sampleSize / pageSize))
-
-  const productGroups = await Promise.all(
-    Array.from({ length: chunkCount }, (_, index) => index).map((index) =>
+  // listProducts subtracts hidden products from its count for the current page.
+  // Recover the backend total to ensure the final identity page is requested.
+  const count = firstPage.response.count + (firstPage.nextPage
+    ? pageSize - firstPage.response.products.length
+    : 0)
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(0, Math.ceil(count / pageSize) - 1) }, (_, index) =>
       listProducts({
-        pageParam: 1,
-        queryParams: {
-          ...queryParams,
-          fields,
-          limit: Math.min(pageSize, sampleSize - index * pageSize),
-          offset: windowOffset + index * pageSize,
-        },
+        queryParams: { ...identityQuery, offset: (index + 1) * pageSize },
         countryCode,
         revalidateSeconds,
       }).then(({ response }) => response.products)
     )
   )
-
-  return { products: productGroups.flat(), count }
+  return [firstPage.response.products, ...remainingPages].flat()
 }
 
 export const listProductsWithSort = async ({
@@ -261,22 +251,38 @@ export const listProductsWithSort = async ({
   const requestedPageForRandom = Math.max(page, 1)
 
   if (sortBy === "random") {
-    const { products: windowProducts, count } = await fetchRandomWindow({
+    const identities = await listRandomProductIdentities({
       queryParams,
       countryCode,
       revalidateSeconds,
     })
-
-    const sortedProducts = sortProducts(windowProducts, sortBy)
-    const pageParam = (requestedPageForRandom - 1) * limit
-    const nextPage = count > pageParam + limit ? pageParam + limit : null
+    const count = identities.length
+    const offset = (requestedPageForRandom - 1) * limit
+    const pageIdentities = sortProducts(identities, sortBy).slice(offset, offset + limit)
+    const { response } = pageIdentities.length
+      ? await listProducts({
+          queryParams: {
+            ...queryParams,
+            id: pageIdentities.map((product) => product.id),
+            fields: queryParams?.fields ?? PRODUCT_LIST_FIELDS,
+            offset: 0,
+            limit: pageIdentities.length,
+          },
+          countryCode,
+          revalidateSeconds,
+        })
+      : { response: { products: [] as HttpTypes.StoreProduct[] } }
+    const productsById = new Map(response.products.map((product) => [product.id, product]))
 
     return {
       response: {
-        products: sortedProducts.slice(pageParam, pageParam + limit),
+        products: pageIdentities.flatMap((identity) => {
+          const product = productsById.get(identity.id)
+          return product ? [product] : []
+        }),
         count,
       },
-      nextPage,
+      nextPage: count > offset + limit ? requestedPageForRandom + 1 : null,
       queryParams,
     }
   }
@@ -597,12 +603,25 @@ export async function listProductsFiltered({
     ...(category_id?.length ? { category_id } : {}),
     ...(collection_id?.length ? { collection_id } : {}),
     ...(q ? { q } : {}),
-  } as HttpTypes.FindParams & HttpTypes.StoreProductParams
+  } as HttpTypes.FindParams & HttpTypes.StoreProductListParams
 
   const tagFilterIds = tag_filter_groups?.flat() ?? tag_id ?? []
   const productTagIdsToFetch = Array.from(
     new Set([...tagFilterIds, ...(colour_tag_id ?? [])])
   )
+  // A single brand/tag is already supported by Medusa before pagination.
+  // Avoid downloading the first 100 detailed products just to test that same
+  // tag again in JavaScript. Combined facets keep the existing filtering path.
+  const tagGroups = tag_filter_groups?.length
+    ? tag_filter_groups
+    : tag_id?.length ? [tag_id] : []
+  const directTagId = tagGroups.length === 1 && tagGroups[0].length === 1 && !colour_tag_id?.length
+    ? tagGroups[0][0]
+    : undefined
+  if (directTagId) {
+    queryParams.tag_id = [directTagId]
+  }
+
   const needsClientFiltering = Boolean(
     stock ||
       sizes?.length ||
@@ -613,7 +632,7 @@ export async function listProductsFiltered({
       priceMin !== undefined ||
       priceMax !== undefined ||
       sortBy === "ships_soonest" ||
-      productTagIdsToFetch.length ||
+      (productTagIdsToFetch.length > 0 && !directTagId) ||
       ![
         "created_at",
         "best_sellers",

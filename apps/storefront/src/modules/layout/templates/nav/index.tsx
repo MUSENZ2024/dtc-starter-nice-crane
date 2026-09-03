@@ -88,7 +88,9 @@ function MuseAnnouncementBar() {
 }
 
 export default async function Nav() {
-  const categories = await listCategories().catch(() => [])
+  const categories = await listCategories({
+    fields: "id,name,handle,rank,parent_category_id",
+  }).catch(() => [])
 
   const categoryLinks = getVisibleCategoryLinks(categories)
   // Product matches are fetched only after the shopper types. Preloading a

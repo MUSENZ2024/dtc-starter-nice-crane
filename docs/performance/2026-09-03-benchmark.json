@@ -1,0 +1,96 @@
+[
+  {
+    "label": "before",
+    "ms": 9263,
+    "bytes": 4349394,
+    "requests": 3,
+    "detailProductsRequested": 201,
+    "shown": 12,
+    "count": 763,
+    "calls": [
+      {
+        "limit": 1,
+        "fields": "id,title,handle,status,subtitle,thumbnail,*collection,*type,*options,*variants.options,*variants.calculated_price,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder,+metadata,*tags",
+        "ms": 1158,
+        "bytes": 19886
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status,subtitle,thumbnail,*collection,*type,*options,*variants.options,*variants.calculated_price,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder,+metadata,*tags",
+        "ms": 6879,
+        "bytes": 2176964
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status,subtitle,thumbnail,*collection,*type,*options,*variants.options,*variants.calculated_price,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder,+metadata,*tags",
+        "ms": 8093,
+        "bytes": 2152544
+      }
+    ]
+  },
+  {
+    "label": "after",
+    "ms": 2035,
+    "bytes": 367357,
+    "requests": 9,
+    "detailProductsRequested": 12,
+    "shown": 12,
+    "count": 762,
+    "calls": [
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 272,
+        "bytes": 16935
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 305,
+        "bytes": 15424
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 941,
+        "bytes": 11462
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 1082,
+        "bytes": 16283
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 1084,
+        "bytes": 14998
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 1108,
+        "bytes": 14581
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 1117,
+        "bytes": 15692
+      },
+      {
+        "limit": 100,
+        "fields": "id,title,handle,status",
+        "ms": 1150,
+        "bytes": 15844
+      },
+      {
+        "limit": 12,
+        "fields": "id,title,handle,status,subtitle,thumbnail,*collection,*type,*options,*variants.options,*variants.calculated_price,+variants.inventory_quantity,+variants.manage_inventory,+variants.allow_backorder,+metadata,*tags",
+        "ms": 608,
+        "bytes": 246138
+      }
+    ]
+  }
+]
