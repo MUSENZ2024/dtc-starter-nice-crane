@@ -33,6 +33,7 @@ const FEATURED_HANDLES = [
   "new-balance-204l-cortado-stone-pink-u204l273",
   "salomon-xt-6-white-footwear-silver",
   "dr-martens-adrian-smooth-leather-tassel-loafers-black",
+  "puma-speedcat-og-black-white",
 ] as const
 
 const toProductCard = (
