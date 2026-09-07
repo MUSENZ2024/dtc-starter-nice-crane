@@ -311,7 +311,7 @@ export default async function Home(props: Props) {
         href="#bestsellers"
         className="flex min-h-10 items-center justify-center bg-[#C1440E] px-4 py-2 text-center text-[12px] font-medium tracking-[0.06em] text-white"
       >
-        Spring rotation: trending footwear, now at MUSE
+        CHRISTMAS DELIVERY CUTOFF: ORDER BY 16 NOVEMBER
       </a>
 
       <section className="grid min-h-[620px] bg-[#F4F2ED] small:grid-cols-[1.2fr_0.8fr]">
