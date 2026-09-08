@@ -89,6 +89,12 @@ export default function RootLayout(props: { children: React.ReactNode }) {
       className={`${roboto.variable} ${robotoCondensed.variable}`}
     >
       <body className="muse-retail-theme bg-muse-cream font-sans text-muse-black antialiased">
+        <aside
+          aria-label="Christmas delivery cutoff"
+          className="flex min-h-10 items-center justify-center bg-[#C1440E] px-4 py-2 text-center text-[12px] font-medium tracking-[0.06em] text-white"
+        >
+          CHRISTMAS DELIVERY CUTOFF: ORDER BY 16 NOVEMBER
+        </aside>
         <main className="relative">{props.children}</main>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_TAG_ID}`}

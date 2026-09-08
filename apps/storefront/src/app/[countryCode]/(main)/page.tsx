@@ -307,13 +307,6 @@ export default async function Home(props: Props) {
           __html: JSON.stringify([organizationJsonLd, websiteJsonLd]),
         }}
       />
-      <a
-        href="#bestsellers"
-        className="flex min-h-10 items-center justify-center bg-[#C1440E] px-4 py-2 text-center text-[12px] font-medium tracking-[0.06em] text-white"
-      >
-        CHRISTMAS DELIVERY CUTOFF: ORDER BY 16 NOVEMBER
-      </a>
-
       <section className="grid min-h-[620px] bg-[#F4F2ED] small:grid-cols-[1.2fr_0.8fr]">
         <div className="flex flex-col justify-center px-[18px] py-12 small:px-[clamp(48px,7vw,112px)] small:py-20">
           <p className="mb-4 text-[11px] font-bold uppercase tracking-[0.18em] text-[#C1440E]">
