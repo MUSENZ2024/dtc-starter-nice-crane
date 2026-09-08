@@ -413,11 +413,25 @@
   .muse-spring-restyle h2 { font-size: 26px; }
 }
 .muse-spring-help { border-top: 1px solid #e5e2dc; }
-.muse-spring-help details { border-bottom: 1px solid #e5e2dc; padding: 0 0 8px; }
-.muse-spring-help summary { min-height: 52px; padding: 16px 0; cursor: pointer; font-size: 16px; }
-.muse-spring-help p { max-width: 70ch; font-size: 14px; line-height: 1.7; color: #6f6b66; }
-.muse-spring-help a { display: inline-flex; align-items: center; min-height: 44px; margin-right: 24px; color: #c1440e; text-decoration: underline; }
+.muse-spring-help details { border-bottom: 1px solid #e5e2dc; }
+.muse-spring-help summary { min-height: 60px; padding: 18px 0; cursor: pointer; font-size: 17px; font-weight: 500; }
+.muse-spring-help .muse-spring-answer { max-width: 920px; padding: 2px 0 28px; }
+.muse-spring-help .muse-spring-answer-lead { max-width: 64ch; margin: 0 0 16px; color: #231f20; font-size: 15px; line-height: 1.65; }
+.muse-spring-help .muse-spring-answer-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.muse-spring-help .muse-spring-answer-fact { display: grid; align-content: start; gap: 7px; min-height: 112px; padding: 18px; background: #f4f2ed; }
+.muse-spring-help .muse-spring-answer-fact strong { color: #231f20; font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.muse-spring-help .muse-spring-answer-fact span { color: #6f6b66; font-size: 14px; line-height: 1.6; }
+.muse-spring-help .muse-spring-answer-note { max-width: 68ch; margin: 16px 0 0; color: #6f6b66; font-size: 14px; line-height: 1.65; }
+.muse-spring-help .muse-spring-answer-links { display: flex; flex-wrap: wrap; gap: 4px 24px; margin-top: 12px; }
+.muse-spring-help a { display: inline-flex; align-items: center; min-height: 44px; color: #c1440e; text-decoration: underline; }
 .muse-spring-help summary:focus-visible { outline: 2px solid #c1440e; outline-offset: 3px; }
+@media (max-width: 639px) {
+  .muse-spring-help summary { min-height: 64px; padding: 20px 0; font-size: 16px; }
+  .muse-spring-help .muse-spring-answer { padding-bottom: 24px; }
+  .muse-spring-help .muse-spring-answer-grid { grid-template-columns: 1fr; gap: 8px; }
+  .muse-spring-help .muse-spring-answer-fact { min-height: 0; padding: 16px; }
+  .muse-spring-help .muse-spring-answer-links { gap: 0 20px; }
+}
 /* Help centre: readable questions and compact, square retail surfaces. */
 .muse-retail-theme .muse-static-page-faq { background: #fff; }
 .muse-retail-theme .muse-static-page-faq .page-wrap { max-width: 1280px; padding-top: 48px; }

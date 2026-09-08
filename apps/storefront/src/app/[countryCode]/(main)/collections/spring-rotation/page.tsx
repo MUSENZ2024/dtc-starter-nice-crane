@@ -155,8 +155,8 @@ export default async function SpringRotationPage({
         </div>
 
         <p className="mb-5 max-w-[650px] text-sm leading-6 text-muse-text-muted">
-          Compare prices in NZD and delivery estimates below. Open a pair for
-          its size guide, more photos, and full product details.
+          Prices are in NZD. Choose a style to see available sizes, more photos,
+          fit advice and its delivery timeframe.
         </p>
         {products.length > 0 ? (
           <div className="grid grid-cols-2 gap-2.5 small:grid-cols-4 small:gap-4">
@@ -193,18 +193,64 @@ export default async function SpringRotationPage({
         <div className="muse-spring-help">
           <details>
             <summary>Which size should I choose?</summary>
-            <p>Open the product page to view its size options and size guide before adding your pair to the bag.</p>
+            <div className="muse-spring-answer">
+              <p className="muse-spring-answer-lead">Start with the size chart and fit note on the product page. Sizing changes between brands and styles.</p>
+              <div className="muse-spring-answer-grid">
+                <div className="muse-spring-answer-fact">
+                  <strong>New Balance</strong>
+                  <span>Often fits a little smaller because of the inside padding.</span>
+                </div>
+                <div className="muse-spring-answer-fact">
+                  <strong>Still unsure?</strong>
+                  <span>Send us your usual shoe size and the style you want. We will help you choose.</span>
+                </div>
+              </div>
+              <div className="muse-spring-answer-links">
+                <LocalizedClientLink href="/faq#sizing">Full sizing guide</LocalizedClientLink>
+                <a href="mailto:support@musenz.com">Ask us about sizing</a>
+              </div>
+            </div>
           </details>
           <details>
             <summary>When will my pair arrive?</summary>
-            <p>Each product shows its delivery estimate and fulfilment label. NZ Stock and Standard Delivery can have different timings. Check your selected pair before ordering.</p>
-            <LocalizedClientLink href="/faq">Delivery questions</LocalizedClientLink>
+            <div className="muse-spring-answer">
+              <p className="muse-spring-answer-lead">The label on each product tells you which timeframe applies.</p>
+              <div className="muse-spring-answer-grid">
+                <div className="muse-spring-answer-fact">
+                  <strong>NZ Stock</strong>
+                  <span>Dispatches from Auckland in 1–3 business days. NZ Post usually takes another 1–3 business days.</span>
+                </div>
+                <div className="muse-spring-answer-fact">
+                  <strong>Standard Delivery</strong>
+                  <span>Allow around 13–16 business days from the day you order.</span>
+                </div>
+              </div>
+              <p className="muse-spring-answer-note">We track every order and email the tracking details after dispatch.</p>
+              <div className="muse-spring-answer-links">
+                <LocalizedClientLink href="/faq#shipping">Full delivery information</LocalizedClientLink>
+              </div>
+            </div>
           </details>
           <details>
-            <summary>Returns or a question before ordering?</summary>
-            <p>Check the returns terms and exclusions before buying, or ask MUSE support if you need help choosing.</p>
-            <LocalizedClientLink href="/faq">Read the FAQ and returns information</LocalizedClientLink>
-            <a href="mailto:support@musenz.com">Email MUSE support</a>
+            <summary>Can I return or exchange my pair?</summary>
+            <div className="muse-spring-answer">
+              <p className="muse-spring-answer-lead">Contact us within 7 business days of receiving your order.</p>
+              <div className="muse-spring-answer-grid">
+                <div className="muse-spring-answer-fact">
+                  <strong>Send it back</strong>
+                  <span>After approval, return it within 30 days of delivery. We provide a prepaid NZ Post label.</span>
+                </div>
+                <div className="muse-spring-answer-fact">
+                  <strong>Keep it new</strong>
+                  <span>Shoes must be unworn, with every accessory included and the original box undamaged.</span>
+                </div>
+              </div>
+              <p className="muse-spring-answer-note">Size exchanges depend on stock. Approved refunds go back to your original payment method after we check the return.</p>
+              <div className="muse-spring-answer-links">
+                <LocalizedClientLink href="/faq#returns">Full returns policy</LocalizedClientLink>
+                <a href="mailto:support@musenz.com">Start a return or exchange</a>
+              </div>
+            </div>
           </details>
         </div>
       </section>
@@ -219,7 +265,8 @@ export default async function SpringRotationPage({
               Make it your rotation
             </h2>
             <p className="mt-3 text-[13px] leading-6 text-muse-cream/65">
-              NZD pricing · Tracked delivery · NZ-based support
+              Based and operated in Auckland. Prices are in NZD, with tracked
+              delivery across New Zealand.
             </p>
           </div>
           <a

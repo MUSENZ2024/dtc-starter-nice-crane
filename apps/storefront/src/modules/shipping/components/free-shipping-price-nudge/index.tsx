@@ -252,10 +252,10 @@ function FreeShippingPopup({
   )
 
   const ProgressBar = () => (
-    <div className="h-1 w-full overflow-hidden rounded-full bg-white/15">
+    <div className="h-1 w-full overflow-hidden bg-muse-border">
       <div
         className={clx(
-          "h-full rounded-full transition-[width] duration-500 ease-in-out",
+          "h-full transition-[width] duration-500 ease-in-out",
           price.target_reached ? "bg-muse-green" : "bg-muse-yellow",
         )}
         style={{ width: `${price.target_reached ? 100 : progress}%` }}
@@ -266,7 +266,7 @@ function FreeShippingPopup({
   const CloseButton = () => (
     <button
       type="button"
-      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10 text-white/70 transition-colors hover:bg-white/20 hover:text-white"
+      className="flex h-11 w-11 shrink-0 items-center justify-center border border-muse-border bg-white text-muse-text-muted transition-colors hover:border-muse-black hover:text-muse-black"
       onClick={() => setIsClosed(true)}
       aria-label="Dismiss free shipping message"
     >
@@ -276,10 +276,8 @@ function FreeShippingPopup({
 
   const UnlockedLabel = () => (
     <span className="flex items-center gap-1.5">
-      <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-muse-green text-white">
-        <CheckCircleSolid className="h-3.5 w-3.5" />
-      </span>
-      Free shipping unlocked!
+      <CheckCircleSolid className="h-[18px] w-[18px] text-muse-green" />
+      Free NZ delivery unlocked
     </span>
   )
 
@@ -291,19 +289,19 @@ function FreeShippingPopup({
           isClosed || isCartOpen || isMarketingActive ? "translate-y-[110%]" : "translate-y-0",
         )}
       >
-        <div className="flex flex-col gap-2.5 rounded-t-2xl bg-muse-black px-4 pb-[calc(14px+env(safe-area-inset-bottom,0px))] pt-3.5 text-white shadow-[0_-4px_24px_rgba(0,0,0,0.18)]">
+        <div className="flex flex-col gap-3 border-t-2 border-muse-black bg-white px-4 pb-[calc(14px+env(safe-area-inset-bottom,0px))] pt-3.5 text-muse-black shadow-[0_-3px_16px_rgba(0,0,0,0.10)]">
           <div className="flex items-center gap-2">
             {!price.target_reached && (
-              <span className="text-white/55">
+              <span className="text-muse-text-muted">
                 <TruckIcon />
               </span>
             )}
-            <div className="flex-1 text-[13px] font-medium text-white/70">
+            <div className="flex-1 text-[12px] font-bold uppercase tracking-[0.06em] text-muse-black">
               {price.target_reached ? (
                 <UnlockedLabel />
               ) : (
                 <>
-                  Only <span className="font-bold text-white">{remaining}</span>{" "}
+                  Only <span className="font-bold text-muse-orange">{remaining}</span>{" "}
                   away from free shipping
                 </>
               )}
@@ -321,14 +319,14 @@ function FreeShippingPopup({
           >
             {!price.target_reached && (
               <LocalizedClientLink
-                className="flex h-10 items-center justify-center rounded-[10px] border-[1.5px] border-white/30 text-[13px] font-semibold text-white transition-colors hover:border-white/55 hover:bg-white/[0.06]"
+                className="flex h-11 items-center justify-center border border-muse-black text-[12px] font-bold uppercase tracking-[0.05em] text-muse-black transition-colors hover:bg-muse-cream-warm"
                 href="/cart"
               >
                 View cart
               </LocalizedClientLink>
             )}
             <LocalizedClientLink
-              className="flex h-10 items-center justify-center rounded-[10px] bg-muse-yellow text-[13px] font-bold text-muse-black transition-colors hover:bg-muse-yellow-deep"
+              className="flex h-11 items-center justify-center bg-muse-black text-[12px] font-bold uppercase tracking-[0.05em] text-white transition-colors hover:bg-muse-orange"
               href="/store"
             >
               Shop products
@@ -345,32 +343,28 @@ function FreeShippingPopup({
             : "visible opacity-100",
         )}
       >
-        <div className="flex w-[340px] flex-col gap-3.5 rounded-2xl bg-muse-black px-5 py-[18px] text-white shadow-[0_8px_32px_rgba(0,0,0,0.22),0_2px_8px_rgba(0,0,0,0.12)]">
+        <div className="flex w-[360px] flex-col gap-4 border border-muse-black bg-white p-5 text-muse-black shadow-[0_4px_16px_rgba(0,0,0,0.10)]">
           <div className="flex items-start justify-between gap-2">
-            <div className="flex flex-col gap-0.5">
-              <div className="flex items-center gap-1.5 text-[13px] font-semibold text-white/70">
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.08em] text-muse-text-muted">
                 {price.target_reached ? (
                   <UnlockedLabel />
                 ) : (
                   <>
-                    <span className="text-white/50">
+                    <span className="text-muse-text-muted">
                       <TruckIcon />
                     </span>
                     Unlock free shipping
                   </>
                 )}
               </div>
-              <div className="text-xl font-bold leading-[1.15] tracking-[-0.02em]">
+              <div className="font-roboto-condensed text-[22px] font-normal uppercase leading-[1.15] tracking-[0.01em]">
                 {price.target_reached ? (
-                  <>
-                    You&apos;ve qualified for
-                    <br />
-                    <span className="text-muse-yellow">free NZ delivery</span>
-                  </>
+                  <>Your order ships free</>
                 ) : (
                   <>
-                    Only <span className="text-muse-yellow">{remaining}</span>{" "}
-                    away
+                    Add <span className="text-muse-orange">{remaining}</span>{" "}
+                    for free shipping
                   </>
                 )}
               </div>
@@ -380,7 +374,7 @@ function FreeShippingPopup({
 
           <div className="flex flex-col gap-1.5">
             <ProgressBar />
-            <div className="flex justify-between text-[11px] text-white/45">
+            <div className="flex justify-between text-[11px] text-muse-text-muted">
               <span>{current} in cart</span>
               <span>{target} threshold</span>
             </div>
@@ -394,14 +388,14 @@ function FreeShippingPopup({
           >
             {!price.target_reached && (
               <LocalizedClientLink
-                className="flex h-[38px] items-center justify-center whitespace-nowrap rounded-lg border-[1.5px] border-white/20 px-4 text-[13px] font-semibold text-white/80 transition-colors hover:border-white/45 hover:text-white"
+                className="flex h-11 items-center justify-center whitespace-nowrap border border-muse-black px-4 text-[12px] font-bold uppercase tracking-[0.05em] text-muse-black transition-colors hover:bg-muse-cream-warm"
                 href="/cart"
               >
                 View cart
               </LocalizedClientLink>
             )}
             <LocalizedClientLink
-              className="flex h-[38px] items-center justify-center rounded-lg bg-muse-yellow text-[13px] font-bold text-muse-black transition-colors hover:bg-muse-yellow-deep"
+              className="flex h-11 items-center justify-center bg-muse-black text-[12px] font-bold uppercase tracking-[0.05em] text-white transition-colors hover:bg-muse-orange"
               href="/store"
             >
               Shop products
