@@ -8,7 +8,15 @@ export const validateCampaignContent = (content: unknown) => {
   return content.flatMap((block: any, index) => !block || !allowed.has(block.type) ? [`Block ${index + 1} has an unsupported type.`] : [])
 }
 
-export const renderCampaignEmail = ({ subject, previewText, blocks, unsubscribeUrl, utmCampaign }: { subject: string; previewText: string; blocks: CampaignBlock[]; unsubscribeUrl: string; utmCampaign: string }) => {
+export const renderCampaignEmail = ({ subject, previewText, blocks, unsubscribeUrl, utmCampaign, templateKey = "structured_campaign_v1" }: { subject: string; previewText: string; blocks: CampaignBlock[]; unsubscribeUrl: string; utmCampaign: string; templateKey?: string }) => {
+  if (templateKey === "spring_rotation_launch_v1") {
+    return render(
+      React.createElement(SpringRotationLaunchEmail, {
+        unsubscribeUrl,
+        previewText,
+      })
+    )
+  }
   const renderBlock = (block: CampaignBlock) => {
     if (block.type === "hero") return `<section><img src="${escape(block.image_url)}" alt="${escape(block.alt)}" style="width:100%;border-radius:12px"><h1>${escape(block.headline)}</h1><p>${escape(block.body)}</p><a href="${escape(allowUrl(block.cta_url))}?utm_source=muse_email&utm_medium=email&utm_campaign=${encodeURIComponent(utmCampaign)}">${escape(block.cta_label || "SHOP NOW")}</a></section>`
     if (block.type === "text") return `<section><h2>${escape(block.heading)}</h2><p>${escape(block.body)}</p></section>`
@@ -21,3 +29,6 @@ export const renderCampaignEmail = ({ subject, previewText, blocks, unsubscribeU
   }
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escape(subject)}</title></head><body style="margin:0;background:#f4f3ee;font-family:Arial,sans-serif;color:#111"><div style="display:none">${escape(previewText)}</div><main style="max-width:640px;margin:auto;background:#fff;padding:32px"><header style="font-size:32px;font-weight:800;letter-spacing:4px">MUSE</header>${blocks.map(renderBlock).join("")}<footer style="margin-top:40px;border-top:1px solid #ddd;padding-top:20px;font-size:12px;color:#666">MUSE NZ · Auckland, New Zealand<br><a href="${escape(unsubscribeUrl)}">Unsubscribe</a></footer></main></body></html>`
 }
+import React from "react"
+import { render } from "@react-email/render"
+import { SpringRotationLaunchEmail } from "../emails/SpringRotationLaunchEmailTemplate"
