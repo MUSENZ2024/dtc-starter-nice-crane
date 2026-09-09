@@ -4,7 +4,7 @@ import { MARKETING_MODULE } from "../../../modules/marketing"
 import MarketingModuleService from "../../../modules/marketing/service"
 import { validateCampaignContent } from "../../../lib/marketing-campaign-email"
 
-export type SaveCampaignInput = { id?: string; name: string; subject: string; preview_text: string; template_key?: "structured_campaign_v1" | "spring_rotation_launch_v1"; content: unknown[]; audience_definition: Record<string, unknown>; utm_campaign: string; created_by?: string | null }
+export type SaveCampaignInput = { id?: string; name: string; subject: string; preview_text: string; template_key?: "structured_campaign_v1" | "spring_rotation_launch_v1" | "raw_html_v1"; content: unknown[]; audience_definition: Record<string, unknown>; utm_campaign: string; created_by?: string | null }
 export const saveMarketingCampaignStep = createStep("save-marketing-campaign", async (input: SaveCampaignInput, { container }) => {
   if (!input.name.trim() || !input.subject.trim() || !input.preview_text.trim()) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Name, subject and preview text are required.")
   const errors = validateCampaignContent(input.content)
