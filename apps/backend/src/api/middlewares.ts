@@ -14,6 +14,7 @@ import {
 } from "./store/marketing/validators"
 import { ManageCampaignSchema, SaveCampaignSchema, ScheduleCampaignSchema, TestCampaignSchema, UpdateMarketingControlSchema } from "./admin/marketing/campaigns/validators"
 import { EstimateSegmentSchema, SaveSegmentSchema } from "./admin/marketing/segments/validators"
+import { ImportMarketingSubscribersSchema } from "./admin/marketing/subscribers/validators"
 
 export default defineMiddlewares({
   routes: [
@@ -25,6 +26,7 @@ export default defineMiddlewares({
     { matcher: "/admin/marketing/control", method: ["POST"], middlewares: [validateAndTransformBody(UpdateMarketingControlSchema)] },
     { matcher: "/admin/marketing/segments", method: ["POST"], middlewares: [validateAndTransformBody(SaveSegmentSchema)] },
     { matcher: "/admin/marketing/segments/estimate", method: ["POST"], middlewares: [validateAndTransformBody(EstimateSegmentSchema)] },
+    { matcher: "/admin/marketing/subscribers", method: ["POST"], middlewares: [validateAndTransformBody(ImportMarketingSubscribersSchema)] },
     {
       matcher: "/store/marketing/events",
       method: ["POST"],
