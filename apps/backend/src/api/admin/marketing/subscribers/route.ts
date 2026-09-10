@@ -2,6 +2,8 @@ import { AuthenticatedMedusaRequest, MedusaResponse } from "@medusajs/framework/
 import { MARKETING_MODULE } from "../../../../modules/marketing"
 import MarketingModuleService from "../../../../modules/marketing/service"
 import { boundedInt, subscriberFilters } from "../../../../lib/marketing-admin"
+import { importOrderMarketingSubscribersWorkflow } from "../../../../workflows/marketing/import-order-marketing-subscribers"
+import type { ImportMarketingSubscribersSchema } from "./validators"
 
 export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) {
   const service: MarketingModuleService = req.scope.resolve(MARKETING_MODULE)
@@ -13,4 +15,13 @@ export async function GET(req: AuthenticatedMedusaRequest, res: MedusaResponse) 
     { take: limit, skip: offset, order: { subscribed_at: "DESC" } },
   )
   res.status(200).json({ subscribers, count, limit, offset })
+}
+
+export async function POST(
+  req: AuthenticatedMedusaRequest<ImportMarketingSubscribersSchema>,
+  res: MedusaResponse,
+) {
+  const { confirmation: _confirmation, ...input } = req.validatedBody
+  const { result } = await importOrderMarketingSubscribersWorkflow(req.scope).run({ input })
+  res.status(200).json({ import_id: input.import_id, ...result })
 }
