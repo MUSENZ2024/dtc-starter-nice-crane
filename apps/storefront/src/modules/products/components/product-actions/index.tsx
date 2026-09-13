@@ -88,6 +88,21 @@ const isColourOption = (title?: string | null) =>
 const isSizeOption = (title?: string | null) =>
   (title ?? "").toLowerCase() === "size"
 
+const isBagProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.metadata?.product_kind,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+    ...(product.categories?.map((category) => category.name) ?? []),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase()
+
+  return /\b(bag|bags|handbag|shoulder bag|tote)\b/.test(searchable)
+}
+
 const getProductColourFromTitle = (title: string) => {
   const parts = title.split(" - ")
   return parts[parts.length - 1]?.trim()
@@ -761,6 +776,7 @@ export default function ProductActions({
   const useVejaSizing = isVejaProduct(product)
   const useTimberlandSizing = isTimberlandProduct(product)
   const useHokaSizing = isHokaProduct(product)
+  const useBagDimensions = isBagProduct(product)
   const sizeValues =
     sizeOption?.values?.filter((value) =>
       useBirkenstockSizing ? isBirkenstockAdultSize(value.value) : true,
@@ -1206,17 +1222,25 @@ export default function ProductActions({
         >
           <div className="mb-3 flex items-baseline justify-between">
             <span className="text-xs font-bold uppercase tracking-[0.12em]">
-              Size
+              {useBagDimensions ? "Dimensions" : "Size"}
             </span>
-            <button
-              type="button"
-              onClick={(event) => openSizeGuide(event.currentTarget)}
-              className="min-h-11 px-2 text-[13px] font-semibold text-[#C1440E] hover:underline"
-            >
-              {sizeGuideLabel}
-            </button>
+            {!useBagDimensions && (
+              <button
+                type="button"
+                onClick={(event) => openSizeGuide(event.currentTarget)}
+                className="min-h-11 px-2 text-[13px] font-semibold text-[#C1440E] hover:underline"
+              >
+                {sizeGuideLabel}
+              </button>
+            )}
           </div>
-          <div className="grid grid-cols-4 gap-2 xsmall:grid-cols-6">
+          <div
+            className={
+              useBagDimensions
+                ? "grid grid-cols-1 gap-2"
+                : "grid grid-cols-4 gap-2 xsmall:grid-cols-6"
+            }
+          >
             {sizeValues.map((value) => {
               if (!value.value || !sizeOption.id) {
                 return null
@@ -1242,7 +1266,7 @@ export default function ProductActions({
                       ? "Out of stock in NZ Stock"
                       : `Select size ${value.value}`
                   }
-                  className={`relative rounded-xl border-[1.5px] px-2 py-3.5 text-[13px] font-bold transition ${
+                  className={`relative rounded-xl border-[1.5px] px-2 py-3.5 text-[13px] font-bold transition ${useBagDimensions ? "text-left" : ""} ${
                     selected
                       ? "border-[#0A0A0A] bg-[#0A0A0A] text-[#F4F2ED]"
                       : isUnavailable
@@ -1250,7 +1274,9 @@ export default function ProductActions({
                         : "border-[#D5D2CC] bg-white text-[#0A0A0A] hover:border-[#0A0A0A]"
                   }`}
                 >
-                  {useSalomonSizing
+                  {useBagDimensions
+                    ? value.value
+                    : useSalomonSizing
                     ? getUsMensWomensSizeButtonLabel(
                         value.value,
                         SALOMON_WOMENS_OFFSET,
@@ -1299,6 +1325,8 @@ export default function ProductActions({
               Sizes are shown in EU.
             </p>
           )}
+          {!useBagDimensions && (
+            <>
           <div className="mt-3 flex items-center justify-between text-[12.5px] text-[#666]">
             <span>
               <strong className="font-semibold text-[#0A0A0A]">
@@ -1355,6 +1383,8 @@ export default function ProductActions({
               <span>{fitSizedUp} sized up</span>
             </div>
           </div>
+            </>
+          )}
         </div>
       )}
 
@@ -1567,7 +1597,11 @@ export default function ProductActions({
           </div>
           <div className="text-[11px] text-[#666]">
             {currentColour ?? "Colour"} ·{" "}
-            {currentSize ? `Size ${currentSize}` : "Choose a size"}
+            {useBagDimensions
+              ? currentSize ?? "Choose dimensions"
+              : currentSize
+                ? `Size ${currentSize}`
+                : "Choose a size"}
           </div>
         </div>
         <button
@@ -1599,7 +1633,7 @@ export default function ProductActions({
         </button>
       </div>
 
-      {sizeGuideOpen && (
+      {sizeGuideOpen && !useBagDimensions && (
         <>
           <button
             type="button"
