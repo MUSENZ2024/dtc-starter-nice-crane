@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
+import { isProductOutOfStock } from "@lib/util/product-availability"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { ProductFilterParams, SortOptions } from "./products.types"
@@ -597,6 +598,8 @@ export async function listProductsFiltered({
     sortBy = "created_at",
     page = 1,
     limit = 12,
+    revalidateSeconds = DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+    prioritizeAvailable = false,
   } = filters
 
   const queryParams = {
@@ -632,6 +635,7 @@ export async function listProductsFiltered({
       priceMin !== undefined ||
       priceMax !== undefined ||
       sortBy === "ships_soonest" ||
+      prioritizeAvailable ||
       (productTagIdsToFetch.length > 0 && !directTagId) ||
       ![
         "created_at",
@@ -653,7 +657,7 @@ export async function listProductsFiltered({
         },
         sortBy,
         countryCode,
-        revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+        revalidateSeconds,
       })
 
       return {
@@ -671,7 +675,7 @@ export async function listProductsFiltered({
         limit,
       },
       countryCode,
-      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+      revalidateSeconds,
     })
 
     return {
@@ -695,7 +699,7 @@ export async function listProductsFiltered({
                 limit: 100,
               },
               countryCode,
-              revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+              revalidateSeconds,
             })
 
             return response.products
@@ -712,7 +716,7 @@ export async function listProductsFiltered({
           },
           sortBy: sortBy === "ships_soonest" ? "created_at" : sortBy,
           countryCode,
-          revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+          revalidateSeconds,
         })
       ).response.products
 
@@ -725,7 +729,7 @@ export async function listProductsFiltered({
         limit: 100,
       },
       countryCode,
-      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+      revalidateSeconds,
     })
 
     productsForFiltering = mergeProductsById([
@@ -748,7 +752,12 @@ export async function listProductsFiltered({
 
       return (tag_filter_groups ?? [tag_id ?? []]).every((group) =>
         group.some((id) => {
-          const taggedProductIds = tag_product_ids?.[id]
+          // A direct tag query already returns authoritative product tags.
+          // Do not discard a newly tagged product against the slower cached
+          // tag-to-product index used only as a fallback for combined facets.
+          const taggedProductIds = id === directTagId
+            ? undefined
+            : tag_product_ids?.[id]
 
           return taggedProductIds?.length
             ? taggedProductIds.includes(product.id)
@@ -805,6 +814,12 @@ export async function listProductsFiltered({
 
       return aRank - bRank
     })
+  }
+
+  if (prioritizeAvailable) {
+    filtered.sort(
+      (a, b) => Number(isProductOutOfStock(a)) - Number(isProductOutOfStock(b))
+    )
   }
 
   const total = filtered.length

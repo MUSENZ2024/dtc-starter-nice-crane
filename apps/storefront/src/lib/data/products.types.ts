@@ -7,6 +7,10 @@ export type SortOptions =
   | "random"
 
 export type ProductFilterParams = {
+  /** Override catalogue caching for pages that must reflect stock changes immediately. */
+  revalidateSeconds?: number
+  /** Keep purchasable products ahead of fully sold-out products before pagination. */
+  prioritizeAvailable?: boolean
   stock?: "nz-stock" | "standard-delivery"
   nz_stock_collection_id?: string
   category_id?: string[]

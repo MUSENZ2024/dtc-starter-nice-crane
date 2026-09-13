@@ -320,6 +320,8 @@ export default function StoreTemplateMuse({
       : stockCollectionIds
 
   const filters: ProductFilterParams = {
+    revalidateSeconds: isClearance ? 0 : undefined,
+    prioritizeAvailable: isClearance,
     sortBy: (searchParams.sortBy as SortOptions) ?? "random",
     page: parsedPage,
     limit: searchParams.grid === "dense" ? 20 : 12,
