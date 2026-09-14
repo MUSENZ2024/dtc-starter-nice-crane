@@ -14,11 +14,11 @@ import {
 } from "./store/marketing/validators"
 import { ManageCampaignSchema, SaveCampaignSchema, ScheduleCampaignSchema, TestCampaignSchema, UpdateMarketingControlSchema } from "./admin/marketing/campaigns/validators"
 import { EstimateSegmentSchema, SaveSegmentSchema } from "./admin/marketing/segments/validators"
-import { ImportMarketingSubscribersSchema } from "./admin/marketing/subscribers/validators"
 import {
   PostAdminAttachTrackingSchema,
   PostAdminCreateTrackedShipmentSchema,
 } from "./admin/orders/tracking-validators"
+import { ImportMarketingSubscribersSchema } from "./admin/marketing/subscribers/validators"
 
 export default defineMiddlewares({
   routes: [

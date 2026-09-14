@@ -14,7 +14,7 @@ export const scheduleMarketingCampaignStep = createStep("schedule-marketing-camp
   const campaign = await service.retrieveMarketingCampaign(input.campaign_id)
   if (campaign.status !== "draft" && campaign.status !== "paused") throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "Campaign must be draft or paused.")
   if (!campaign.test_sent_at) throw new MedusaError(MedusaError.Types.NOT_ALLOWED, "A successful test send is required before scheduling.")
-  if (validateCampaignContent(campaign.content.blocks).length || !campaign.subject || !campaign.preview_text) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Campaign content, subject and preview text must be valid.")
+  if (validateCampaignContent(campaign.content.blocks).length || !campaign.subject) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Campaign content and subject must be valid.")
   const scheduledAt = new Date(input.scheduled_at)
   if (!Number.isFinite(scheduledAt.getTime()) || scheduledAt <= new Date()) throw new MedusaError(MedusaError.Types.INVALID_DATA, "Schedule time must be in the future.")
   const existing = await service.listMarketingCampaignRecipients({ campaign_id: campaign.id }, { take: 1 })

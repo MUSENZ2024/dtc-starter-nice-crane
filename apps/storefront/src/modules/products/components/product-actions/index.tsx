@@ -1302,7 +1302,9 @@ export default function ProductActions({
               role="status"
               className="mt-2 text-[12.5px] font-bold text-[#C1440E]"
             >
-              Choose a size to continue.
+              {useBagDimensions
+                ? "Choose dimensions to continue."
+                : "Choose a size to continue."}
             </p>
           )}
           {useNikeJordanSizing && (
@@ -1425,7 +1427,9 @@ export default function ProductActions({
                   ? selectedVariant && !inStock
                     ? "Sold out"
                     : needsSizeSelection
-                      ? "Choose a size"
+                      ? useBagDimensions
+                        ? "Choose dimensions"
+                        : "Choose a size"
                       : "Select options"
                   : isEditingLine
                     ? "Update bag"
@@ -1630,7 +1634,9 @@ export default function ProductActions({
                 : selectedVariant && !inStock
                   ? "Sold out"
                   : needsSizeSelection
-                    ? "Choose a size"
+                    ? useBagDimensions
+                      ? "Choose dimensions"
+                      : "Choose a size"
                     : "Add to bag →"}
         </button>
       </div>
