@@ -7,6 +7,7 @@ const args = Object.fromEntries(process.argv.slice(2).filter((arg) => arg.starts
 }))
 const categoryUrl = args.url
 const slug = args.slug || "yupoo-category-scrape"
+const maxImages = args.images ? Number(args.images) : 8
 if (!categoryUrl) throw new Error("Missing required --url=https://... argument")
 
 const outDir = path.resolve("..", "medusa-imports", slug)
@@ -51,19 +52,25 @@ const request = async (url, init = {}, attempts = 3) => {
 }
 
 const main = async () => {
-  await fs.rm(outDir, { recursive: true, force: true })
+  if (args.overwrite === "true") await fs.rm(outDir, { recursive: true, force: true })
+  else if (await fs.stat(outDir).then(() => true, () => false)) throw new Error(`Output already exists: ${outDir}. Choose a new --slug or explicitly use --overwrite.`)
   await fs.mkdir(imageDir, { recursive: true })
   const categoryHtml = await (await request(categoryUrl)).text()
-  const linkPattern = /title="([^"]+)"[\s\S]{0,400}?href="(\/albums\/\d+[^\"]*)"/g
+  const linkPattern = /<a\b[^>]*>/g
   const albums = []
   const seen = new Set()
   for (const match of categoryHtml.matchAll(linkPattern)) {
-    const sourceUrl = new URL(decode(match[2]), categoryUrl).href
-    if (seen.has(sourceUrl)) continue
-    seen.add(sourceUrl)
-    const sourceTitle = decode(match[1])
-    const productCode = extractCode(sourceTitle)
-    const handle = slugify(productCode ? `${slug}-${productCode}` : `${slug}-${albums.length + 1}`)
+    const href = match[0].match(/\bhref="([^"]+)"/)?.[1]
+    const title = match[0].match(/\btitle="([^"]+)"/)?.[1]
+    if (!href?.startsWith("/albums/") || !title) continue
+    const sourceUrl = new URL(decode(href), categoryUrl).href
+    const albumId = new URL(sourceUrl).pathname.split("/").pop()
+    if (seen.has(albumId)) continue
+    seen.add(albumId)
+    const sourceTitle = decode(title)
+    const spacedPumaCode = /(?:Puma|Pm|Speedcat)/i.test(sourceTitle) && sourceTitle.match(/\b(\d{6})[ -](\d{2})(?!\d)/)
+    const productCode = spacedPumaCode ? `${spacedPumaCode[1]}-${spacedPumaCode[2]}` : extractCode(sourceTitle)
+    const handle = slugify(`${slug}-${productCode || "album"}-${albumId}`)
     albums.push({ index: albums.length, source_url: sourceUrl, source_title: sourceTitle, product_code: productCode, suggested_handle: handle })
   }
   if (!albums.length) throw new Error("No Yupoo albums found in category response")
@@ -77,7 +84,7 @@ const main = async () => {
         const url = match[0]
         const key = url.replace(/\/big\.jpg(?:\?.*)?$/, "")
         if (!imageSeen.has(key)) { imageSeen.add(key); imageUrls.push(url) }
-        if (imageUrls.length === 8) break
+        if (imageUrls.length === maxImages) break
       }
       const localFolder = path.join(imageDir, album.suggested_handle)
       await fs.mkdir(localFolder, { recursive: true })

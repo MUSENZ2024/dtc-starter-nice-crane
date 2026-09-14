@@ -1,0 +1,165 @@
+{
+  "version": 1,
+  "source": "User-supplied Puma size chart, 2026-09-04",
+  "note": "Sizes are shown as US Men's / US Women's.",
+  "fit": {
+    "down": 1,
+    "true": 91,
+    "up": 8,
+    "source": "merchant_supplied"
+  },
+  "rows": [
+    {
+      "eu": "35.5",
+      "men": "4",
+      "women": null,
+      "cm": "22",
+      "uk_men": "3",
+      "uk_women": null
+    },
+    {
+      "eu": "36",
+      "men": "4.5",
+      "women": "6",
+      "cm": "22.5",
+      "uk_men": "3.5",
+      "uk_women": "3.5"
+    },
+    {
+      "eu": "37",
+      "men": "5",
+      "women": "6.5",
+      "cm": "23",
+      "uk_men": "4",
+      "uk_women": "4"
+    },
+    {
+      "eu": "37.5",
+      "men": "5.5",
+      "women": "7",
+      "cm": "23.5",
+      "uk_men": "4.5",
+      "uk_women": "4.5"
+    },
+    {
+      "eu": "38",
+      "men": "6",
+      "women": "7.5",
+      "cm": "24",
+      "uk_men": "5",
+      "uk_women": "5"
+    },
+    {
+      "eu": "38.5",
+      "men": "6.5",
+      "women": "8",
+      "cm": "24.5",
+      "uk_men": "5.5",
+      "uk_women": "5.5"
+    },
+    {
+      "eu": "39",
+      "men": "7",
+      "women": "8.5",
+      "cm": "25",
+      "uk_men": "6",
+      "uk_women": "6"
+    },
+    {
+      "eu": "40",
+      "men": "7.5",
+      "women": "9",
+      "cm": "25.5",
+      "uk_men": "6.5",
+      "uk_women": "6.5"
+    },
+    {
+      "eu": "40.5",
+      "men": "8",
+      "women": "9.5",
+      "cm": "26",
+      "uk_men": "7",
+      "uk_women": "7"
+    },
+    {
+      "eu": "41",
+      "men": "8.5",
+      "women": "10",
+      "cm": "26.5",
+      "uk_men": "7.5",
+      "uk_women": "7.5"
+    },
+    {
+      "eu": "42",
+      "men": "9",
+      "women": "10.5",
+      "cm": "27",
+      "uk_men": "8",
+      "uk_women": "8"
+    },
+    {
+      "eu": "42.5",
+      "men": "9.5",
+      "women": "11",
+      "cm": "27.5",
+      "uk_men": "8.5",
+      "uk_women": "8.5"
+    },
+    {
+      "eu": "43",
+      "men": "10",
+      "women": "11.5",
+      "cm": "28",
+      "uk_men": "9",
+      "uk_women": "9"
+    },
+    {
+      "eu": "44",
+      "men": "10.5",
+      "women": "12",
+      "cm": "28.5",
+      "uk_men": "9.5",
+      "uk_women": "9.5"
+    },
+    {
+      "eu": "44.5",
+      "men": "11",
+      "women": null,
+      "cm": "29",
+      "uk_men": "10",
+      "uk_women": "10"
+    },
+    {
+      "eu": "45",
+      "men": "11.5",
+      "women": null,
+      "cm": "29.5",
+      "uk_men": "10.5",
+      "uk_women": "10.5"
+    },
+    {
+      "eu": "46",
+      "men": "12",
+      "women": null,
+      "cm": "30",
+      "uk_men": "11",
+      "uk_women": "11"
+    },
+    {
+      "eu": "46.5",
+      "men": "12.5",
+      "women": null,
+      "cm": "30.5",
+      "uk_men": "11.5",
+      "uk_women": null
+    },
+    {
+      "eu": "47",
+      "men": "13",
+      "women": null,
+      "cm": "31",
+      "uk_men": "12",
+      "uk_women": null
+    }
+  ]
+}

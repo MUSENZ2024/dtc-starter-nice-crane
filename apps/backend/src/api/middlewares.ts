@@ -14,6 +14,11 @@ import {
 } from "./store/marketing/validators"
 import { ManageCampaignSchema, SaveCampaignSchema, ScheduleCampaignSchema, TestCampaignSchema, UpdateMarketingControlSchema } from "./admin/marketing/campaigns/validators"
 import { EstimateSegmentSchema, SaveSegmentSchema } from "./admin/marketing/segments/validators"
+import { ImportMarketingSubscribersSchema } from "./admin/marketing/subscribers/validators"
+import {
+  PostAdminAttachTrackingSchema,
+  PostAdminCreateTrackedShipmentSchema,
+} from "./admin/orders/tracking-validators"
 
 export default defineMiddlewares({
   routes: [
@@ -25,6 +30,7 @@ export default defineMiddlewares({
     { matcher: "/admin/marketing/control", method: ["POST"], middlewares: [validateAndTransformBody(UpdateMarketingControlSchema)] },
     { matcher: "/admin/marketing/segments", method: ["POST"], middlewares: [validateAndTransformBody(SaveSegmentSchema)] },
     { matcher: "/admin/marketing/segments/estimate", method: ["POST"], middlewares: [validateAndTransformBody(EstimateSegmentSchema)] },
+    { matcher: "/admin/marketing/subscribers", method: ["POST"], middlewares: [validateAndTransformBody(ImportMarketingSubscribersSchema)] },
     {
       matcher: "/store/marketing/events",
       method: ["POST"],
@@ -69,6 +75,16 @@ export default defineMiddlewares({
       matcher: "/admin/orders/:id/email-updates",
       method: ["POST"],
       middlewares: [validateAndTransformBody(PostAdminOrderEmailUpdateSchema)],
+    },
+    {
+      matcher: "/admin/orders/:id/fulfillments/:fulfillment_id/shipments",
+      method: ["POST"],
+      middlewares: [validateAndTransformBody(PostAdminCreateTrackedShipmentSchema)],
+    },
+    {
+      matcher: "/admin/orders/:id/fulfillments/:fulfillment_id/tracking",
+      method: ["POST"],
+      middlewares: [validateAndTransformBody(PostAdminAttachTrackingSchema)],
     },
     {
       matcher: "/admin/legacy-orders",

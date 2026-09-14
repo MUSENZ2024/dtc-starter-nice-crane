@@ -1,8 +1,11 @@
 import { getBaseURL } from "@lib/util/env"
 import { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Roboto, Roboto_Condensed } from "next/font/google"
 import Script from "next/script"
+import MetaPixel from "@modules/analytics/components/meta-pixel"
+import { META_PIXEL_ID } from "@lib/meta-pixel"
 import "styles/globals.css"
+import "styles/retail-theme.css"
 
 const GOOGLE_TAG_ID = "GT-M638GBXN"
 
@@ -64,20 +67,38 @@ export const metadata: Metadata = {
   },
 }
 
-const inter = Inter({
+const roboto = Roboto({
   subsets: ["latin"],
   display: "swap",
-  variable: "--font-inter",
+  variable: "--font-roboto",
+  weight: ["300", "400", "500", "700"],
+})
+
+const robotoCondensed = Roboto_Condensed({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-roboto-condensed",
+  weight: ["400", "700"],
 })
 
 export default function RootLayout(props: { children: React.ReactNode }) {
   return (
-    <html lang="en" data-mode="light" className={inter.variable}>
-      <body className="bg-muse-cream font-inter text-muse-black antialiased">
+    <html
+      lang="en"
+      data-mode="light"
+      className={`${roboto.variable} ${robotoCondensed.variable}`}
+    >
+      <body className="muse-retail-theme bg-muse-cream font-sans text-muse-black antialiased">
+        <aside
+          aria-label="Christmas delivery cutoff"
+          className="flex min-h-10 items-center justify-center bg-[#C1440E] px-4 py-2 text-center text-[12px] font-medium tracking-[0.06em] text-white"
+        >
+          CHRISTMAS DELIVERY CUTOFF: ORDER BY 16 NOVEMBER
+        </aside>
         <main className="relative">{props.children}</main>
         <Script
           src={`https://www.googletagmanager.com/gtag/js?id=${GOOGLE_TAG_ID}`}
-          strategy="afterInteractive"
+          strategy="lazyOnload"
         />
         <Script id="google-tag" strategy="afterInteractive">
           {`
@@ -87,6 +108,17 @@ export default function RootLayout(props: { children: React.ReactNode }) {
             gtag('config', '${GOOGLE_TAG_ID}');
           `}
         </Script>
+        <MetaPixel />
+        <noscript>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            height="1"
+            width="1"
+            style={{ display: "none" }}
+            src={`https://www.facebook.com/tr?id=${META_PIXEL_ID}&ev=PageView&noscript=1`}
+            alt=""
+          />
+        </noscript>
       </body>
     </html>
   )

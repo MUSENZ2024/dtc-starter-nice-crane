@@ -1,5 +1,7 @@
 "use client"
 
+import DeliveryBadge from "@modules/products/components/delivery-badge"
+
 import { useSavedItems } from "@lib/context/saved-items-context"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { HeartIcon } from "@modules/saved/components/saved-toggle"
@@ -44,8 +46,8 @@ export default function SavedItemsClient() {
   }
 
   return (
-    <section className="mx-auto max-w-[1180px] px-[18px] py-10 small:px-8 small:py-14">
-      <div className="mb-8 flex flex-col gap-4 small:flex-row small:items-end small:justify-between">
+    <section className="mx-auto max-w-[1440px] px-[18px] py-10 small:px-8 small:py-14">
+      <div className="mb-8 flex flex-col gap-4 border-b border-muse-border pb-7 small:flex-row small:items-end small:justify-between">
         <div>
           <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-[#C1440E]">
             Saved Items
@@ -71,9 +73,9 @@ export default function SavedItemsClient() {
         {items.map((item) => (
           <article
             key={item.id}
-            className="overflow-hidden rounded-[20px] bg-[#F8F7F4] transition hover:-translate-y-1 hover:shadow-xl hover:shadow-black/10"
+            className="overflow-hidden bg-white"
           >
-            <div className="relative aspect-square overflow-hidden bg-[#E8E6E0]">
+            <div className="relative aspect-square overflow-hidden bg-[#F4F5F7]">
               <LocalizedClientLink href={item.href} className="block h-full">
                 {item.image ? (
                   <img
@@ -89,26 +91,24 @@ export default function SavedItemsClient() {
                 )}
               </LocalizedClientLink>
               {item.badge && (
-                <span className="absolute left-3 top-3 rounded-full bg-[#F4F2ED]/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em]">
-                  {item.badge}
-                </span>
+                <DeliveryBadge label={item.badge} />
               )}
               <button
                 type="button"
                 onClick={() => removeSaved(item.id)}
-                className="absolute right-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-[#F4F2ED]/95 text-[#C1440E] backdrop-blur transition hover:scale-105"
+                className="absolute right-2 top-2 flex h-11 w-11 items-center justify-center bg-white/95 text-[#C1440E] transition hover:bg-[#F4F2ED]"
                 aria-label={`Remove ${item.title} from saved items`}
               >
                 <HeartIcon saved className="h-4 w-4" />
               </button>
             </div>
-            <LocalizedClientLink href={item.href} className="block px-4 pb-4 pt-3">
-              <p className="mb-1.5 line-clamp-2 text-[13.5px] font-semibold leading-snug text-[#0A0A0A]">
+            <LocalizedClientLink href={item.href} className="block pb-5 pt-3">
+              <p className="mb-1.5 line-clamp-2 text-[14px] font-normal leading-5 text-[#0A0A0A]">
                 {item.title}
               </p>
-              <div className="mb-1.5 flex items-baseline gap-2">
+              <div className="mb-1.5 flex flex-wrap items-baseline gap-2">
                 {item.price && (
-                  <span className="text-[15px] font-extrabold text-[#0A0A0A]">
+                  <span className="text-[15px] font-medium text-[#0A0A0A]">
                     {item.price}
                   </span>
                 )}

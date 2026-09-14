@@ -1,0 +1,48 @@
+import campaign1_384_avif from "./campaign-1-384.avif"
+import campaign1_384_webp from "./campaign-1-384.webp"
+import campaign1_640_avif from "./campaign-1-640.avif"
+import campaign1_640_webp from "./campaign-1-640.webp"
+import campaign1_828_avif from "./campaign-1-828.avif"
+import campaign1_828_webp from "./campaign-1-828.webp"
+import campaign1_1200_avif from "./campaign-1-1200.avif"
+import campaign1_1200_webp from "./campaign-1-1200.webp"
+import campaign2_384_avif from "./campaign-2-384.avif"
+import campaign2_384_webp from "./campaign-2-384.webp"
+import campaign2_640_avif from "./campaign-2-640.avif"
+import campaign2_640_webp from "./campaign-2-640.webp"
+import campaign2_828_avif from "./campaign-2-828.avif"
+import campaign2_828_webp from "./campaign-2-828.webp"
+import campaign2_1200_avif from "./campaign-2-1200.avif"
+import campaign2_1200_webp from "./campaign-2-1200.webp"
+import campaign3_384_avif from "./campaign-3-384.avif"
+import campaign3_384_webp from "./campaign-3-384.webp"
+import campaign3_640_avif from "./campaign-3-640.avif"
+import campaign3_640_webp from "./campaign-3-640.webp"
+import campaign3_828_avif from "./campaign-3-828.avif"
+import campaign3_828_webp from "./campaign-3-828.webp"
+import campaign3_1200_avif from "./campaign-3-1200.avif"
+import campaign3_1200_webp from "./campaign-3-1200.webp"
+import campaign4_384_avif from "./campaign-4-384.avif"
+import campaign4_384_webp from "./campaign-4-384.webp"
+import campaign4_640_avif from "./campaign-4-640.avif"
+import campaign4_640_webp from "./campaign-4-640.webp"
+import campaign4_828_avif from "./campaign-4-828.avif"
+import campaign4_828_webp from "./campaign-4-828.webp"
+import campaign4_1200_avif from "./campaign-4-1200.avif"
+import campaign4_1200_webp from "./campaign-4-1200.webp"
+import campaign5_384_avif from "./campaign-5-384.avif"
+import campaign5_384_webp from "./campaign-5-384.webp"
+import campaign5_640_avif from "./campaign-5-640.avif"
+import campaign5_640_webp from "./campaign-5-640.webp"
+import campaign5_828_avif from "./campaign-5-828.avif"
+import campaign5_828_webp from "./campaign-5-828.webp"
+import campaign5_1200_avif from "./campaign-5-1200.avif"
+import campaign5_1200_webp from "./campaign-5-1200.webp"
+
+export const campaignImages = {
+  1: [{ width: 384, avif: campaign1_384_avif, webp: campaign1_384_webp }, { width: 640, avif: campaign1_640_avif, webp: campaign1_640_webp }, { width: 828, avif: campaign1_828_avif, webp: campaign1_828_webp }, { width: 1200, avif: campaign1_1200_avif, webp: campaign1_1200_webp }],
+  2: [{ width: 384, avif: campaign2_384_avif, webp: campaign2_384_webp }, { width: 640, avif: campaign2_640_avif, webp: campaign2_640_webp }, { width: 828, avif: campaign2_828_avif, webp: campaign2_828_webp }, { width: 1200, avif: campaign2_1200_avif, webp: campaign2_1200_webp }],
+  3: [{ width: 384, avif: campaign3_384_avif, webp: campaign3_384_webp }, { width: 640, avif: campaign3_640_avif, webp: campaign3_640_webp }, { width: 828, avif: campaign3_828_avif, webp: campaign3_828_webp }, { width: 1200, avif: campaign3_1200_avif, webp: campaign3_1200_webp }],
+  4: [{ width: 384, avif: campaign4_384_avif, webp: campaign4_384_webp }, { width: 640, avif: campaign4_640_avif, webp: campaign4_640_webp }, { width: 828, avif: campaign4_828_avif, webp: campaign4_828_webp }, { width: 1200, avif: campaign4_1200_avif, webp: campaign4_1200_webp }],
+  5: [{ width: 384, avif: campaign5_384_avif, webp: campaign5_384_webp }, { width: 640, avif: campaign5_640_avif, webp: campaign5_640_webp }, { width: 828, avif: campaign5_828_avif, webp: campaign5_828_webp }, { width: 1200, avif: campaign5_1200_avif, webp: campaign5_1200_webp }],
+} as const

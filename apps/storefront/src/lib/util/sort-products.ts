@@ -6,6 +6,39 @@ interface MinPricedProduct extends HttpTypes.StoreProduct {
   _minPrice?: number
 }
 
+// The "random" default rotates on this cadence: long enough that paginating
+// through the shuffled set (page 2, 3...) stays stable during one browsing
+// session, short enough that the next visit sees a different mix.
+const RANDOM_ROTATION_WINDOW_MS = 15 * 60 * 1000
+
+export function mulberry32(seed: number) {
+  let state = seed
+
+  return () => {
+    state |= 0
+    state = (state + 0x6d2b79f5) | 0
+    let t = Math.imul(state ^ (state >>> 15), 1 | state)
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+  }
+}
+
+export function getRandomRotationSeed() {
+  return Math.floor(Date.now() / RANDOM_ROTATION_WINDOW_MS)
+}
+
+export function seededShuffle<T>(items: T[], seed: number): T[] {
+  const result = [...items]
+  const random = mulberry32(seed)
+
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1))
+    ;[result[i], result[j]] = [result[j], result[i]]
+  }
+
+  return result
+}
+
 /**
  * Helper function to sort products by price until the store API supports sorting by price
  * @param products
@@ -74,6 +107,10 @@ export function sortProducts(
         new Date(b.created_at!).getTime() - new Date(a.created_at!).getTime()
       )
     })
+  }
+
+  if (sortBy === "random") {
+    return seededShuffle(sortedProducts, getRandomRotationSeed())
   }
 
   return sortedProducts

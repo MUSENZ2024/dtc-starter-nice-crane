@@ -2,6 +2,7 @@
 
 import Image from "next/image"
 import { useState } from "react"
+import ExpandableReviewText from "@modules/products/components/expandable-review-text"
 
 type PhotoReview = {
   id: string
@@ -67,9 +68,11 @@ const PhotoReviews = ({ reviews }: PhotoReviewsProps) => {
               <div className="mb-2 text-[10px] text-[#888] small:mb-3 small:text-[12px]">
                 {review.date}
               </div>
-              <p className="line-clamp-4 text-[10.5px] font-medium leading-4 text-[#333] small:text-[12.5px] small:leading-5">
-                {review.text}
-              </p>
+              <ExpandableReviewText
+                text={review.text}
+                collapsedLines={4}
+                className="text-[10.5px] font-medium leading-4 text-[#333] small:text-[12.5px] small:leading-5"
+              />
             </div>
           </article>
         ))}

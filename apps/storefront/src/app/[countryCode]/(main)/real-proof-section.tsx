@@ -1,3 +1,4 @@
+import { instagram } from "assets/performance/brand"
 import RealProofVideo from "./real-proof-video"
 
 const PROOF_ITEMS = [
@@ -40,18 +41,18 @@ const PROOF_ITEMS = [
 
 export default function RealProofSection() {
   return (
-    <section className="mb-20 overflow-hidden">
+    <section className="muse-real-proof mb-20 overflow-hidden">
       <div className="mx-auto mb-7 flex max-w-[1320px] flex-col gap-4 px-[18px] small:flex-row small:items-end small:justify-between small:px-8">
         <div>
           <p className="mb-2 text-[11px] font-black uppercase tracking-[0.18em] text-[#C1440E]">
             Real proof
           </p>
           <h2 className="text-[34px] font-black leading-[0.98] tracking-[-0.045em] small:text-[52px]">
-            Straight from our customers.
+            Real orders. Real customers.
           </h2>
           <p className="mt-3 max-w-[560px] text-[15px] leading-[1.65] text-[#666]">
-            Real orders, real unboxings, and real fit photos from people who
-            have shopped with us.
+            Unboxings, deliveries and customer photos from people who have
+            shopped with MUSE.
           </p>
         </div>
         <a
@@ -61,7 +62,7 @@ export default function RealProofSection() {
           className="inline-flex h-11 shrink-0 items-center gap-2.5 self-center rounded-full bg-[#0A0A0A] px-5 text-[10.5px] font-extrabold uppercase tracking-[0.12em] text-[#F4F2ED] transition hover:bg-[#C1440E] small:h-[52px] small:self-end small:px-6 small:text-[12px]"
         >
           <img
-            src="https://d3k81ch9hvuctc.cloudfront.net/company/WsZzTe/images/ffa7a5bb-412b-4863-8621-280e76f1ffa1.png"
+            src={instagram.src} width={instagram.width} height={instagram.height} loading="lazy"
             alt=""
             className="h-5 w-5 object-contain"
           />

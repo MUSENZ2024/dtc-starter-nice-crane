@@ -1,9 +1,12 @@
 "use client"
 
+import DeliveryBadge from "@modules/products/components/delivery-badge"
+
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { trackMetaAddToCart } from "@lib/meta-pixel"
 import { HttpTypes } from "@medusajs/types"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
@@ -127,6 +130,12 @@ export default function CompleteTheFitCard({
       openDrawer()
       try {
         await addToCart({ variantId: variant.id, quantity: 1, countryCode })
+        trackMetaAddToCart({
+          contentId: product.id,
+          contentName: product.title,
+          currency: cheapestPrice?.currency_code ?? "nzd",
+          value: cheapestPrice?.calculated_price_number ?? 0,
+        })
         setAddedVariantId(variant.id)
         setPickerOpen(false)
         window.setTimeout(() => setAddedVariantId(null), 1800)
@@ -161,14 +170,7 @@ export default function CompleteTheFitCard({
           </div>
         </LocalizedClientLink>
 
-        <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#F4F2ED]/90 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.05em] text-[#1A1A1A] backdrop-blur">
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              fulfilment.labelColor === "green" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"
-            }`}
-          />
-          {fulfilment.shortLabel}
-        </span>
+        <DeliveryBadge label={fulfilment.shortLabel} />
 
         {hasQuickAdd ? (
           <button

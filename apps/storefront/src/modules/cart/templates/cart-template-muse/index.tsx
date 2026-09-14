@@ -74,7 +74,7 @@ export default function CartTemplateMuse({
   const isEmpty = items.length === 0
 
   return (
-    <div className="min-h-screen bg-muse-cream font-inter text-muse-black">
+    <div className="muse-cart-restyle min-h-screen bg-white font-inter text-muse-black">
       <div className="border-b border-white/10 bg-muse-black px-4 py-2.5 text-center text-[12px] font-medium tracking-[0.02em] text-muse-cream">
         Free NZ delivery over $200 · 30-day money back{" "}
         <LocalizedClientLink

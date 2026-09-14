@@ -2,6 +2,7 @@
 
 import { sdk } from "@lib/config"
 import { getFulfilmentState } from "@lib/util/fulfilment-state"
+import { isProductOutOfStock } from "@lib/util/product-availability"
 import { sortProducts } from "@lib/util/sort-products"
 import { HttpTypes } from "@medusajs/types"
 import { ProductFilterParams, SortOptions } from "./products.types"
@@ -73,11 +74,8 @@ export const listProducts = async ({
   countryCode?: string
   regionId?: string
   /**
-   * Opt in to a short time-based cache instead of the default no-store
-   * fetch. Use only for non-critical, high-frequency call sites (nav search
-   * index, cart drawer upsells) where a brief delay before catalogue edits
-   * show up is an acceptable trade for not hitting the backend on every
-   * page render.
+   * Override the default 60-second time-based cache. Pass 0 when a caller
+   * explicitly needs fresh data. Cart writes always validate with Medusa.
    */
   revalidateSeconds?: number
 }): Promise<{
@@ -93,19 +91,25 @@ export const listProducts = async ({
   const _pageParam = Math.max(pageParam, 1)
   const offset = _pageParam === 1 ? 0 : (_pageParam - 1) * limit
 
+  const fields = withProductStatusField(queryParams?.fields)
+  // Medusa adds variant pricing context when region_id is supplied, even for
+  // identity-only queries. Keep navigation/search/shuffle indexes lightweight;
+  // every query that requests pricing, options or stock still gets its region.
+  const identityOnly = fields.split(",").every((field) =>
+    ["id", "title", "handle", "status", "created_at", "updated_at", "thumbnail", "*images"].includes(field.trim())
+  )
   let region: HttpTypes.StoreRegion | undefined | null
 
-  if (countryCode) {
-    region = await getRegion(countryCode)
-  } else {
-    region = await retrieveRegion(regionId!)
+  if (!identityOnly) {
+    region = countryCode
+      ? await getRegion(countryCode)
+      : await retrieveRegion(regionId!)
   }
 
   const headers = {
     ...(await getAuthHeaders()),
   }
 
-  const fields = withProductStatusField(queryParams?.fields)
   const next = {
     revalidate: revalidateSeconds ?? DEFAULT_PRODUCT_REVALIDATE_SECONDS,
   }
@@ -126,7 +130,43 @@ export const listProducts = async ({
         next,
       }
     )
-    .then(({ products, count }) => {
+    .then(async ({ products, count }) => {
+      // Lightweight listing queries omit galleries. Resolve only products
+      // missing a thumbnail so every consumer gets the same primary image.
+      const requestsThumbnail = fields.split(",").some(
+        (field) => ["thumbnail", "+thumbnail", "*"].includes(field.trim())
+      )
+      const missingImages = requestsThumbnail
+        ? products.filter((product) => !product.thumbnail && !product.images?.length)
+        : []
+      const galleries = missingImages.length
+        ? await sdk.client.fetch<{ products: HttpTypes.StoreProduct[] }>(
+            `/store/products`,
+            {
+              method: "GET",
+              query: {
+                id: missingImages.map((product) => product.id),
+                fields: "id,*images",
+                limit: missingImages.length,
+              },
+              headers,
+              next,
+            }
+          )
+        : { products: [] }
+      const imagesById = new Map(
+        galleries.products.map((product) => [product.id, product.images])
+      )
+      products = products.map((product) => {
+        const images = product.images?.length
+          ? product.images
+          : imagesById.get(product.id)
+        return {
+          ...product,
+          ...(images ? { images } : {}),
+          thumbnail: product.thumbnail || images?.find((image) => image.url)?.url || null,
+        }
+      })
       const discoverableProducts = products.filter(
         (product) =>
           isPublishedProduct(product) &&
@@ -149,6 +189,48 @@ export const listProducts = async ({
     })
 }
 
+// Shuffle lightweight identities, then hydrate only the visible page. Downloading
+// prices, stock and size options for 200 candidates made every cold shuffle slow
+// and left later pages empty even though the UI advertised the full catalogue.
+const listRandomProductIdentities = async ({
+  queryParams,
+  countryCode,
+  revalidateSeconds,
+}: {
+  queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
+  countryCode: string
+  revalidateSeconds?: number
+}) => {
+  const pageSize = 100
+  const identityQuery = {
+    ...queryParams,
+    fields: "id,title,handle,status",
+    limit: pageSize,
+    offset: 0,
+    order: "id",
+  }
+  const firstPage = await listProducts({
+    queryParams: identityQuery,
+    countryCode,
+    revalidateSeconds,
+  })
+  // listProducts subtracts hidden products from its count for the current page.
+  // Recover the backend total to ensure the final identity page is requested.
+  const count = firstPage.response.count + (firstPage.nextPage
+    ? pageSize - firstPage.response.products.length
+    : 0)
+  const remainingPages = await Promise.all(
+    Array.from({ length: Math.max(0, Math.ceil(count / pageSize) - 1) }, (_, index) =>
+      listProducts({
+        queryParams: { ...identityQuery, offset: (index + 1) * pageSize },
+        countryCode,
+        revalidateSeconds,
+      }).then(({ response }) => response.products)
+    )
+  )
+  return [firstPage.response.products, ...remainingPages].flat()
+}
+
 export const listProductsWithSort = async ({
   page = 0,
   queryParams,
@@ -167,6 +249,45 @@ export const listProductsWithSort = async ({
   queryParams?: HttpTypes.FindParams & HttpTypes.StoreProductParams
 }> => {
   const limit = queryParams?.limit || 12
+  const requestedPageForRandom = Math.max(page, 1)
+
+  if (sortBy === "random") {
+    const identities = await listRandomProductIdentities({
+      queryParams,
+      countryCode,
+      revalidateSeconds,
+    })
+    const count = identities.length
+    const offset = (requestedPageForRandom - 1) * limit
+    const pageIdentities = sortProducts(identities, sortBy).slice(offset, offset + limit)
+    const { response } = pageIdentities.length
+      ? await listProducts({
+          queryParams: {
+            ...queryParams,
+            id: pageIdentities.map((product) => product.id),
+            fields: queryParams?.fields ?? PRODUCT_LIST_FIELDS,
+            offset: 0,
+            limit: pageIdentities.length,
+          },
+          countryCode,
+          revalidateSeconds,
+        })
+      : { response: { products: [] as HttpTypes.StoreProduct[] } }
+    const productsById = new Map(response.products.map((product) => [product.id, product]))
+
+    return {
+      response: {
+        products: pageIdentities.flatMap((identity) => {
+          const product = productsById.get(identity.id)
+          return product ? [product] : []
+        }),
+        count,
+      },
+      nextPage: count > offset + limit ? requestedPageForRandom + 1 : null,
+      queryParams,
+    }
+  }
+
   // Medusa accepts up to 100 products per catalogue request. The old 24-item
   // batch size made a price/fulfilment sort pay for as many as five backend
   // round trips before it could render anything. Two larger batches cover
@@ -477,18 +598,33 @@ export async function listProductsFiltered({
     sortBy = "created_at",
     page = 1,
     limit = 12,
+    revalidateSeconds = DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+    prioritizeAvailable = false,
   } = filters
 
   const queryParams = {
     ...(category_id?.length ? { category_id } : {}),
     ...(collection_id?.length ? { collection_id } : {}),
     ...(q ? { q } : {}),
-  } as HttpTypes.FindParams & HttpTypes.StoreProductParams
+  } as HttpTypes.FindParams & HttpTypes.StoreProductListParams
 
   const tagFilterIds = tag_filter_groups?.flat() ?? tag_id ?? []
   const productTagIdsToFetch = Array.from(
     new Set([...tagFilterIds, ...(colour_tag_id ?? [])])
   )
+  // A single brand/tag is already supported by Medusa before pagination.
+  // Avoid downloading the first 100 detailed products just to test that same
+  // tag again in JavaScript. Combined facets keep the existing filtering path.
+  const tagGroups = tag_filter_groups?.length
+    ? tag_filter_groups
+    : tag_id?.length ? [tag_id] : []
+  const directTagId = tagGroups.length === 1 && tagGroups[0].length === 1 && !colour_tag_id?.length
+    ? tagGroups[0][0]
+    : undefined
+  if (directTagId) {
+    queryParams.tag_id = [directTagId]
+  }
+
   const needsClientFiltering = Boolean(
     stock ||
       sizes?.length ||
@@ -499,14 +635,19 @@ export async function listProductsFiltered({
       priceMin !== undefined ||
       priceMax !== undefined ||
       sortBy === "ships_soonest" ||
-      productTagIdsToFetch.length ||
-      !["created_at", "best_sellers", "price_asc", "price_desc"].includes(
-        sortBy
-      )
+      prioritizeAvailable ||
+      (productTagIdsToFetch.length > 0 && !directTagId) ||
+      ![
+        "created_at",
+        "best_sellers",
+        "price_asc",
+        "price_desc",
+        "random",
+      ].includes(sortBy)
   )
 
   if (!needsClientFiltering) {
-    if (sortBy === "price_asc" || sortBy === "price_desc") {
+    if (sortBy === "price_asc" || sortBy === "price_desc" || sortBy === "random") {
       const { response, nextPage } = await listProductsWithSort({
         page,
         queryParams: {
@@ -516,7 +657,7 @@ export async function listProductsFiltered({
         },
         sortBy,
         countryCode,
-        revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+        revalidateSeconds,
       })
 
       return {
@@ -534,7 +675,7 @@ export async function listProductsFiltered({
         limit,
       },
       countryCode,
-      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+      revalidateSeconds,
     })
 
     return {
@@ -558,7 +699,7 @@ export async function listProductsFiltered({
                 limit: 100,
               },
               countryCode,
-              revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+              revalidateSeconds,
             })
 
             return response.products
@@ -575,7 +716,7 @@ export async function listProductsFiltered({
           },
           sortBy: sortBy === "ships_soonest" ? "created_at" : sortBy,
           countryCode,
-          revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+          revalidateSeconds,
         })
       ).response.products
 
@@ -588,7 +729,7 @@ export async function listProductsFiltered({
         limit: 100,
       },
       countryCode,
-      revalidateSeconds: DEFAULT_PRODUCT_REVALIDATE_SECONDS,
+      revalidateSeconds,
     })
 
     productsForFiltering = mergeProductsById([
@@ -611,7 +752,12 @@ export async function listProductsFiltered({
 
       return (tag_filter_groups ?? [tag_id ?? []]).every((group) =>
         group.some((id) => {
-          const taggedProductIds = tag_product_ids?.[id]
+          // A direct tag query already returns authoritative product tags.
+          // Do not discard a newly tagged product against the slower cached
+          // tag-to-product index used only as a fallback for combined facets.
+          const taggedProductIds = id === directTagId
+            ? undefined
+            : tag_product_ids?.[id]
 
           return taggedProductIds?.length
             ? taggedProductIds.includes(product.id)
@@ -668,6 +814,12 @@ export async function listProductsFiltered({
 
       return aRank - bRank
     })
+  }
+
+  if (prioritizeAvailable) {
+    filtered.sort(
+      (a, b) => Number(isProductOutOfStock(a)) - Number(isProductOutOfStock(b))
+    )
   }
 
   const total = filtered.length

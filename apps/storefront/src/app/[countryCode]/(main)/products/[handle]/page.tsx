@@ -8,6 +8,8 @@ import ProductTemplate from "@modules/products/templates"
 import { HttpTypes } from "@medusajs/types"
 import { getBaseURL } from "@lib/util/env"
 import { getProductPrice } from "@lib/util/get-product-price"
+import { getFulfilmentState } from "@lib/util/fulfilment-state"
+import MetaViewContentTracker from "@modules/analytics/components/meta-view-content-tracker"
 
 type Props = {
   params: Promise<{ countryCode: string; handle: string }>
@@ -95,12 +97,14 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
+  const seoTitle = typeof product.metadata?.seo_title === "string" ? product.metadata.seo_title.trim() : ""
+  const metaDescription = typeof product.metadata?.meta_description === "string" ? product.metadata.meta_description.trim() : ""
   const description =
-    product.description ||
+    metaDescription || product.description ||
     `Shop ${product.title} at MUSE NZ. Affordable sneakers, shoes and streetwear with tracked delivery across New Zealand.`
 
   return {
-    title: product.title,
+    title: seoTitle ? { absolute: seoTitle } : product.title,
     description,
     alternates: {
       canonical: `/products/${handle}`,
@@ -108,13 +112,13 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     openGraph: {
       type: "website",
       url: `/products/${handle}`,
-      title: `${product.title} | MUSE NZ`,
+      title: seoTitle || `${product.title} | MUSE NZ`,
       description,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
     twitter: {
       card: "summary_large_image",
-      title: `${product.title} | MUSE NZ`,
+      title: seoTitle || `${product.title} | MUSE NZ`,
       description,
       images: product.thumbnail ? [product.thumbnail] : [],
     },
@@ -151,6 +155,11 @@ export default async function ProductPage(props: Props) {
         ]
       : []
   const { cheapestPrice } = getProductPrice({ product: pricedProduct })
+  const fulfilment = getFulfilmentState(pricedProduct)
+  const deliveryDays =
+    fulfilment.kind === "nz-stock"
+      ? { minValue: 1, maxValue: 3 }
+      : { minValue: 13, maxValue: 16 }
   const inStock =
     pricedProduct.variants?.some(
       (variant) =>
@@ -181,6 +190,24 @@ export default async function ProductPage(props: Props) {
           availability: `https://schema.org/${inStock ? "InStock" : "OutOfStock"}`,
           itemCondition: "https://schema.org/NewCondition",
           url: `${getBaseURL()}/products/${params.handle}`,
+          seller: {
+            "@id": `${getBaseURL()}/#organization`,
+          },
+          shippingDetails: {
+            "@type": "OfferShippingDetails",
+            shippingDestination: {
+              "@type": "DefinedRegion",
+              addressCountry: "NZ",
+            },
+            deliveryTime: {
+              "@type": "ShippingDeliveryTime",
+              transitTime: {
+                "@type": "QuantitativeValue",
+                ...deliveryDays,
+                unitCode: "DAY",
+              },
+            },
+          },
         }
       : undefined,
   }
@@ -216,6 +243,12 @@ export default async function ProductPage(props: Props) {
         dangerouslySetInnerHTML={{
           __html: JSON.stringify([productJsonLd, breadcrumbJsonLd]),
         }}
+      />
+      <MetaViewContentTracker
+        contentId={pricedProduct.id}
+        contentName={pricedProduct.title}
+        currency={cheapestPrice?.currency_code ?? region.currency_code ?? "nzd"}
+        value={cheapestPrice?.calculated_price_number ?? 0}
       />
       <ProductTemplate
         product={pricedProduct}

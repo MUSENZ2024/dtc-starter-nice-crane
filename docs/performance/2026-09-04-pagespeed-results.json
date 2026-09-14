@@ -1,0 +1,62 @@
+{
+  "home-before": {
+    "url": "https://musenz.com/",
+    "fetchTime": "2026-09-03T21:42:45.205Z",
+    "lighthouseVersion": "12.8.2",
+    "performanceScore": 73,
+    "lcpMs": 7454.333500000002,
+    "tbtMs": 168,
+    "transferBytes": 1566973,
+    "warnings": []
+  },
+  "home-after": {
+    "url": "https://musenz.com/",
+    "fetchTime": "2026-09-03T21:46:10.348Z",
+    "lighthouseVersion": "12.8.2",
+    "performanceScore": 90,
+    "lcpMs": 3167.116,
+    "tbtMs": 191,
+    "transferBytes": 1268755,
+    "warnings": []
+  },
+  "before": {
+    "url": "https://musenz.com/categories/footwear",
+    "fetchTime": "2026-09-03T21:36:54.698Z",
+    "lighthouseVersion": "12.8.2",
+    "performanceScore": 60,
+    "lcpMs": 7767.384000000002,
+    "tbtMs": 237,
+    "transferBytes": 1168635,
+    "warnings": []
+  },
+  "after": {
+    "url": "https://musenz.com/categories/footwear",
+    "fetchTime": "2026-09-03T21:45:37.900Z",
+    "lighthouseVersion": "12.8.2",
+    "performanceScore": 69,
+    "lcpMs": 3537.249500000001,
+    "tbtMs": 669.5,
+    "transferBytes": 996925,
+    "warnings": []
+  },
+  "after-repeat": {
+    "url": "https://musenz.com/categories/footwear",
+    "fetchTime": "2026-09-03T21:46:49.975Z",
+    "lighthouseVersion": "12.8.2",
+    "performanceScore": 87,
+    "lcpMs": 3290.4640000000004,
+    "tbtMs": 238,
+    "transferBytes": 1021885,
+    "warnings": []
+  },
+  "local": {
+    "url": "http://localhost:8011/categories/footwear",
+    "fetchTime": "2026-09-03T21:38:13.323Z",
+    "lighthouseVersion": "12.8.2",
+    "performanceScore": 85,
+    "lcpMs": 3777.9619999999995,
+    "tbtMs": 226.99999999999955,
+    "transferBytes": 962293,
+    "warnings": []
+  }
+}

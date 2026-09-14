@@ -1,5 +1,7 @@
 "use client"
 
+import DeliveryBadge from "@modules/products/components/delivery-badge"
+
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import Image from "next/image"
 import { useEffect, useMemo, useState } from "react"
@@ -76,14 +78,7 @@ export default function RecentlyViewedProducts({
                   MUSE
                 </div>
               )}
-              <span className="absolute left-2.5 top-2.5 inline-flex items-center gap-1.5 rounded-full bg-[#F4F2ED]/90 px-2.5 py-1 text-[9.5px] font-bold uppercase tracking-[0.05em] text-[#1A1A1A]">
-                <span
-                  className={`h-1.5 w-1.5 rounded-full ${
-                    item.badge === "NZ Stock" ? "bg-[#1F7A3A]" : "bg-[#C1440E]"
-                  }`}
-                />
-                {item.badge ?? "Standard"}
-              </span>
+              <DeliveryBadge label={item.badge ?? "Standard"} />
             </div>
             <div className="px-3.5 pb-4 pt-3">
               <div className="mb-1 line-clamp-2 text-[12.5px] font-semibold leading-[1.3]">

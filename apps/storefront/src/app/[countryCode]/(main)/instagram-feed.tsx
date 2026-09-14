@@ -15,7 +15,7 @@ type InstagramPost = {
 type FeedState =
   | { status: "loading"; posts: InstagramPost[]; error?: never }
   | { status: "ready"; posts: InstagramPost[]; error?: never }
-  | { status: "error"; posts: InstagramPost[]; error: string }
+  | { status: "error"; posts: InstagramPost[]; error?: never }
 
 const getPostImage = (post: InstagramPost) =>
   post.media_type === "VIDEO" ? post.thumbnail_url : post.media_url
@@ -36,10 +36,10 @@ export default function InstagramFeed() {
         const data = await response.json()
 
         if (!response.ok) {
-          throw new Error(data?.error || "Instagram feed unavailable.")
+          throw new Error("Instagram feed unavailable.")
         }
 
-        return data.posts as InstagramPost[]
+        return Array.isArray(data.posts) ? (data.posts as InstagramPost[]) : []
       })
       .then((posts) => {
         if (!active) {
@@ -48,7 +48,7 @@ export default function InstagramFeed() {
 
         setFeed({ status: "ready", posts: posts.slice(0, 6) })
       })
-      .catch((error) => {
+      .catch(() => {
         if (!active) {
           return
         }
@@ -56,10 +56,6 @@ export default function InstagramFeed() {
         setFeed({
           status: "error",
           posts: [],
-          error:
-            error instanceof Error
-              ? error.message
-              : "Instagram feed unavailable.",
         })
       })
 
@@ -82,14 +78,7 @@ export default function InstagramFeed() {
   }
 
   if (feed.status === "error") {
-    return (
-      <div className="mb-8 rounded-[18px] bg-[#FDF4EF] px-5 py-6 text-center">
-        <p className="text-[13px] font-bold text-[#0A0A0A]">
-          Instagram posts could not load right now.
-        </p>
-        <p className="mt-1 text-[12px] text-[#666]">{feed.error}</p>
-      </div>
-    )
+    return null
   }
 
   if (!feed.posts.length) {

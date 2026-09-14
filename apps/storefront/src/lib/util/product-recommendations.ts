@@ -7,6 +7,7 @@ export type ProductKind =
   | "pants"
   | "hoodie"
   | "socks"
+  | "bag"
   | "accessory"
   | "top"
   | "other"
@@ -16,6 +17,10 @@ type RecommendationInput = {
   candidates: HttpTypes.StoreProduct[]
   excludeProductIds?: Iterable<string | undefined | null>
   cartSubtotal?: number | null
+  limit?: number
+}
+
+type CandidatePoolInput = Omit<RecommendationInput, "limit"> & {
   limit?: number
 }
 
@@ -45,7 +50,16 @@ const kindAliases: Record<Exclude<ProductKind, "other">, string[]> = {
   pants: ["pant", "pants", "short", "shorts", "trackpant", "trackpants", "trouser", "trousers"],
   hoodie: ["hoodie", "hood", "sweatshirt", "crewneck", "fleece"],
   socks: ["sock", "socks"],
-  accessory: ["accessory", "accessories", "bag", "beanie", "cap", "hat"],
+  bag: ["bag", "bags", "crossbody", "handbag", "shoulder bag", "tote"],
+  accessory: [
+    "accessory",
+    "accessories",
+    "beanie",
+    "cap",
+    "hat",
+    "belt",
+    "wallet",
+  ],
   top: ["tee", "t-shirt", "shirt", "top", "jersey"],
 }
 
@@ -62,10 +76,20 @@ const colourFamilies: Record<string, string[]> = {
 
 const recommendationTargets: Record<ProductKind, ProductKind[]> = {
   puffer: ["pants", "hoodie", "footwear", "accessory", "socks"],
-  footwear: ["socks", "pants", "footwear", "accessory"],
+  footwear: [
+    "socks",
+    "pants",
+    "accessory",
+    "top",
+    "hoodie",
+    "puffer",
+    "footwear",
+    "bag",
+  ],
   pants: ["hoodie", "puffer", "footwear", "socks"],
   hoodie: ["pants", "puffer", "footwear", "accessory"],
   socks: ["footwear", "pants"],
+  bag: ["top", "puffer", "hoodie", "pants", "footwear", "accessory"],
   accessory: ["puffer", "hoodie", "footwear"],
   top: ["pants", "puffer", "footwear"],
   other: ["socks", "accessory", "pants", "footwear"],
@@ -86,9 +110,24 @@ const getProductTerms = (product: HttpTypes.StoreProduct) =>
     product.collection?.title,
     product.collection?.handle,
     product.type?.value,
+    product.metadata?.brand,
+    product.metadata?.model,
+    product.metadata?.style,
+    product.metadata?.style_code,
+    product.metadata?.colourway,
+    product.metadata?.full_colourway,
+    product.metadata?.primary_colour,
+    product.metadata?.secondary_colour,
+    product.metadata?.colour_family,
+    product.metadata?.colour_tags,
     ...(product.tags?.map((tag) => tag.value) ?? []),
   ]
-    .map(normalizeRecommendationTerm)
+    .flatMap((value) => (Array.isArray(value) ? value : [value]))
+    .filter(
+      (value): value is string | number =>
+        typeof value === "string" || typeof value === "number"
+    )
+    .map((value) => normalizeRecommendationTerm(String(value)))
     .filter(Boolean)
 
 const termIncludes = (terms: string[], aliases: string[]) =>
@@ -100,19 +139,39 @@ const termIncludes = (terms: string[], aliases: string[]) =>
         term === normalizedAlias ||
         term.includes(` ${normalizedAlias} `) ||
         term.startsWith(`${normalizedAlias} `) ||
-        term.endsWith(` ${normalizedAlias}`) ||
-        term.includes(normalizedAlias)
+        term.endsWith(` ${normalizedAlias}`)
       )
     })
   )
 
-const getProductKind = (product: HttpTypes.StoreProduct): ProductKind => {
+export const getProductKind = (product: HttpTypes.StoreProduct): ProductKind => {
   const terms = getProductTerms(product)
   const matchedKind = (
     Object.keys(kindAliases) as Exclude<ProductKind, "other">[]
   ).find((kind) => termIncludes(terms, kindAliases[kind]))
 
   return matchedKind ?? "other"
+}
+
+const getMetadataTerm = (
+  product: HttpTypes.StoreProduct,
+  key: "brand" | "model"
+) => {
+  const value = product.metadata?.[key]
+
+  return typeof value === "string" ? normalizeRecommendationTerm(value) : ""
+}
+
+const getStableTieBreaker = (
+  candidate: HttpTypes.StoreProduct,
+  sourceProducts: HttpTypes.StoreProduct[]
+) => {
+  const value = `${sourceProducts.map((product) => product.id).join(":")}:${candidate.id}`
+
+  return Array.from(value).reduce(
+    (hash, character) => (hash * 31 + character.charCodeAt(0)) >>> 0,
+    0
+  )
 }
 
 const getColourFamilies = (product: HttpTypes.StoreProduct) => {
@@ -164,6 +223,10 @@ const scoreProduct = ({
     const targetKinds = recommendationTargets[sourceKind]
     const targetIndex = targetKinds.indexOf(candidateKind)
     const sourceWeight = Math.max(0.55, 1 - index * 0.15)
+    const sourceBrand = getMetadataTerm(sourceProduct, "brand")
+    const candidateBrand = getMetadataTerm(candidate, "brand")
+    const sourceModel = getMetadataTerm(sourceProduct, "model")
+    const candidateModel = getMetadataTerm(candidate, "model")
 
     if (targetIndex >= 0) {
       score += (90 - targetIndex * 10) * sourceWeight
@@ -173,7 +236,25 @@ const scoreProduct = ({
       sourceColours.length &&
       candidateColours.some((colour) => sourceColours.includes(colour))
     ) {
-      score += 26 * sourceWeight
+      score += 48 * sourceWeight
+    }
+
+    // Same-brand/model products are useful alternatives, while colour and
+    // target-kind matches keep supplementary recommendations outfit-aware.
+    if (sourceBrand && sourceBrand === candidateBrand) {
+      score += (candidateKind === sourceKind ? 18 : 8) * sourceWeight
+    }
+
+    if (sourceModel && sourceModel === candidateModel) {
+      score += 24 * sourceWeight
+    }
+
+    if (candidateKind === sourceKind) {
+      const sourcePrice = getProductAmount(sourceProduct)
+      if (Number.isFinite(sourcePrice) && Number.isFinite(price)) {
+        const priceRatio = Math.min(sourcePrice, price) / Math.max(sourcePrice, price)
+        score += priceRatio * 12 * sourceWeight
+      }
     }
   })
 
@@ -205,6 +286,47 @@ export const getRecommendedProducts = ({
   cartSubtotal,
   limit = 4,
 }: RecommendationInput) => {
+  const rankedCandidates = rankRecommendationCandidates({
+    sourceProducts,
+    candidates,
+    excludeProductIds,
+    cartSubtotal,
+    requireStock: true,
+  })
+
+  // Avoid a row made entirely of one generic product type when relevant
+  // supplementary categories are available. Backfill afterwards so sparse
+  // catalogues can still show a complete row.
+  const selected: typeof rankedCandidates = []
+  const selectedIds = new Set<string>()
+  const kindCounts = new Map<ProductKind, number>()
+
+  rankedCandidates.forEach((candidate) => {
+    const kind = getProductKind(candidate.product)
+    if (selected.length < limit && (kindCounts.get(kind) ?? 0) < 2) {
+      selected.push(candidate)
+      selectedIds.add(candidate.product.id)
+      kindCounts.set(kind, (kindCounts.get(kind) ?? 0) + 1)
+    }
+  })
+
+  rankedCandidates.forEach((candidate) => {
+    if (selected.length < limit && !selectedIds.has(candidate.product.id)) {
+      selected.push(candidate)
+      selectedIds.add(candidate.product.id)
+    }
+  })
+
+  return selected.map(({ product }) => product)
+}
+
+const rankRecommendationCandidates = ({
+  sourceProducts,
+  candidates,
+  excludeProductIds,
+  cartSubtotal,
+  requireStock,
+}: Omit<RecommendationInput, "limit"> & { requireStock: boolean }) => {
   const excluded = new Set(
     Array.from(excludeProductIds ?? [])
       .filter(Boolean)
@@ -218,7 +340,7 @@ export const getRecommendedProducts = ({
   return candidates
     .filter((candidate) => candidate.id && !excluded.has(candidate.id))
     .filter((candidate) => candidate.handle)
-    .filter(productHasStock)
+    .filter((candidate) => !requireStock || productHasStock(candidate))
     .map((candidate) => ({
       product: candidate,
       score: scoreProduct({
@@ -233,8 +355,50 @@ export const getRecommendedProducts = ({
         return b.score - a.score
       }
 
-      return getProductAmount(a.product) - getProductAmount(b.product)
+      const priceDifference =
+        getProductAmount(a.product) - getProductAmount(b.product)
+
+      if (Number.isFinite(priceDifference) && priceDifference !== 0) {
+        return priceDifference
+      }
+
+      return (
+        getStableTieBreaker(a.product, sourceProducts) -
+        getStableTieBreaker(b.product, sourceProducts)
+      )
     })
-    .slice(0, limit)
-    .map(({ product }) => product)
+}
+
+// Rank a lightweight catalogue index before fetching expensive variant,
+// inventory and price data for only the strongest candidates.
+export const getRecommendationCandidatePool = ({
+  limit = 32,
+  ...input
+}: CandidatePoolInput) => {
+  const ranked = rankRecommendationCandidates({
+    ...input,
+    requireStock: false,
+  })
+  const selected: typeof ranked = []
+  const selectedIds = new Set<string>()
+  const kindCounts = new Map<ProductKind, number>()
+  const maxPerKind = Math.max(2, Math.ceil(limit / 6))
+
+  ranked.forEach((candidate) => {
+    const kind = getProductKind(candidate.product)
+    if (selected.length < limit && (kindCounts.get(kind) ?? 0) < maxPerKind) {
+      selected.push(candidate)
+      selectedIds.add(candidate.product.id)
+      kindCounts.set(kind, (kindCounts.get(kind) ?? 0) + 1)
+    }
+  })
+
+  ranked.forEach((candidate) => {
+    if (selected.length < limit && !selectedIds.has(candidate.product.id)) {
+      selected.push(candidate)
+      selectedIds.add(candidate.product.id)
+    }
+  })
+
+  return selected.map(({ product }) => product)
 }

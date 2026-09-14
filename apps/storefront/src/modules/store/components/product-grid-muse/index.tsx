@@ -184,7 +184,7 @@ export default async function ProductGridMuse({
           />
         </div>
         <div className="hidden small:block">
-          <SortSelectMuse currentSort={filters.sortBy ?? "created_at"} />
+          <SortSelectMuse currentSort={filters.sortBy ?? "random"} />
         </div>
       </div>
 

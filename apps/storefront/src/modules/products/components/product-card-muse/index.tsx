@@ -1,8 +1,15 @@
 "use client"
 
+import DeliveryBadge from "@modules/products/components/delivery-badge"
+
 import { useCartDrawer } from "@lib/context/cart-drawer-context"
 import { addToCart } from "@lib/data/cart"
+import { trackMetaAddToCart } from "@lib/meta-pixel"
 import { getProductColourSwatches } from "@lib/util/product-colours"
+import {
+  isProductOutOfStock,
+  isVariantPurchasable,
+} from "@lib/util/product-availability"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import SavedToggle from "@modules/saved/components/saved-toggle"
 import Image from "next/image"
@@ -55,10 +62,10 @@ const isSizeOption = (title?: string | null) =>
 
 const getVariantSize = (
   variant: ProductCardMuseVariant,
-  product: ProductCardMuseProduct,
+  product: ProductCardMuseProduct
 ) => {
   const sizeOptionId = product.options?.find((option) =>
-    isSizeOption(option.title),
+    isSizeOption(option.title)
   )?.id
 
   const sizeValue = variant.options?.find((option) => {
@@ -89,14 +96,6 @@ const getVariantSize = (
   return undefined
 }
 
-const variantInStock = (variant: ProductCardMuseVariant) => {
-  if (!variant.manage_inventory || variant.allow_backorder) {
-    return true
-  }
-
-  return (variant.inventory_quantity ?? 0) > 0
-}
-
 const parsePrice = (price?: string) => {
   if (!price) {
     return 0
@@ -112,6 +111,8 @@ export default function ProductCardMuse({
   countryCode,
   position,
 }: Props) {
+  const [hoverRequested, setHoverRequested] = useState(false)
+  const [hoverReady, setHoverReady] = useState(false)
   const [quickAddOpen, setQuickAddOpen] = useState(false)
   const [isPending, startTransition] = useTransition()
   const {
@@ -123,6 +124,7 @@ export default function ProductCardMuse({
   const fulfilment = product.fulfilment
   const brand = product.brand
   const promotionalBadge = product.promotionalBadge
+  const outOfStock = isProductOutOfStock(product)
   const sizes = getSizes(product)
   const hasSizes = sizes.length > 0
   const colours = getProductColourSwatches(product)
@@ -134,8 +136,8 @@ export default function ProductCardMuse({
     const variant =
       product.variants?.find(
         (item) =>
-          getVariantSize(item, product) === size && variantInStock(item),
-      ) ?? product.variants?.find(variantInStock)
+          getVariantSize(item, product) === size && isVariantPurchasable(item)
+      ) ?? product.variants?.find(isVariantPurchasable)
 
     if (!variant?.id) {
       return
@@ -163,6 +165,12 @@ export default function ProductCardMuse({
           quantity: 1,
           countryCode,
         })
+        trackMetaAddToCart({
+          contentId: product.id,
+          contentName: product.title,
+          currency: "nzd",
+          value: parsePrice(product.price),
+        })
         setQuickAddOpen(false)
       } catch (error) {
         removeOptimisticItem(variantId)
@@ -174,17 +182,15 @@ export default function ProductCardMuse({
   }
 
   return (
-    <div className="group relative overflow-hidden rounded-[20px] bg-muse-cream-warm transition duration-200 hover:-translate-y-[5px] hover:shadow-[0_18px_36px_rgba(0,0,0,0.08)]">
+    <div onPointerEnter={(event) => { if (event.pointerType === "mouse") setHoverRequested(true) }} className="muse-retail-product-card group relative overflow-hidden rounded-none bg-white transition duration-200">
       <div className="relative">
-        <div className="absolute left-3 top-3 z-[2] flex flex-col items-start gap-1.5">
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-muse-cream/95 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black backdrop-blur">
-            <span
-              className={`h-[7px] w-[7px] rounded-full ${
-                fulfilment.dotClassName
-              }`}
-            />
-            {fulfilment.shortLabel}
-          </span>
+        <DeliveryBadge label={fulfilment.shortLabel} />
+        <div className="absolute left-9 top-3 z-[2] flex flex-col items-start gap-1.5">
+          {outOfStock && (
+            <span className="rounded-full bg-muse-black px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-cream">
+              Out of stock
+            </span>
+          )}
           {promotionalBadge && (
             <span className="rounded-full bg-muse-yellow px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.05em] text-muse-black">
               {promotionalBadge}
@@ -203,10 +209,11 @@ export default function ProductCardMuse({
                 alt={product.title}
                 fill
                 priority={position <= 2}
+                fetchPriority={position <= 2 ? "high" : undefined}
                 quality={60}
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                sizes="(max-width: 640px) calc((100vw - 48px) / 2), (max-width: 1024px) 30vw, (max-width: 1400px) 22vw, 300px"
                 className={`object-cover transition duration-500 ${
-                  hoverImage
+                  hoverReady
                     ? "motion-safe:group-hover:opacity-0"
                     : "motion-safe:group-hover:scale-105"
                 }`}
@@ -216,14 +223,15 @@ export default function ProductCardMuse({
                 {String(position).padStart(2, "0")}
               </span>
             )}
-            {hoverImage && (
+            {hoverImage && hoverRequested && (
               <Image
                 src={hoverImage}
+                onLoad={() => setHoverReady(true)}
                 alt=""
                 aria-hidden="true"
                 fill
                 quality={60}
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                sizes="(max-width: 640px) calc((100vw - 48px) / 2), (max-width: 1024px) 30vw, (max-width: 1400px) 22vw, 300px"
                 className="pointer-events-none object-cover opacity-0 transition duration-500 motion-safe:group-hover:scale-105 motion-safe:group-hover:opacity-100"
               />
             )}
@@ -248,10 +256,15 @@ export default function ProductCardMuse({
 
         <button
           type="button"
+          disabled={outOfStock}
           onClick={() => setQuickAddOpen((current) => !current)}
-          className="absolute bottom-3 left-3 right-3 z-[2] rounded-full bg-muse-black px-4 py-3 text-center text-[11px] font-bold uppercase tracking-[0.08em] text-muse-cream opacity-100 transition hover:bg-muse-orange small:translate-y-2 small:opacity-0 small:group-hover:translate-y-0 small:group-hover:opacity-100"
+          className="absolute bottom-3 left-3 right-3 z-[2] rounded-full bg-muse-black px-4 py-3 text-center text-[11px] font-bold uppercase tracking-[0.08em] text-muse-cream opacity-100 transition hover:bg-muse-orange disabled:cursor-not-allowed disabled:bg-muse-black/65 small:translate-y-2 small:opacity-0 small:group-hover:translate-y-0 small:group-hover:opacity-100"
         >
-          {hasSizes ? "+ Quick add" : "Add to bag"}
+          {outOfStock
+            ? "Out of stock"
+            : hasSizes
+            ? "+ Quick add"
+            : "Add to bag"}
         </button>
 
         {quickAddOpen && (
@@ -285,7 +298,7 @@ export default function ProductCardMuse({
                   >
                     {label}
                   </button>
-                ),
+                )
               )}
             </div>
           </div>
@@ -351,7 +364,7 @@ function getSizes(product: ProductCardMuseProduct) {
     }
 
     const quantity = variant.inventory_quantity ?? 0
-    const inStock = variantInStock(variant)
+    const inStock = isVariantPurchasable(variant)
     const current = sizeValues.get(label)
 
     sizeValues.set(label, {

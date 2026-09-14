@@ -74,9 +74,17 @@ module.exports = {
         "3xl": "2rem",
       },
       fontFamily: {
-        inter: ["var(--font-inter)", "Inter", "system-ui", "sans-serif"],
+        inter: ["var(--font-roboto)", "Roboto", "Arial", "sans-serif"],
+        condensed: [
+          "var(--font-roboto-condensed)",
+          "Roboto Condensed",
+          "Arial Narrow",
+          "Arial",
+          "sans-serif",
+        ],
         sans: [
-          "Inter",
+          "var(--font-roboto)",
+          "Roboto",
           "-apple-system",
           "BlinkMacSystemFont",
           "Segoe UI",

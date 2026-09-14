@@ -1,4 +1,4 @@
-import { retrieveCart } from "@lib/data/cart"
+import { retrieveCartForRender as retrieveCart } from "@lib/data/cart-for-render"
 import { PRODUCT_CANDIDATE_FIELDS } from "@lib/data/product-fields"
 import { listProducts } from "@lib/data/products"
 import { getRecommendedProducts } from "@lib/util/product-recommendations"

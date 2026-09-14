@@ -52,12 +52,9 @@ const nextConfig = {
         : []),
     ],
   },
-  // `images.minimumCacheTTL` above should already make Next.js send a long
-  // Cache-Control on /_next/image responses, but PageSpeed Insights on the
-  // deployed site showed "Cache TTL: None" for these and other static
-  // assets, which costs 300 KiB-4 MB of re-download on every repeat visit.
-  // Setting the header explicitly here guarantees it regardless of any
-  // proxy/CDN in front of the app not fully honoring the images config.
+  // Next.js cache preferences; Medusa Cloud may override these headers.
+  // Hashed campaign/brand assets use /_next/static/media instead of the
+  // runtime image optimiser. Verify hosted headers before claiming caching.
   async headers() {
     return [
       {
