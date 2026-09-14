@@ -1297,7 +1297,9 @@ export default function ProductActions({
               role="status"
               className="mt-2 text-[12.5px] font-bold text-[#C1440E]"
             >
-              Choose a size to continue.
+              {useBagDimensions
+                ? "Choose the dimensions to continue."
+                : "Choose a size to continue."}
             </p>
           )}
           {useNikeJordanSizing && (
@@ -1394,7 +1396,9 @@ export default function ProductActions({
           <strong className="font-bold text-[#C1440E]">
             Only {selectedStockQuantity} left
           </strong>{" "}
-          in size {currentSize ?? "-"} · {fulfilment.shortLabel}
+          {useBagDimensions
+            ? `· ${fulfilment.shortLabel}`
+            : `in size ${currentSize ?? "-"} · ${fulfilment.shortLabel}`}
         </div>
       )}
 
@@ -1423,7 +1427,9 @@ export default function ProductActions({
                   ? selectedVariant && !inStock
                     ? "Sold out"
                     : needsSizeSelection
-                      ? "Choose a size"
+                      ? useBagDimensions
+                        ? "Choose dimensions"
+                        : "Choose a size"
                       : "Select options"
                   : isEditingLine
                     ? "Update bag"
@@ -1479,7 +1485,7 @@ export default function ProductActions({
               "Product details are being updated. Message @muse.nz if you want extra photos or measurements before ordering."}
           </p>
         </AccordionItem>
-        <AccordionItem title="Sizing & fit">
+        {!useBagDimensions && <AccordionItem title="Sizing & fit">
           {useNorthFacePufferSizing ? (
             <>
               <p>
@@ -1568,7 +1574,7 @@ export default function ProductActions({
               </p>
             </>
           )}
-        </AccordionItem>
+        </AccordionItem>}
         <AccordionItem title="Shipping & returns">
           <p>
             <strong className="font-bold text-[#0A0A0A]">
@@ -1628,7 +1634,9 @@ export default function ProductActions({
                 : selectedVariant && !inStock
                   ? "Sold out"
                   : needsSizeSelection
-                    ? "Choose a size"
+                    ? useBagDimensions
+                      ? "Choose dimensions"
+                      : "Choose a size"
                     : "Add to bag →"}
         </button>
       </div>
