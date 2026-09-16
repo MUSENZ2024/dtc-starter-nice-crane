@@ -1,8 +1,7 @@
 "use client"
 
-import { FormEvent, useMemo, useState } from "react"
-
-const WORKER = "https://muse-track.nz-nofilter.workers.dev"
+import { sdk } from "@lib/config"
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react"
 
 type StateKey =
   | "placed"
@@ -10,6 +9,8 @@ type StateKey =
   | "intransit"
   | "arrived"
   | "outfordelivery"
+  | "pickup"
+  | "exception"
   | "delivered"
   | "delay"
 
@@ -34,7 +35,23 @@ type TrackingData = {
   showDelay: boolean
   showDelivered: boolean
   events: EventItem[]
+  estimateNote?: string
 }
+
+type TrackingPrediction = {
+  stage: StateKey
+  estimated_at: string
+  earliest_at: string
+  latest_at: string
+  sample_count: number
+  confidence: "low" | "medium" | "high"
+  source: "muse-history" | "stage-baseline"
+}
+
+type TrackingLookupResponse =
+  | { status: "registered" }
+  | { status: "not_found" }
+  | { status: "ok"; track_info: TrackInfo; prediction: TrackingPrediction }
 
 type TrackInfo = {
   latest_status?: {
@@ -94,6 +111,8 @@ const STATE_TO_STEP: Record<StateKey, number> = {
   delay: 2,
   arrived: 3,
   outfordelivery: 4,
+  pickup: 5,
+  exception: 5,
   delivered: 5,
 }
 
@@ -107,6 +126,8 @@ const STATE_FLAGS: Record<
   delay: { showLeg: false, showDelay: true, showDelivered: false },
   arrived: { showLeg: false, showDelay: false, showDelivered: false },
   outfordelivery: { showLeg: false, showDelay: false, showDelivered: false },
+  pickup: { showLeg: false, showDelay: false, showDelivered: false },
+  exception: { showLeg: false, showDelay: true, showDelivered: false },
   delivered: { showLeg: false, showDelay: false, showDelivered: true },
 }
 
@@ -149,6 +170,20 @@ const BANNER_COPY: Record<
     detail:
       "A NZ Post courier has got it today. Keep an eye out - they'll knock or leave it safe.",
   },
+  pickup: {
+    bannerClass: "arrived",
+    icon: "NZ",
+    stage: "Ready for pickup",
+    detail:
+      "Delivery was attempted and your parcel is waiting for collection. Check the NZ Post tracking page or your card-to-call for the pickup location.",
+  },
+  exception: {
+    bannerClass: "arrived",
+    icon: "!",
+    stage: "Delivery needs your attention",
+    detail:
+      "The courier could not complete delivery. Check NZ Post for the pickup location or redelivery options.",
+  },
   delivered: {
     bannerClass: "delivered",
     icon: "OK",
@@ -179,6 +214,26 @@ const OUT_FOR_DELIVERY_EVENTS = [
   "on vehicle",
   "delivery today",
   "ready for courier",
+]
+const PICKUP_EVENTS = [
+  "available for pickup",
+  "available for pick up",
+  "ready for collection",
+  "ready to collect",
+  "awaiting collection",
+  "collect from",
+  "pickup point",
+]
+const FAILED_DELIVERY_EVENTS = [
+  "attempted delivery",
+  "attempted / failed delivery",
+  "delivery attempted",
+  "failed delivery",
+  "unable to deliver",
+  "couldn't deliver",
+  "could not deliver",
+  "card to call",
+  "recipient absent",
 ]
 const NZ_LOCAL_EVENTS = [
   "local/regional depot",
@@ -212,14 +267,11 @@ function addBusinessDays(from: Date, days: number) {
   return date
 }
 
-async function api(endpoint: string, body: Array<{ number: string }>) {
-  const response = await fetch(WORKER, {
+async function lookupTracking(trackingNumber: string) {
+  return sdk.client.fetch<TrackingLookupResponse>("/store/tracking", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ endpoint, body }),
+    body: { tracking_number: trackingNumber },
   })
-
-  return response.json()
 }
 
 function sanitiseLocation(loc?: string) {
@@ -318,11 +370,21 @@ function formatETA(date: Date, days: number) {
   return date.toLocaleDateString("en-NZ", opts)
 }
 
+function formatPrediction(prediction: TrackingPrediction) {
+  const expected = new Date(prediction.estimated_at)
+  const days = Math.max(
+    0,
+    Math.round((expected.getTime() - Date.now()) / (1000 * 60 * 60 * 24)),
+  )
+  return formatETA(expected, days)
+}
+
 function deriveState(
   track: TrackInfo | undefined,
-  events: EventItem[]
+  events: EventItem[],
 ): StateKey {
   const rawStatus = (track?.latest_status?.status || "")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
     .replace(/_/g, " ")
     .toLowerCase()
   const latestEvent = events[0]
@@ -330,6 +392,10 @@ function deriveState(
   const combined = `${rawStatus} ${latestDesc}`
 
   if (includesAny(combined, DELIVERED_EVENTS)) return "delivered"
+
+  if (includesAny(combined, PICKUP_EVENTS)) return "pickup"
+
+  if (includesAny(combined, FAILED_DELIVERY_EVENTS)) return "exception"
 
   if (includesAny(combined, OUT_FOR_DELIVERY_EVENTS)) {
     return "outfordelivery"
@@ -376,7 +442,10 @@ function deriveState(
   return "placed"
 }
 
-function buildTrackingData(track: TrackInfo): TrackingData {
+function buildTrackingData(
+  track: TrackInfo,
+  prediction?: TrackingPrediction,
+): TrackingData {
   const providers = track?.tracking?.providers || []
   const events: EventItem[] = []
 
@@ -398,25 +467,44 @@ function buildTrackingData(track: TrackInfo): TrackingData {
 
   events.sort(
     (a, b) =>
-      new Date(b.rawTime || "").getTime() - new Date(a.rawTime || "").getTime()
+      new Date(b.rawTime || "").getTime() - new Date(a.rawTime || "").getTime(),
   )
 
-  const stateKey = deriveState(track, events)
+  const stateKey = prediction?.stage || deriveState(track, events)
   const eta = estimateDelivery(stateKey, events[0]?.desc || "")
   const flags = STATE_FLAGS[stateKey]
   const copy = BANNER_COPY[stateKey]
 
   return {
     stateKey,
-    labelText: stateKey === "delivered" ? "Delivered" : "Estimated arrival",
+    labelText:
+      stateKey === "delivered"
+        ? "Delivered"
+        : stateKey === "pickup"
+          ? "Ready to collect"
+          : stateKey === "exception"
+            ? "Action needed"
+            : "Estimated arrival",
     date:
       stateKey === "delivered"
         ? events[0]?.time?.split(",")[0] || ""
-        : formatETA(eta.date, eta.days),
+        : stateKey === "pickup"
+          ? "Available now"
+          : stateKey === "exception"
+            ? "Check NZ Post now"
+            : prediction
+              ? formatPrediction(prediction)
+              : formatETA(eta.date, eta.days),
     ...copy,
     activeStep: STATE_TO_STEP[stateKey],
     ...flags,
     events,
+    estimateNote:
+      prediction && !["delivered", "pickup", "exception"].includes(stateKey)
+        ? prediction.source === "muse-history"
+          ? `Updated from ${prediction.sample_count} comparable MUSE deliveries (${prediction.confidence} confidence).`
+          : "Live carrier stage estimate; this improves as more MUSE parcels are delivered."
+        : undefined,
   }
 }
 
@@ -439,9 +527,29 @@ export default function TrackingClient() {
 
   const nzPostHref = useMemo(
     () => nzPostUrl(submittedTrackingNumber),
-    [submittedTrackingNumber]
+    [submittedTrackingNumber],
   )
   const hasLookupResult = loading || Boolean(message) || Boolean(data)
+
+  const refreshTracking = useCallback(async (number: string) => {
+    const response = await lookupTracking(number)
+    if (response.status === "ok") {
+      const nextData = buildTrackingData(
+        response.track_info,
+        response.prediction,
+      )
+      if (nextData.events.length) setData(nextData)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!submittedTrackingNumber || !data || data.stateKey === "delivered")
+      return
+    const timer = window.setInterval(() => {
+      refreshTracking(submittedTrackingNumber).catch(() => undefined)
+    }, 60_000)
+    return () => window.clearInterval(timer)
+  }, [data, refreshTracking, submittedTrackingNumber])
 
   async function handleLookup(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -456,7 +564,7 @@ export default function TrackingClient() {
     if (!isSupportedTrackingNumber(cleanTrackingNumber)) {
       setMessageKind("invalid")
       setMessage(
-        "That tracking number format is not recognised. Check the shipping confirmation email and enter the number without spaces or punctuation."
+        "That tracking number format is not recognised. Check the shipping confirmation email and enter the number without spaces or punctuation.",
       )
       return
     }
@@ -466,39 +574,33 @@ export default function TrackingClient() {
     setMessageKind(null)
 
     try {
-      const response = await api("gettrackinfo", [
-        { number: cleanTrackingNumber },
-      ])
-      const track = response?.data?.accepted?.[0]?.track_info as
-        | TrackInfo
-        | undefined
+      const response = await lookupTracking(cleanTrackingNumber)
 
-      if (!track?.tracking?.providers?.length) {
-        // 17track only has data for numbers it has been told to poll. A
-        // number it hasn't seen before returns no providers here even
-        // though it's valid, so register it and ask the user to check
-        // back once the carrier has been polled.
-        try {
-          await api("register", [{ number: cleanTrackingNumber }])
-          setMessageKind("registered")
-          setMessage(
-            "This is the first time we've looked up that number, so we've just registered it with the carrier. Tracking data usually appears within 5-10 minutes - please check back shortly."
-          )
-        } catch {
-          setMessageKind("not-found")
-          setMessage(
-            "We could not find a shipment for that tracking number. Check the number in your shipping confirmation email, or contact us if it still cannot be found."
-          )
-        }
+      if (response.status === "registered") {
+        setMessageKind("registered")
+        setMessage(
+          "This is the first time we've looked up that number, so we've just registered it with the carrier. Tracking data usually appears within 5-10 minutes - please check back shortly.",
+        )
         return
       }
 
-      const nextData = buildTrackingData(track)
+      if (response.status === "not_found") {
+        setMessageKind("not-found")
+        setMessage(
+          "We could not find a shipment for that tracking number. Check the number in your shipping confirmation email, or contact us if it still cannot be found.",
+        )
+        return
+      }
+
+      const nextData = buildTrackingData(
+        response.track_info,
+        response.prediction,
+      )
 
       if (!nextData.events.length) {
         setMessageKind("not-found")
         setMessage(
-          "We found the carrier but no tracking events for this number. Check it against your shipping confirmation email, then try again or contact us."
+          "We found the carrier but no tracking events for this number. Check it against your shipping confirmation email, then try again or contact us.",
         )
         return
       }
@@ -582,6 +684,9 @@ export default function TrackingClient() {
                         <span>{data.labelText}</span>
                       </div>
                       <div className="eta-date">{data.date}</div>
+                      {data.estimateNote && (
+                        <div className="eta-note">{data.estimateNote}</div>
+                      )}
                     </div>
                   </div>
 
@@ -643,8 +748,8 @@ export default function TrackingClient() {
                         const className = isDone
                           ? "done"
                           : isActive
-                          ? "active"
-                          : "pending"
+                            ? "active"
+                            : "pending"
 
                         return (
                           <div
@@ -703,16 +808,16 @@ export default function TrackingClient() {
                         {loading
                           ? "Fetching tracking"
                           : messageKind === "registered"
-                          ? "Tracking registered"
-                          : "Shipment not found"}
+                            ? "Tracking registered"
+                            : "Shipment not found"}
                       </span>
                     </div>
                     <div className="eta-date">
                       {loading
                         ? "Checking your parcel..."
                         : messageKind === "registered"
-                        ? "Check back in 5-10 minutes"
-                        : "Check the number and try again"}
+                          ? "Check back in 5-10 minutes"
+                          : "Check the number and try again"}
                     </div>
                   </div>
                 </div>
@@ -843,8 +948,8 @@ export default function TrackingClient() {
                       {loading
                         ? "We are checking this number with the carrier now."
                         : messageKind === "registered"
-                        ? "Just registered with the carrier - check back in 5-10 minutes."
-                        : "No shipment was found for this number. Check your shipping confirmation email or contact support for help."}
+                          ? "Just registered with the carrier - check back in 5-10 minutes."
+                          : "No shipment was found for this number. Check your shipping confirmation email or contact support for help."}
                     </p>
                   )}
                 </div>
@@ -1119,6 +1224,13 @@ const trackingStyles = `
   letter-spacing: -0.03em;
   line-height: 1;
   color: var(--cream);
+}
+
+.eta-note {
+  margin-top: 12px;
+  color: #B8B8B8;
+  font-size: 13px;
+  line-height: 1.45;
 }
 .lookup-loading-card { min-height: 144px; }
 .status-banner {

@@ -19,9 +19,11 @@ import {
   PostAdminCreateTrackedShipmentSchema,
 } from "./admin/orders/tracking-validators"
 import { ImportMarketingSubscribersSchema } from "./admin/marketing/subscribers/validators"
+import { PostStoreTrackingLookupSchema } from "./store/tracking/validators"
 
 export default defineMiddlewares({
   routes: [
+    { matcher: "/store/tracking", method: ["POST"], middlewares: [validateAndTransformBody(PostStoreTrackingLookupSchema)] },
     { matcher: "/admin/marketing/campaigns", method: ["POST"], middlewares: [validateAndTransformBody(SaveCampaignSchema)] },
     { matcher: "/admin/marketing/campaigns/:id", method: ["POST"], middlewares: [validateAndTransformBody(SaveCampaignSchema)] },
     { matcher: "/admin/marketing/campaigns/:id/schedule", method: ["POST"], middlewares: [validateAndTransformBody(ScheduleCampaignSchema)] },
