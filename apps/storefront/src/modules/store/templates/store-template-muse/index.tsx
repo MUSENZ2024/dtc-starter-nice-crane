@@ -165,6 +165,25 @@ const resolveTagIds = (
   return ids.length ? ids : undefined
 }
 
+const resolveBrandTagIds = (
+  handles: string[] | undefined,
+  tags: StoreProductTag[]
+) => {
+  if (!handles?.length) {
+    return undefined
+  }
+
+  const selected = new Set(handles)
+  const ids = tags
+    .filter((tag) => {
+      const match = tag.value.match(/^brand[:/](.+)$/i)
+      return selected.has(match?.[1] ?? tag.value)
+    })
+    .map((tag) => tag.id)
+
+  return ids.length ? ids : undefined
+}
+
 const resolveColourTagIds = (
   colours: string[] | undefined,
   tags: StoreProductTag[]
@@ -282,25 +301,33 @@ export default function StoreTemplateMuse({
       .map((handle) => lines.find((line) => line.value === handle)?.brand)
       .filter(Boolean)
   )
-  const activeTagHandles = [
-    ...activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
-    ...activeLineHandles,
-    ...(splitParam(searchParams.badge) ?? []),
-    ...(isClearance && !clearanceCollectionId ? ["clearance"] : []),
-  ]
   const activeColourHandles = splitParam(searchParams.colour)
   const activeColourTagIds = resolveColourTagIds(
     activeColourHandles,
     productTags
   )
-  const activeTagIds = resolveTagIds(activeTagHandles, productTags)
+  const activeBrandTagIds = resolveBrandTagIds(
+    activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
+    productTags
+  )
+  const activeLineTagIds = resolveTagIds(activeLineHandles, productTags)
+  const activeBadgeTagIds = resolveTagIds(
+    splitParam(searchParams.badge),
+    productTags
+  )
+  const selectedTagIds = [
+    ...(activeBrandTagIds ?? []),
+    ...(activeLineTagIds ?? []),
+    ...(activeBadgeTagIds ?? []),
+    ...(isClearance && !clearanceCollectionId
+      ? resolveTagIds(["clearance"], productTags) ?? []
+      : []),
+  ]
+  const activeTagIds = selectedTagIds.length ? selectedTagIds : undefined
   const activeTagFilterGroups = [
-    resolveTagIds(
-      activeBrandHandles.filter((brand) => !activeLineParents.has(brand)),
-      productTags
-    ),
-    resolveTagIds(activeLineHandles, productTags),
-    resolveTagIds(splitParam(searchParams.badge), productTags),
+    activeBrandTagIds,
+    activeLineTagIds,
+    activeBadgeTagIds,
   ].filter((group): group is string[] => Boolean(group?.length))
   const activeTagProductIds = resolveTagProductIds(activeTagIds, productTags)
   const stockFilter = isClearance

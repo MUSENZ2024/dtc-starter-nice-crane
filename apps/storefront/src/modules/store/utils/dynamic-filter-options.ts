@@ -49,6 +49,28 @@ const STATUS_HANDLES = new Set([
   "new-arrivals",
 ])
 
+// Product tags also carry materials, fulfilment, product types, conditions and
+// campaign data. Only known brand tags (or deliberately prefixed brand tags)
+// belong in the Brand facet.
+const BRAND_LABELS: Record<string, string> = {
+  adidas: "adidas",
+  asics: "ASICS",
+  birkenstock: "Birkenstock",
+  coach: "Coach",
+  "dr-martens": "Dr. Martens",
+  jordan: "Jordan",
+  lv: "LV",
+  "miu-miu": "Miu Miu",
+  "new-balance": "New Balance",
+  nike: "Nike",
+  "onitsuka-tiger": "Onitsuka Tiger",
+  puma: "Puma",
+  salomon: "Salomon",
+  "the-north-face": "The North Face",
+  timberland: "Timberland",
+  veja: "VEJA",
+}
+
 const getProductCount = (tag: StoreProductTag) => tag.products?.length ?? 0
 
 const titleize = (value: string) =>
@@ -99,6 +121,9 @@ const isBadgeTag = (tag: NormalizedTag) =>
 const isColourTag = (tag: NormalizedTag) =>
   tag.group === "colour" || tag.group === "color"
 
+const isBrandTag = (tag: NormalizedTag) =>
+  tag.group === "brand" || Boolean(BRAND_LABELS[tag.handle])
+
 const findBrandForLine = (line: NormalizedTag, brands: NormalizedTag[]) =>
   brands
     .filter((brand) => line.handle.startsWith(`${brand.handle}-`))
@@ -129,21 +154,26 @@ export const buildDynamicTagFilters = (tags: StoreProductTag[]) => {
   const merchTags = normalized.filter(
     (tag) => !isBadgeTag(tag) && !isColourTag(tag)
   )
-  const explicitBrands = merchTags.filter((tag) => tag.group === "brand")
+  const brandCandidates = merchTags.filter(isBrandTag)
+  const brandByHandle = new Map<string, NormalizedTag>()
 
-  const inferredBrands = merchTags.filter((tag) =>
-    !tag.group &&
-    merchTags.some(
-      (candidate) =>
-        candidate.value !== tag.value &&
-        candidate.handle.startsWith(`${tag.handle}-`)
+  brandCandidates.forEach((tag) => {
+    const existing = brandByHandle.get(tag.handle)
+    const products = new Map(
+      [...(existing?.products ?? []), ...(tag.products ?? [])].map((product) => [
+        product.id,
+        product,
+      ])
     )
-  )
 
-  const brandByValue = new Map<string, NormalizedTag>()
-
-  ;[...explicitBrands, ...inferredBrands].forEach((tag) => {
-    brandByValue.set(tag.value, tag)
+    brandByHandle.set(tag.handle, {
+      ...(existing ?? tag),
+      value: tag.handle,
+      handle: tag.handle,
+      label: BRAND_LABELS[tag.handle] ?? existing?.label ?? tag.label,
+      products: Array.from(products.values()),
+      count: products.size,
+    })
   })
 
   const lineTags = merchTags.filter((tag) => {
@@ -151,18 +181,13 @@ export const buildDynamicTagFilters = (tags: StoreProductTag[]) => {
       return true
     }
 
-    return Boolean(findBrandForLine(tag, Array.from(brandByValue.values())))
+    return (
+      !isBrandTag(tag) &&
+      Boolean(findBrandForLine(tag, Array.from(brandByHandle.values())))
+    )
   })
 
-  const lineValues = new Set(lineTags.map((tag) => tag.value))
-
-  merchTags.forEach((tag) => {
-    if (!lineValues.has(tag.value)) {
-      brandByValue.set(tag.value, tag)
-    }
-  })
-
-  const brandTags = Array.from(brandByValue.values()).sort(byCountThenLabel)
+  const brandTags = Array.from(brandByHandle.values()).sort(byCountThenLabel)
   const brands = brandTags.map<TagFilterOption>((tag) => ({
     value: tag.value,
     label: tag.label,
