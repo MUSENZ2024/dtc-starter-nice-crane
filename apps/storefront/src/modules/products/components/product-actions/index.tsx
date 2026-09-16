@@ -1485,7 +1485,7 @@ export default function ProductActions({
               "Product details are being updated. Message @muse.nz if you want extra photos or measurements before ordering."}
           </p>
         </AccordionItem>
-        <AccordionItem title="Sizing & fit">
+        {!useBagDimensions && <AccordionItem title="Sizing & fit">
           {useNorthFacePufferSizing ? (
             <>
               <p>
@@ -1574,7 +1574,7 @@ export default function ProductActions({
               </p>
             </>
           )}
-        </AccordionItem>
+        </AccordionItem>}
         <AccordionItem title="Shipping & returns">
           <p>
             <strong className="font-bold text-[#0A0A0A]">
