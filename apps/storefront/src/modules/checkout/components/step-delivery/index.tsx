@@ -189,7 +189,7 @@ export default function StepDelivery({
                         {label}
                       </span>
                       <span className="block text-[12.5px] text-muse-text-muted">
-                        {getDeliveryWindow(label)}. Tracked end-to-end with NZ Post.
+                        {getDeliveryDescription(label)}
                       </span>
                     </span>
 
@@ -257,22 +257,10 @@ function getDeliveryLabel(name?: string | null): "Standard" | "Express" {
   return name?.toLowerCase().includes("express") ? "Express" : "Standard"
 }
 
-function getDeliveryWindow(label: "Standard" | "Express") {
-  if (label === "Express") {
-    return `Estimated delivery ${formatDeliveryDate(13)} - ${formatDeliveryDate(16)}`
-  }
-
-  return `Estimated delivery ${formatDeliveryDate(13)} - ${formatDeliveryDate(16)}`
-}
-
-function formatDeliveryDate(daysFromNow: number) {
-  const date = new Date()
-  date.setDate(date.getDate() + daysFromNow)
-
-  return new Intl.DateTimeFormat("en-NZ", {
-    day: "numeric",
-    month: "long",
-  }).format(date)
+function getDeliveryDescription(label: "Standard" | "Express") {
+  return label === "Express"
+    ? "Faster end-to-end priority delivery with NZ Post."
+    : "Standard end-to-end tracked delivery with NZ Post."
 }
 
 function getDeliveryChoices(
