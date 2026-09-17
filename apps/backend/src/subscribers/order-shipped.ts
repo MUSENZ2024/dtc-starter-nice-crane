@@ -3,6 +3,7 @@ import { render, pretty } from "@react-email/render"
 import type { EmailItem } from "../emails/OrderConfirmationTemplate"
 import getOrderShippedTemplate from "../emails/order-shipped"
 import { resolveLineItemImages } from "../lib/resolve-line-item-image"
+import { getRemainingItemQuantities, getShipmentItemQuantities, type FulfillmentReference } from "../lib/shipment-email-items"
 
 type FulfillmentType = "nzstock" | "standard"
 
@@ -57,6 +58,7 @@ type FulfillmentOrder = {
   items?: OrderLine[] | null
   shipping_methods?: { name?: string | null }[] | null
   shipping_address?: AddressFields | null
+  fulfillments?: FulfillmentReference[] | null
 }
 
 function formatAddressLines(address?: AddressFields | null): { lines: string[]; phone: string | null } {
@@ -101,6 +103,8 @@ const FULFILLMENT_EMAIL_FIELDS = [
   "labels.tracking_number",
   "labels.tracking_url",
   "labels.label_url",
+  "items.line_item_id",
+  "items.quantity",
   "order.id",
   "order.email",
   "order.display_id",
@@ -119,6 +123,10 @@ const FULFILLMENT_EMAIL_FIELDS = [
   "order.items.variant.product.images.id",
   "order.items.variant.product.images.url",
   "order.items.variant.product.images.rank",
+  "order.fulfillments.id",
+  "order.fulfillments.shipped_at",
+  "order.fulfillments.items.line_item_id",
+  "order.fulfillments.items.quantity",
   "order.shipping_methods.name",
   "order.shipping_address.first_name",
   "order.shipping_address.last_name",
@@ -160,6 +168,7 @@ export default async function orderShippedHandler({
       | {
           id: string
           labels?: FulfillmentLabel[] | null
+          items?: FulfillmentReference["items"]
           order?: FulfillmentOrder | null
         }
       | undefined
@@ -183,15 +192,32 @@ export default async function orderShippedHandler({
     const shippingMethodLabel = getShippingMethodLabel(order.shipping_methods?.[0]?.name)
 
     const itemThumbnails = await resolveLineItemImages(order.items || [], query)
-    const items: EmailItem[] = (order.items || []).map((item) => ({
+    const fulfillmentItems = getShipmentItemQuantities(fulfillment.items)
+    const remainingItems = getRemainingItemQuantities({
+      orderItems: order.items || [],
+      fulfillments: order.fulfillments || [],
+      currentFulfillmentId: fulfillmentId,
+    })
+    const toEmailItem = (item: OrderLine, quantity: number): EmailItem => ({
       id: item.id,
       title: item.product_title,
       variantTitle: item.variant_title,
-      quantity: toNumber(item.quantity) || 1,
+      quantity,
       unitPrice: toNumber(item.unit_price),
       thumbnail: itemThumbnails[item.id],
       fulfillmentType: getFulfillmentType(item.metadata),
-    }))
+    })
+    const items = (order.items || [])
+      .filter((item) => fulfillmentItems.has(item.id))
+      .map((item) => toEmailItem(item, fulfillmentItems.get(item.id) || 1))
+    const itemsStillToCome = (order.items || [])
+      .filter((item) => remainingItems.has(item.id))
+      .map((item) => toEmailItem(item, remainingItems.get(item.id) || 1))
+
+    if (!items.length) {
+      logger.warn(`Skipping shipped email for fulfillment ${fulfillmentId}: no fulfillment line items.`)
+      return
+    }
 
     const fulfillmentType = items.some((item) => item.fulfillmentType === "nzstock") ? "nzstock" : "standard"
     const trackingUrl = getTrackingUrl(trackingNumber, label?.tracking_url)
@@ -213,6 +239,7 @@ export default async function orderShippedHandler({
           addressLines: addressDetail.lines,
           phone: addressDetail.phone,
           items,
+          itemsStillToCome,
           fulfillmentType,
           currentStage: fulfillmentType === "nzstock" ? "shipped" : "international_transit",
         })
@@ -225,7 +252,9 @@ export default async function orderShippedHandler({
       channel: "email",
       content: {
         html,
-        subject: "MUSE NZ: Your order has been shipped ✈️",
+        subject: itemsStillToCome.length
+          ? "MUSE NZ: Part of your order has shipped ✈️"
+          : "MUSE NZ: Your order has been shipped ✈️",
       },
     })
   } catch (error) {
