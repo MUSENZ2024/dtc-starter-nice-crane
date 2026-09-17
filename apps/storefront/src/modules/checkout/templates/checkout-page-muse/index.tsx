@@ -20,6 +20,7 @@ type Props = {
   customer: HttpTypes.StoreCustomer | null
   shippingMethods: HttpTypes.StoreCartShippingOption[]
   paymentMethods: { id: string }[]
+  shippingProtectionVariantId: string | null
 }
 
 const stepOrder: StepKey[] = ["contact", "shipping", "delivery", "payment"]
@@ -28,6 +29,7 @@ export default function CheckoutPageMuse({
   customer,
   shippingMethods,
   paymentMethods,
+  shippingProtectionVariantId,
 }: Props) {
   const searchParams = useSearchParams()
   const pathname = usePathname()
@@ -169,6 +171,7 @@ export default function CheckoutPageMuse({
               cart={cart}
               shippingMethods={shippingMethods}
               shippingProtectionSelected={shippingProtectionSelected}
+              shippingProtectionVariantId={shippingProtectionVariantId}
               onShippingProtectionChange={setShippingProtectionSelected}
               isActive={activeStep === "delivery"}
               isComplete={completedSteps.includes("delivery")}

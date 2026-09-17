@@ -12,6 +12,7 @@ type Props = {
   cart: HttpTypes.StoreCart
   shippingMethods: HttpTypes.StoreCartShippingOption[]
   shippingProtectionSelected: boolean
+  shippingProtectionVariantId: string | null
   isActive: boolean
   isComplete: boolean
   stepNumber: number
@@ -25,13 +26,11 @@ type DeliveryChoice = {
   method: HttpTypes.StoreCartShippingOption
 }
 
-const shippingProtectionVariantId =
-  process.env.NEXT_PUBLIC_SHIPPING_PROTECTION_VARIANT_ID
-
 export default function StepDelivery({
   cart,
   shippingMethods,
   shippingProtectionSelected,
+  shippingProtectionVariantId,
   isActive,
   isComplete,
   stepNumber,
@@ -248,15 +247,9 @@ export default function StepDelivery({
 }
 
 export function getShippingProtectionItem(cart: HttpTypes.StoreCart) {
-  if (!shippingProtectionVariantId) {
-    return undefined
-  }
-
   return cart.items?.find((item) => {
-    const variantId =
-      (item as { variant_id?: string | null }).variant_id || item.variant?.id
-
-    return variantId === shippingProtectionVariantId
+    const title = (item.product_title ?? item.title ?? "").trim().toLowerCase()
+    return title === "shipping protection"
   })
 }
 

@@ -11,6 +11,7 @@ import { PRODUCT_CANDIDATE_FIELDS, PRODUCT_LIST_FIELDS } from "./product-fields"
 import { getRegion, retrieveRegion } from "./regions"
 
 const DEFAULT_PRODUCT_REVALIDATE_SECONDS = 60
+const SHIPPING_PROTECTION_HANDLE = "shipping-protection"
 
 const STOREFRONT_HIDDEN_PRODUCT_HANDLES = new Set([
   "shorts",
@@ -43,6 +44,31 @@ const isStorefrontDiscoverableProduct = (product: HttpTypes.StoreProduct) => {
     (handle && STOREFRONT_HIDDEN_PRODUCT_HANDLES.has(handle)) ||
     (title && STOREFRONT_HIDDEN_PRODUCT_TITLES.has(title))
   )
+}
+
+export const retrieveShippingProtectionVariantId = async () => {
+  const headers = {
+    ...(await getAuthHeaders()),
+  }
+  const { products } = await sdk.client.fetch<{
+    products: HttpTypes.StoreProduct[]
+  }>("/store/products", {
+    method: "GET",
+    query: {
+      handle: SHIPPING_PROTECTION_HANDLE,
+      fields: "id,status,*variants",
+      limit: 1,
+    },
+    headers,
+    next: { revalidate: DEFAULT_PRODUCT_REVALIDATE_SECONDS },
+  })
+  const product = products.find(
+    (candidate) =>
+      candidate.handle === SHIPPING_PROTECTION_HANDLE &&
+      isPublishedProduct(candidate)
+  )
+
+  return product?.variants?.length === 1 ? product.variants[0].id : null
 }
 
 const withProductStatusField = (fields?: string) => {
