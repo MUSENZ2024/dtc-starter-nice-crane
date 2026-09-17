@@ -36,6 +36,7 @@ export type OrderShippedProps = {
   addressLines: string[]
   phone?: string | null
   items: EmailItem[]
+  itemsStillToCome?: EmailItem[]
   fulfillmentType: FulfillmentType
   currentStage?: ShipmentTimelineStage
 }
@@ -244,6 +245,7 @@ export function OrderShippedTemplate({
   addressLines,
   phone,
   items,
+  itemsStillToCome = [],
   fulfillmentType,
   currentStage = "international_transit",
 }: OrderShippedProps) {
@@ -254,7 +256,7 @@ export function OrderShippedTemplate({
         <meta name="supported-color-schemes" content="light" />
         <style>{DARK_MODE_OVERRIDE_STYLE}</style>
       </Head>
-      <Preview>Your MUSE NZ order #{displayId} has been shipped.</Preview>
+      <Preview>{itemsStillToCome.length ? `Part of your MUSE NZ order #${displayId} has shipped. The rest will follow separately.` : `Your MUSE NZ order #${displayId} has been shipped.`}</Preview>
       <Body className="em-bg-page" style={{ backgroundColor: colors.creamDeep, margin: 0, padding: 0, colorScheme: "light" }}>
         <table width="100%" cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.creamDeep} className="em-bg-page" style={{ backgroundColor: colors.creamDeep }}>
           <tr>
@@ -266,10 +268,10 @@ export function OrderShippedTemplate({
               <Container style={{ maxWidth: "560px", margin: "0 auto", padding: "44px 18px 36px" }}>
                 <Section style={{ textAlign: "center", padding: "0 0 34px" }}>
                   <Text style={{ ...textStyle, color: colors.green, fontSize: "11.5px", fontWeight: "bold", letterSpacing: "0.12em", margin: "0 0 18px" }}>
-                    ORDER SHIPPED
+                    {itemsStillToCome.length ? "PARTIALLY SHIPPED" : "ORDER SHIPPED"}
                   </Text>
                   <Heading style={{ ...textStyle, fontSize: "36px", lineHeight: "1.15", letterSpacing: "-0.02em", margin: "0 0 18px" }}>
-                    Your order has been shipped.
+                    {itemsStillToCome.length ? "One shipment is on its way." : "Your order has been shipped."}
                   </Heading>
                   <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto 18px" }}>
                     <tr>
@@ -292,7 +294,9 @@ export function OrderShippedTemplate({
                     </tr>
                   </table>
                   <Text style={{ ...textStyle, color: colors.muted, fontSize: "15px", lineHeight: "1.6", margin: "0 auto 22px", maxWidth: "410px" }}>
-                    Thanks {customerName} — your order has shipped. Use the tracking number below to follow it from here.
+                    {itemsStillToCome.length
+                      ? `Thanks ${customerName} — only the item${items.length === 1 ? "" : "s"} shown below ${items.length === 1 ? "has" : "have"} shipped with this tracking number. The other item${itemsStillToCome.length === 1 ? " is" : "s are"} still being prepared and will be sent separately.`
+                      : `Thanks ${customerName} — your order has shipped. Use the tracking number below to follow it from here.`}
                   </Text>
                   <a href={trackingUrl} style={{ textDecoration: "none" }}>
                     <table cellPadding="0" cellSpacing="0" role="presentation" style={{ margin: "0 auto" }}>
@@ -362,7 +366,7 @@ export function OrderShippedTemplate({
                 </Section>
 
                 <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
-                  <Text style={cardTitleStyle}>ORDER SUMMARY</Text>
+                  <Text style={cardTitleStyle}>{itemsStillToCome.length ? "IN THIS SHIPMENT" : "ORDER SUMMARY"}</Text>
                   {items.map((item, index) => (
                     <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep} className="em-bg-soft">
                       <Row>
@@ -398,7 +402,7 @@ export function OrderShippedTemplate({
                                   whiteSpace: "nowrap",
                                 }}
                               >
-                                {shippingMethodLabel.toUpperCase()}
+                                {item.fulfillmentType === "nzstock" ? "NZ STOCK · 1–3 BUSINESS DAYS" : "STANDARD DELIVERY"}
                               </td>
                             </tr>
                           </table>
@@ -416,6 +420,32 @@ export function OrderShippedTemplate({
                     </Section>
                   ))}
                 </Section>
+
+                {itemsStillToCome.length ? (
+                  <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
+                    <Text style={cardTitleStyle}>STILL TO COME</Text>
+                    <Text style={{ ...textStyle, color: colors.muted, fontSize: "13.5px", lineHeight: "1.6", margin: "0 0 16px" }}>
+                      {items.some((item) => item.fulfillmentType === "nzstock")
+                        ? "Your NZ Stock item has shipped first on its 1–3 business day delivery service. The item below is on our standard delivery schedule and will receive its own shipping email and tracking once dispatched."
+                        : "The item below has not shipped yet. It will receive its own shipping email and tracking once dispatched."}
+                    </Text>
+                    {itemsStillToCome.map((item, index) => (
+                      <Section key={item.id} style={{ ...softCardStyle, marginTop: index ? "10px" : 0 }} bgcolor={colors.creamDeep} className="em-bg-soft">
+                        <Row>
+                          <Column style={{ width: "80px", verticalAlign: "middle" }}>
+                            {item.thumbnail ? <Img src={item.thumbnail} alt={item.title} width="72" height="72" style={{ borderRadius: "12px", objectFit: "cover" }} /> : null}
+                          </Column>
+                          <Column style={{ paddingLeft: "14px", verticalAlign: "middle" }}>
+                            <Text style={{ ...textStyle, fontSize: "15px", fontWeight: "bold", margin: 0 }}>{item.title}</Text>
+                            <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", margin: "4px 0 0" }}>
+                              {item.variantTitle ? `${item.variantTitle} · ` : ""}Qty {item.quantity} · {item.fulfillmentType === "nzstock" ? "NZ Stock" : "Standard Delivery"}
+                            </Text>
+                          </Column>
+                        </Row>
+                      </Section>
+                    ))}
+                  </Section>
+                ) : null}
 
                 <Section style={cardStyle} bgcolor={colors.white} className="em-bg-card">
                   <Text style={cardTitleStyle}>DELIVERING TO</Text>
