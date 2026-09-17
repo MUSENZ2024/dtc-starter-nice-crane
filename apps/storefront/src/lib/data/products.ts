@@ -56,7 +56,7 @@ export const retrieveShippingProtectionVariantId = async () => {
     method: "GET",
     query: {
       handle: SHIPPING_PROTECTION_HANDLE,
-      fields: "id,status,*variants",
+      fields: "id,handle,status,*variants",
       limit: 1,
     },
     headers,
