@@ -15,6 +15,13 @@ export function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
+  // Static tools served straight from /public that intentionally have no
+  // locale segment (e.g. the analytics dashboard) — let the rewrite in
+  // next.config.js resolve these instead of prefixing them with /nz.
+  if (request.nextUrl.pathname === "/analytics") {
+    return NextResponse.next()
+  }
+
   const segments = request.nextUrl.pathname.split("/").filter(Boolean)
   const firstSegment = segments[0]?.toLowerCase()
 

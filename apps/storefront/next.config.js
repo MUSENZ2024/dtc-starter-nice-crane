@@ -52,6 +52,14 @@ const nextConfig = {
         : []),
     ],
   },
+  async rewrites() {
+    return [
+      {
+        source: "/analytics",
+        destination: "/analytics.html",
+      },
+    ]
+  },
   // Next.js cache preferences; Medusa Cloud may override these headers.
   // Hashed campaign/brand assets use /_next/static/media instead of the
   // runtime image optimiser. Verify hosted headers before claiming caching.

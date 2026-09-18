@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>MUSE Analytics</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --muse-ink:#0a0a0a;
+    --muse-ink-soft:#231f20;
+    --muse-cream:#f4f2ed;
+    --muse-cream-warm:#faf8f3;
+    --muse-white:#ffffff;
+    --muse-orange:#c1440e;
+    --muse-orange-soft:#f5e6de;
+    --muse-lime:#c8d050;
+    --muse-merch-grey:#f4f5f7;
+    --muse-divider:#e5e2dc;
+    --muse-muted:#6f6b66;
+    --muse-subtle:#9c9892;
+    --muse-sale:#c62828;
+    --muse-success:#287a4b;
+    --muse-focus:#c1440e;
+    --font-ui:"Roboto",Arial,system-ui,sans-serif;
+    --font-condensed:"Roboto Condensed","Arial Narrow",Arial,sans-serif;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--muse-cream);
+    color:var(--muse-ink);
+    font-family:var(--font-ui);
+    font-size:14px;
+    line-height:20px;
+  }
+  a{color:inherit;}
+  .wrap{max-width:1440px;margin:0 auto;padding:0 32px 80px;}
+  @media (max-width:768px){.wrap{padding:0 16px 56px;}}
+
+  /* ---- header ---- */
+  .topbar{
+    background:var(--muse-ink);
+    color:var(--muse-white);
+    font-size:12px;
+    padding:8px 32px;
+    display:flex;
+    justify-content:space-between;
+    letter-spacing:.2px;
+  }
+  .header{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding:24px 32px 16px;
+    max-width:1440px;
+    margin:0 auto;
+    flex-wrap:wrap;
+    gap:16px;
+  }
+  .brand{
+    font-family:var(--font-condensed);
+    font-weight:700;
+    font-size:26px;
+    letter-spacing:.5px;
+    display:flex;
+    align-items:center;
+    gap:10px;
+  }
+  .brand .dot{width:10px;height:10px;background:var(--muse-orange);border-radius:50%;display:inline-block;}
+  .controls{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+  select, .btn{
+    font-family:var(--font-ui);
+    font-size:13px;
+    border:1px solid var(--muse-divider);
+    background:var(--muse-white);
+    color:var(--muse-ink);
+    padding:9px 14px;
+    border-radius:4px;
+    cursor:pointer;
+  }
+  select:focus, .btn:focus, button:focus{outline:2px solid var(--muse-focus);outline-offset:2px;}
+  .btn.primary{background:var(--muse-ink);color:var(--muse-white);border-color:var(--muse-ink);}
+  .btn.primary:hover{background:var(--muse-orange);border-color:var(--muse-orange);}
+  .btn.ghost:hover{background:var(--muse-merch-grey);}
+  label.chk{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muse-muted);cursor:pointer;}
+
+  /* ---- date range picker ---- */
+  .picker-wrap{position:relative;}
+  .range-btn{display:flex;align-items:center;gap:8px;font-weight:500;}
+  .range-btn .chev{font-size:10px;color:var(--muse-muted);}
+  .range-panel{
+    position:absolute; top:calc(100% + 6px); left:0; z-index:40;
+    background:var(--muse-white); border:1px solid var(--muse-divider); border-radius:8px;
+    box-shadow:0 12px 32px rgba(10,10,10,.14);
+    display:flex; min-width:640px;
+  }
+  .range-panel.compare-panel{min-width:220px;}
+  .range-panel[hidden]{display:none;}
+  .preset-list{width:180px;border-right:1px solid var(--muse-divider);padding:8px;flex-shrink:0;}
+  .preset-list button{
+    display:block;width:100%;text-align:left;background:none;border:none;padding:9px 10px;
+    font-family:var(--font-ui);font-size:13px;border-radius:4px;cursor:pointer;color:var(--muse-ink);
+  }
+  .preset-list button:hover{background:var(--muse-merch-grey);}
+  .preset-list button.active{background:var(--muse-orange-soft);color:var(--muse-orange);font-weight:500;}
+  .cal-area{padding:16px;flex:1;}
+  .cal-inputs{display:flex;align-items:center;gap:10px;margin-bottom:14px;}
+  .cal-inputs input{
+    font-family:var(--font-ui);font-size:13px;border:1px solid var(--muse-divider);
+    border-radius:4px;padding:8px 10px;width:130px;
+  }
+  .cal-nav{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;}
+  .cal-nav button{background:none;border:1px solid var(--muse-divider);border-radius:4px;width:26px;height:26px;cursor:pointer;}
+  .cal-months{display:flex;gap:24px;}
+  .cal-month-title{font-family:var(--font-condensed);font-weight:700;font-size:13px;text-align:center;margin-bottom:8px;}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,28px);gap:2px;}
+  .cal-dow{font-size:10px;color:var(--muse-muted);text-align:center;text-transform:uppercase;}
+  .cal-cell{
+    width:28px;height:28px;border:none;background:none;font-size:12px;border-radius:4px;cursor:pointer;color:var(--muse-ink);
+  }
+  .cal-cell.empty{cursor:default;}
+  .cal-cell:hover:not(.empty){background:var(--muse-merch-grey);}
+  .cal-cell.in-range{background:var(--muse-orange-soft);border-radius:0;}
+  .cal-cell.range-start{background:var(--muse-orange);color:#fff;border-radius:4px 0 0 4px;}
+  .cal-cell.range-end{background:var(--muse-orange);color:#fff;border-radius:0 4px 4px 0;}
+  .cal-cell.range-start.range-end{border-radius:4px;}
+  .cal-cell.today:not(.range-start):not(.range-end){box-shadow:inset 0 0 0 1px var(--muse-muted);}
+  .cal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px;padding-top:12px;border-top:1px solid var(--muse-divider);}
+  .connect-panel input[type="text"], .connect-panel input[type="email"], .connect-panel input[type="password"]{
+    font-family:var(--font-ui);font-size:13px;border:1px solid var(--muse-divider);border-radius:4px;padding:9px 10px;width:100%;
+  }
+  .live-banner{background:#fdecea;border:1px solid #f3c8c2;color:var(--muse-sale);font-size:13px;border-radius:6px;padding:10px 14px;margin-bottom:16px;}
+
+  h1,h2,h3{font-family:var(--font-condensed);font-weight:400;margin:0;}
+  .section-title{font-size:18px;font-weight:700;margin:40px 0 16px;font-family:var(--font-condensed);}
+  .section-title.first{margin-top:8px;}
+  .section-sub{font-size:12px;color:var(--muse-muted);margin-top:-10px;margin-bottom:16px;}
+
+  /* ---- grid + cards ---- */
+  .grid{display:grid;gap:16px;}
+  .grid.kpis{grid-template-columns:repeat(4,1fr);}
+  .grid.cols-3{grid-template-columns:2fr 1fr 1fr;}
+  .grid.cols-2{grid-template-columns:1fr 1fr;}
+  .grid.cols-2b{grid-template-columns:1.3fr 1fr;}
+  @media (max-width:1100px){
+    .grid.kpis{grid-template-columns:repeat(2,1fr);}
+    .grid.cols-3{grid-template-columns:1fr;}
+    .grid.cols-2, .grid.cols-2b{grid-template-columns:1fr;}
+  }
+  @media (max-width:520px){.grid.kpis{grid-template-columns:1fr;}}
+
+  .card{
+    background:var(--muse-white);
+    border:1px solid var(--muse-divider);
+    border-radius:8px;
+    padding:20px;
+  }
+  .kpi .label{font-size:12px;color:var(--muse-muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:8px;}
+  .kpi .value{font-family:var(--font-condensed);font-size:26px;font-weight:400;}
+  .kpi .delta{font-size:12px;margin-top:6px;font-weight:500;}
+  .delta.up{color:var(--muse-success);}
+  .delta.down{color:var(--muse-sale);}
+  .delta.flat{color:var(--muse-subtle);}
+  .kpi canvas{margin-top:10px;max-height:36px;}
+  .chart-box{position:relative;height:220px;}
+  .chart-box.sm{height:170px;}
+  .chart-box.donut{height:180px;}
+
+  .card-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:12px;}
+  .card-head h3{font-size:16px;font-weight:700;}
+  .card-head .big{font-family:var(--font-condensed);font-size:22px;margin-top:4px;}
+  .legend-dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:6px;}
+
+  table{width:100%;border-collapse:collapse;font-size:13px;}
+  table th{text-align:left;color:var(--muse-muted);font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.3px;padding:0 0 8px;border-bottom:1px solid var(--muse-divider);}
+  table td{padding:10px 0;border-bottom:1px solid var(--muse-divider);}
+  table tr:last-child td{border-bottom:none;}
+  .row-list .item{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--muse-divider);font-size:13px;}
+  .row-list .item:last-child{border-bottom:none;font-weight:700;}
+  .row-list .item span:first-child{color:var(--muse-ink-soft);}
+  .bar-item{margin-bottom:14px;}
+  .bar-item .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px;}
+  .bar-item .top .name{color:var(--muse-ink-soft);}
+  .bar-item .top .val{font-weight:500;}
+  .bar-track{height:8px;background:var(--muse-merch-grey);border-radius:4px;overflow:hidden;}
+  .bar-fill{height:100%;background:var(--muse-orange);border-radius:4px;}
+  .bar-fill.lime{background:var(--muse-lime);}
+  .bar-fill.ink{background:var(--muse-ink);}
+
+  .badge{display:inline-block;font-size:11px;padding:3px 8px;border-radius:999px;background:var(--muse-orange-soft);color:var(--muse-orange);font-weight:500;}
+  .badge.grey{background:var(--muse-merch-grey);color:var(--muse-muted);}
+  .badge.warn{background:#fdecea;color:var(--muse-sale);}
+
+  .funnel-step{text-align:center;flex:1;}
+  .funnel-row{display:flex;gap:0;align-items:stretch;margin-bottom:10px;}
+  .funnel-track{height:140px;display:flex;align-items:flex-end;}
+  .funnel-bar{background:var(--muse-orange);width:70%;margin:0 auto;border-radius:4px 4px 0 0;}
+  .funnel-step .pct{font-family:var(--font-condensed);font-size:20px;margin-top:8px;}
+  .funnel-step .lbl{font-size:11px;color:var(--muse-muted);text-transform:uppercase;}
+  .funnel-step .n{font-size:12px;color:var(--muse-muted);}
+
+  .note{font-size:12px;color:var(--muse-muted);border-top:1px dashed var(--muse-divider);margin-top:16px;padding-top:12px;}
+  .integration{background:var(--muse-ink);color:var(--muse-white);border-radius:8px;padding:24px 28px;margin-top:48px;}
+  .integration h2{font-family:var(--font-condensed);font-size:20px;font-weight:700;margin-bottom:8px;}
+  .integration p{color:#d8d5cf;font-size:13px;line-height:1.6;max-width:820px;}
+  .integration code{background:rgba(255,255,255,.08);padding:2px 6px;border-radius:3px;font-size:12px;}
+  .integration .status{display:flex;gap:24px;margin-top:16px;flex-wrap:wrap;}
+  .status-pill{display:flex;align-items:center;gap:8px;font-size:12px;background:rgba(255,255,255,.06);padding:8px 12px;border-radius:6px;}
+  .status-pill .dot{width:8px;height:8px;border-radius:50%;}
+  .dot.green{background:#4caf6d;}
+  .dot.amber{background:#e0a800;}
+
+  ::selection{background:var(--muse-lime);color:var(--muse-ink);}
+
+  /* ---- password gate ---- */
+  #gate{
+    position:fixed; inset:0; background:var(--muse-ink); color:var(--muse-white);
+    display:flex; align-items:center; justify-content:center; z-index:1000;
+  }
+  #gate .box{width:280px; text-align:center;}
+  #gate .brand{justify-content:center; margin-bottom:24px; color:var(--muse-white);}
+  #gate input{
+    width:100%; font-family:var(--font-ui); font-size:14px; padding:11px 12px;
+    border-radius:4px; border:1px solid #3a3a3a; background:#1a1a1a; color:var(--muse-white); margin-bottom:10px;
+  }
+  #gate input:focus{outline:2px solid var(--muse-orange); outline-offset:2px;}
+  #gate button{width:100%;}
+  #gate .err{color:#ff9d8a; font-size:12px; margin-top:10px; min-height:16px;}
+  #app{display:none;}
+</style>
+</head>
+<body>
+
+<div id="gate">
+  <div class="box">
+    <div class="brand"><span class="dot"></span> MUSE Analytics</div>
+    <input type="password" id="gatePassword" placeholder="Password" autocomplete="current-password">
+    <button class="btn primary" id="gateSubmit" type="button">Unlock</button>
+    <div class="err" id="gateError"></div>
+  </div>
+</div>
+
+<div id="app">
+
+<div class="topbar">
+  <span id="topbarStatus">MUSE · admin analytics · backend: Medusa (mock mode)</span>
+  <span id="asOf">as of —</span>
+</div>
+
+<div class="header">
+  <div class="brand"><span class="dot"></span> MUSE Analytics</div>
+  <div class="controls">
+    <div class="picker-wrap">
+      <button class="btn range-btn" id="rangeBtn" type="button" aria-haspopup="true" aria-expanded="false">
+        📅 <span id="rangeLabel">Last 30 days</span> <span class="chev">▾</span>
+      </button>
+      <div class="range-panel" id="rangePanel" hidden></div>
+    </div>
+    <div class="picker-wrap">
+      <button class="btn range-btn" id="compareBtn" type="button" aria-haspopup="true" aria-expanded="false">
+        🔁 <span id="compareLabel">Previous period</span> <span class="chev">▾</span>
+      </button>
+      <div class="range-panel compare-panel" id="comparePanel" hidden></div>
+    </div>
+    <button class="btn range-btn" id="connectBtn" type="button" title="Switch between live store data and demo data">
+      🔌 <span id="connectLabel">Demo data</span>
+    </button>
+    <button class="btn ghost" id="refreshBtn" type="button">Refresh</button>
+    <button class="btn primary" id="exportBtn" type="button">Export CSV</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="live-banner" id="liveBanner" hidden></div>
+
+  <div class="section-title first">Overview</div>
+  <div class="grid kpis" id="kpiGrid"></div>
+
+  <div class="section-title">Sales</div>
+  <div class="grid cols-3">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Total sales over time</h3>
+          <div class="big" id="salesTotal">—</div>
+        </div>
+        <span class="badge" id="salesDelta">—</span>
+      </div>
+      <div class="chart-box"><canvas id="salesChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Sales breakdown</h3>
+      <div class="row-list" id="salesBreakdown"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Sales by channel</h3>
+      <div class="chart-box donut"><canvas id="channelChart"></canvas></div>
+      <div id="channelLegend" style="margin-top:12px;font-size:12px;"></div>
+    </div>
+  </div>
+
+  <div class="grid cols-3" style="margin-top:16px;">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Average order value</h3>
+          <div class="big" id="aovTotal">—</div>
+        </div>
+        <span class="badge" id="aovDelta">—</span>
+      </div>
+      <div class="chart-box sm"><canvas id="aovChart"></canvas></div>
+    </div>
+    <div class="card" style="grid-column:span 2;">
+      <h3 style="margin-bottom:12px;">Top products by revenue</h3>
+      <div id="topProducts"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Traffic &amp; conversion</div>
+  <div class="grid cols-3">
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h3>Sessions over time</h3>
+          <div class="big" id="sessionsTotal">—</div>
+        </div>
+        <span class="badge" id="sessionsDelta">—</span>
+      </div>
+      <div class="chart-box sm"><canvas id="sessionsChart"></canvas></div>
+    </div>
+    <div class="card" style="grid-column:span 2;">
+      <h3 style="margin-bottom:6px;">Conversion funnel</h3>
+      <div class="section-sub" style="margin-bottom:14px;">Sessions → added to cart → reached checkout → completed purchase</div>
+      <div class="funnel-row" id="funnelRow"></div>
+    </div>
+  </div>
+
+  <div class="grid cols-3" style="margin-top:16px;">
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Traffic sources</h3>
+      <div id="trafficSources"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Sessions by device</h3>
+      <div class="chart-box donut"><canvas id="deviceChart"></canvas></div>
+      <div id="deviceLegend" style="margin-top:12px;font-size:12px;"></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Sessions by location (NZ)</h3>
+      <div id="locationList"></div>
+    </div>
+  </div>
+
+  <div class="section-title">Customers</div>
+  <div class="grid cols-2b">
+    <div class="card">
+      <h3 style="margin-bottom:12px;">New vs returning customers</h3>
+      <div class="chart-box"><canvas id="customersChart"></canvas></div>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Customer health</h3>
+      <div class="grid cols-2" style="gap:12px;">
+        <div><div class="section-sub" style="margin:0;">Returning customer rate</div><div class="kpi value" id="chReturning" style="font-family:var(--font-condensed);font-size:22px;">—</div></div>
+        <div><div class="section-sub" style="margin:0;">Avg customer LTV</div><div class="kpi value" id="chLtv" style="font-family:var(--font-condensed);font-size:22px;">—</div></div>
+        <div><div class="section-sub" style="margin:0;">Avg days between orders</div><div class="kpi value" id="chDays" style="font-family:var(--font-condensed);font-size:22px;">—</div></div>
+        <div><div class="section-sub" style="margin:0;">Refund / return rate</div><div class="kpi value" id="chRefund" style="font-family:var(--font-condensed);font-size:22px;">—</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid cols-2" style="margin-top:16px;">
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Top search queries</h3>
+      <table>
+        <thead><tr><th>Query</th><th>Searches</th><th>Results</th></tr></thead>
+        <tbody id="searchTable"></tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="margin-bottom:12px;">Top movers by units sold</h3>
+      <div id="sellThrough"></div>
+    </div>
+  </div>
+
+  <div class="integration">
+    <h2>Connecting live data</h2>
+    <p>No secret ever reaches this page. It calls a same-origin proxy at <code>/api/analytics</code> — a Next.js route inside the storefront app — sending the same password used at the gate above as <code>x-gate-token</code>. That route independently re-checks the password against <code>MUSE_ANALYTICS_GATE_PASSWORD</code> before using the real Medusa secret key (<code>MUSE_ANALYTICS_MEDUSA_KEY</code>) to call <code>/admin/muse-analytics</code> — both env vars are server-side only, never shipped to the browser. This means live data only works when the page is served by that storefront app (e.g. <code>musenz.com/analytics.html</code>); a bare static file server has no proxy to call and will fall back to demo data.</p>
+    <p><strong>GA4:</strong> sessions, traffic sources, devices and search data come from the backend's own GA4 service-account credentials — nothing Google-related is sent to or stored in this page either.</p>
+    <div class="status">
+      <div class="status-pill" id="statusMedusa"><span class="dot amber"></span> Medusa Admin API — not connected (mock data)</div>
+      <div class="status-pill" id="statusGA4"><span class="dot amber"></span> GA4 Data API — key present locally, not wired in</div>
+      <div class="status-pill"><span class="dot green"></span> Dashboard shell — functional, local</div>
+    </div>
+  </div>
+
+  <div class="note">MUSE Analytics · local prototype · figures are simulated for layout/testing until Shopify and GA4 are connected · built to <a href="../MUSE_STYLERUNNER_RESTYLE_SYSTEM.md">MUSE design system</a> tokens</div>
+</div>
+
+<script>
+/* ============ password gate ============
+   The client-side hash check below just gates the PAGE (deters casual
+   visitors and search engines — the page's own source is still visible in
+   devtools to anyone who gets past it). The same password is also sent as
+   x-gate-token on every /api/analytics call, where the server independently
+   checks it against MUSE_ANALYTICS_GATE_PASSWORD before it will use the
+   Medusa secret key — that second, server-side check is the real one. */
+const GATE_HASH = "942c5c69f3b0dfa01367e2cc6973ec929dfc7efc0a26ee37abc8287a5be11dd5";
+const GATE_TOKEN_KEY = "muse_analytics_gate_token";
+
+async function sha256Hex(text){
+  const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(buf)].map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+let gateToken = null;
+try{ gateToken = sessionStorage.getItem(GATE_TOKEN_KEY); }catch(e){ gateToken = null; }
+function gateIsUnlocked(){ return !!gateToken; }
+function unlockApp(){
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("app").style.display = "block";
+  render();
+}
+async function tryUnlock(){
+  const pass = document.getElementById("gatePassword").value;
+  const errEl = document.getElementById("gateError");
+  const hash = await sha256Hex(pass);
+  if(hash === GATE_HASH){
+    gateToken = pass;
+    try{ sessionStorage.setItem(GATE_TOKEN_KEY, pass); }catch(e){}
+    errEl.textContent = "";
+    unlockApp();
+  } else {
+    errEl.textContent = "Incorrect password.";
+  }
+}
+document.getElementById("gateSubmit").addEventListener("click", tryUnlock);
+document.getElementById("gatePassword").addEventListener("keydown", (e)=>{ if(e.key==="Enter") tryUnlock(); });
+
+/* ============ deterministic mock data engine ============ */
+function seededRandom(seed){let s=seed%2147483647; if(s<=0)s+=2147483646; return function(){s=s*16807%2147483647; return (s-1)/2147483646;};}
+function fmtNZD(n){return "NZ$"+Number(n).toLocaleString("en-NZ",{minimumFractionDigits:0,maximumFractionDigits:0});}
+function fmtNum(n){return Number(n).toLocaleString("en-NZ");}
+function deltaPct(cur,prev){if(!prev)return 0; return ((cur-prev)/prev)*100;}
+function deltaBadge(el,pct){
+  el.textContent=(pct>=0?"+":"")+pct.toFixed(1)+"%";
+  el.className="badge"+(pct>0?"":pct<0?" warn":" grey");
+}
+function deltaSpan(pct){
+  const cls=pct>0?"up":pct<0?"down":"flat";
+  const arrow=pct>0?"↑":pct<0?"↓":"—";
+  return `<span class="delta ${cls}">${arrow} ${Math.abs(pct).toFixed(1)}% vs prev period</span>`;
+}
+
+/* ---- date helpers ---- */
+function startOfDay(d){const x=new Date(d); x.setHours(0,0,0,0); return x;}
+function addDays(d,n){const x=new Date(d); x.setDate(x.getDate()+n); return x;}
+function daysInRange(start,end){return Math.round((startOfDay(end)-startOfDay(start))/86400000)+1;}
+function pad2(n){return n<10?"0"+n:""+n;}
+function toKey(d){return d.getFullYear()+"-"+pad2(d.getMonth()+1)+"-"+pad2(d.getDate());}
+function sameDay(a,b){return a && b && toKey(a)===toKey(b);}
+function fmtDate(d){return d.toLocaleDateString("en-NZ",{month:"short",day:"numeric",year:"numeric"});}
+function fmtRangeLabel(s,e){
+  if(sameDay(s,e)) return fmtDate(s);
+  const sameYear = s.getFullYear()===e.getFullYear();
+  const opts1 = sameYear? {month:"short",day:"numeric"} : {month:"short",day:"numeric",year:"numeric"};
+  return s.toLocaleDateString("en-NZ",opts1)+" – "+fmtDate(e);
+}
+
+function genSeries(days, seed, base, trendPerDay, volatility){
+  const rnd=seededRandom(seed);
+  const out=[];
+  let v=base;
+  for(let i=0;i<days;i++){
+    v = Math.max(0, v + trendPerDay + (rnd()-0.5)*volatility);
+    out.push(Math.round(v));
+  }
+  return out;
+}
+
+function labelsForRange(start,end){
+  const out=[];
+  const days=daysInRange(start,end);
+  for(let i=0;i<days;i++){
+    out.push(addDays(start,i).toLocaleDateString("en-NZ",{month:"short",day:"numeric"}));
+  }
+  return out;
+}
+
+function buildDataset(start, end, seedOffset){
+  const days = Math.max(1, daysInRange(start,end));
+  const seedBase = days*7 + 11 + (seedOffset||0);
+  const sessions = genSeries(days, seedBase+1, 140, 0.6, 40);
+  const orders = sessions.map((s,i)=>Math.max(0, Math.round(s*(0.018+seededRandom(seedBase+2+i)()*0.01))));
+  const aov = genSeries(days, seedBase+3, 95, 0.15, 12);
+  const gross = orders.map((o,i)=>Math.round(o*aov[i]));
+  const discounts = gross.map(g=>Math.round(g*0.04));
+  const returns = gross.map(g=>Math.round(g*0.015));
+  const shipping = gross.map(g=>Math.round(g*0.03));
+  const taxes = gross.map(g=>Math.round(g*0.15));
+  const net = gross.map((g,i)=>g-discounts[i]-returns[i]);
+  const total = net.map((n,i)=>n+shipping[i]+taxes[i]);
+  const newCustomers = orders.map(o=>Math.round(o*0.62));
+  const returningCustomers = orders.map((o,i)=>o-newCustomers[i]);
+
+  const sum=a=>a.reduce((x,y)=>x+y,0);
+  const grossSum=sum(gross), netSum=sum(net), totalSum=sum(total);
+  const ordersSum=sum(orders), sessionsSum=sum(sessions);
+  const aovAvg = ordersSum? Math.round(grossSum/ordersSum) : 0;
+  const convRate = sessionsSum? (ordersSum/sessionsSum*100) : 0;
+  const returningRate = ordersSum? (sum(returningCustomers)/ordersSum*100) : 0;
+  const refundRate = grossSum? (sum(returns)/grossSum*100) : 0;
+
+  return {
+    days, labels: labelsForRange(start,end),
+    sessions, orders, aov, gross, discounts, returns, shipping, taxes, net, total,
+    newCustomers, returningCustomers,
+    kpi:{
+      grossSum, netSum, totalSum, ordersSum, sessionsSum, aovAvg, convRate, returningRate, refundRate
+    }
+  };
+}
+
+/* static slices that don't need to scale with the date-range series but should react to range choice for realism */
+function buildStaticSlices(seedShift){
+  const rnd=seededRandom(900+seedShift);
+  return {
+    channels:[
+      {name:"Online Store", value: Math.round(3200+rnd()*4000), color:"#c1440e"},
+      {name:"Shop app", value: Math.round(400+rnd()*600), color:"#c8d050"},
+      {name:"Point of Sale", value: Math.round(0+rnd()*300), color:"#231f20"},
+    ],
+    products:[
+      {name:"Salomon XT-6 · Black/Phantom", revenue: Math.round(2600+rnd()*900), units: Math.round(20+rnd()*10)},
+      {name:"Adidas Samba OG · Cloud White", revenue: Math.round(2100+rnd()*800), units: Math.round(18+rnd()*10)},
+      {name:"New Balance 530 · Grey/Silver", revenue: Math.round(1650+rnd()*700), units: Math.round(14+rnd()*8)},
+      {name:"UGG Classic Mini · Chestnut", revenue: Math.round(1200+rnd()*600), units: Math.round(9+rnd()*6)},
+      {name:"North Face Nuptse · Black", revenue: Math.round(950+rnd()*500), units: Math.round(6+rnd()*5)},
+    ],
+    traffic:[
+      {name:"Organic search", value: Math.round(1800+rnd()*500)},
+      {name:"Direct", value: Math.round(1400+rnd()*400)},
+      {name:"Paid social", value: Math.round(900+rnd()*400)},
+      {name:"Email / SMS", value: Math.round(500+rnd()*300)},
+      {name:"Organic social", value: Math.round(300+rnd()*200)},
+      {name:"Referral", value: Math.round(150+rnd()*150)},
+    ],
+    devices:[
+      {name:"Mobile", value: Math.round(60+rnd()*8), color:"#c1440e"},
+      {name:"Desktop", value: Math.round(30+rnd()*6), color:"#231f20"},
+      {name:"Tablet", value: Math.round(4+rnd()*4), color:"#c8d050"},
+    ],
+    locations:[
+      {name:"Auckland", value: Math.round(1200+rnd()*400)},
+      {name:"Wellington", value: Math.round(600+rnd()*250)},
+      {name:"Christchurch", value: Math.round(500+rnd()*200)},
+      {name:"Hamilton", value: Math.round(260+rnd()*120)},
+      {name:"Tauranga", value: Math.round(190+rnd()*100)},
+    ],
+    searches:[
+      {q:"salomon xt-6", n: Math.round(60+rnd()*30), results:"yes"},
+      {q:"samba og", n: Math.round(48+rnd()*25), results:"yes"},
+      {q:"new balance 530", n: Math.round(40+rnd()*20), results:"yes"},
+      {q:"ugg mini", n: Math.round(30+rnd()*15), results:"yes"},
+      {q:"jordan 1 low", n: Math.round(24+rnd()*15), results:"no"},
+    ],
+    ltv: Math.round(210+rnd()*60),
+    daysBetween: Math.round(38+rnd()*20)
+  };
+}
+
+/* ============ chart helpers ============ */
+Chart.defaults.font.family = "Roboto, Arial, sans-serif";
+Chart.defaults.color = "#6f6b66";
+const CHARTS={};
+function lineChart(ctx, labels, data, compareData, color){
+  return new Chart(ctx,{
+    type:"line",
+    data:{labels, datasets:[
+      {data, borderColor:color, backgroundColor:color+"22", fill:true, tension:.35, pointRadius:0, borderWidth:2},
+      ...(compareData?[{data:compareData, borderColor:"#9c9892", borderDash:[4,4], fill:false, tension:.35, pointRadius:0, borderWidth:1.5}]:[])
+    ]},
+    options:{
+      plugins:{legend:{display:false}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6,font:{size:10}}}, y:{grid:{color:"#e5e2dc"},ticks:{font:{size:10}}}},
+      responsive:true, maintainAspectRatio:false, interaction:{intersect:false,mode:"index"}
+    }
+  });
+}
+function sparkline(canvas, data, color){
+  return new Chart(canvas,{
+    type:"line",
+    data:{labels:data.map((_,i)=>i), datasets:[{data, borderColor:color, borderWidth:1.5, pointRadius:0, fill:false, tension:.4}]},
+    options:{plugins:{legend:{display:false},tooltip:{enabled:false}}, scales:{x:{display:false},y:{display:false}}, responsive:true, maintainAspectRatio:false}
+  });
+}
+function donutChart(ctx, items){
+  return new Chart(ctx,{
+    type:"doughnut",
+    data:{labels:items.map(i=>i.name), datasets:[{data:items.map(i=>i.value), backgroundColor:items.map(i=>i.color), borderWidth:0}]},
+    options:{cutout:"68%", plugins:{legend:{display:false}}, responsive:true, maintainAspectRatio:false}
+  });
+}
+function barsChart(ctx, labels, newC, retC){
+  return new Chart(ctx,{
+    type:"bar",
+    data:{labels, datasets:[
+      {label:"New", data:newC, backgroundColor:"#c1440e", stack:"a"},
+      {label:"Returning", data:retC, backgroundColor:"#c8d050", stack:"a"}
+    ]},
+    options:{
+      plugins:{legend:{position:"top",align:"end",labels:{boxWidth:8,font:{size:11}}}},
+      scales:{x:{grid:{display:false},ticks:{maxTicksLimit:6,font:{size:10}}, stacked:true}, y:{grid:{color:"#e5e2dc"},ticks:{font:{size:10}}, stacked:true}},
+      responsive:true, maintainAspectRatio:false
+    }
+  });
+}
+
+function destroyAll(){Object.values(CHARTS).forEach(c=>c&&c.destroy());}
+
+/* ============ date range + compare state ============ */
+const TODAY = startOfDay(new Date());
+const RANGE_PRESETS = [
+  {key:"today", label:"Today", range:()=>[TODAY, TODAY]},
+  {key:"yesterday", label:"Yesterday", range:()=>[addDays(TODAY,-1), addDays(TODAY,-1)]},
+  {key:"7", label:"Last 7 days", range:()=>[addDays(TODAY,-6), TODAY]},
+  {key:"30", label:"Last 30 days", range:()=>[addDays(TODAY,-29), TODAY]},
+  {key:"90", label:"Last 90 days", range:()=>[addDays(TODAY,-89), TODAY]},
+  {key:"365", label:"Last 12 months", range:()=>[addDays(TODAY,-364), TODAY]},
+  {key:"ytd", label:"Year to date", range:()=>[new Date(TODAY.getFullYear(),0,1), TODAY]},
+  {key:"custom", label:"Custom range", range:null},
+];
+const COMPARE_PRESETS = [
+  {key:"previous_period", label:"Previous period"},
+  {key:"previous_year", label:"Same period last year"},
+  {key:"custom", label:"Custom range"},
+  {key:"none", label:"No comparison"},
+];
+
+let rangeState = {presetKey:"30", start: addDays(TODAY,-29), end: TODAY, label:"Last 30 days"};
+let compareState = {presetKey:"previous_period", start:null, end:null, label:"Previous period"};
+
+function computeCompareRange(){
+  const len = daysInRange(rangeState.start, rangeState.end);
+  if(compareState.presetKey==="none") return null;
+  if(compareState.presetKey==="previous_period"){
+    const end = addDays(rangeState.start,-1);
+    return [addDays(end,-(len-1)), end];
+  }
+  if(compareState.presetKey==="previous_year"){
+    return [addDays(rangeState.start,-365), addDays(rangeState.end,-365)];
+  }
+  if(compareState.presetKey==="custom" && compareState.start && compareState.end){
+    return [compareState.start, compareState.end];
+  }
+  return null;
+}
+
+/* ---- calendar rendering (shared by range + compare pickers) ---- */
+function monthGrid(year, month, selStart, selEnd){
+  const first = new Date(year,month,1);
+  const startDow = first.getDay();
+  const daysInMonth = new Date(year,month+1,0).getDate();
+  let cells="";
+  for(let i=0;i<startDow;i++) cells+='<div class="cal-cell empty"></div>';
+  for(let d=1; d<=daysInMonth; d++){
+    const dt = new Date(year,month,d);
+    let cls="cal-cell";
+    if(selStart && selEnd && dt>=selStart && dt<=selEnd) cls+=" in-range";
+    if(sameDay(dt,selStart)) cls+=" range-start";
+    if(sameDay(dt,selEnd)) cls+=" range-end";
+    if(sameDay(dt,TODAY)) cls+=" today";
+    cells+=`<button type="button" class="${cls}" data-date="${toKey(dt)}">${d}</button>`;
+  }
+  const title = first.toLocaleDateString("en-NZ",{month:"long",year:"numeric"});
+  return `<div class="cal-month"><div class="cal-month-title">${title}</div><div class="cal-grid"><div class="cal-dow">Su</div><div class="cal-dow">Mo</div><div class="cal-dow">Tu</div><div class="cal-dow">We</div><div class="cal-dow">Th</div><div class="cal-dow">Fr</div><div class="cal-dow">Sa</div>${cells}</div></div>`;
+}
+
+function buildPickerPanel({presets, presetKey, tempStart, tempEnd, calCursor}){
+  const presetList = presets.map(p=>`<button type="button" data-preset="${p.key}" class="${p.key===presetKey?'active':''}">${p.label}</button>`).join("");
+  const showCalendar = presetKey==="custom";
+  let calendarHtml = "";
+  if(showCalendar){
+    const m1 = monthGrid(calCursor.getFullYear(), calCursor.getMonth(), tempStart, tempEnd);
+    const nextCursor = new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1);
+    const m2 = monthGrid(nextCursor.getFullYear(), nextCursor.getMonth(), tempStart, tempEnd);
+    calendarHtml = `
+      <div class="cal-inputs">
+        <input type="text" readonly data-role="start-input" value="${tempStart?fmtDate(tempStart):''}" placeholder="Start date">
+        <span>→</span>
+        <input type="text" readonly data-role="end-input" value="${tempEnd?fmtDate(tempEnd):''}" placeholder="End date">
+      </div>
+      <div class="cal-nav">
+        <button type="button" data-nav="-1">‹</button>
+        <button type="button" data-nav="1">›</button>
+      </div>
+      <div class="cal-months">${m1}${m2}</div>
+      <div class="cal-actions">
+        <button type="button" class="btn ghost" data-action="cancel">Cancel</button>
+        <button type="button" class="btn primary" data-action="apply" ${(tempStart&&tempEnd)?'':'disabled'}>Apply</button>
+      </div>`;
+  }
+  return `<div class="preset-list">${presetList}</div>${showCalendar?`<div class="cal-area">${calendarHtml}</div>`:""}`;
+}
+
+/* range picker interaction state */
+let rangePickerTemp = {presetKey: rangeState.presetKey, start: rangeState.start, end: rangeState.end, calCursor: new Date(rangeState.start.getFullYear(), rangeState.start.getMonth(),1)};
+let comparePickerTemp = {presetKey: compareState.presetKey, start: compareState.start, end: compareState.end, calCursor: new Date()};
+
+function openPanel(which){
+  closePanels();
+  if(which==="range"){
+    rangePickerTemp = {presetKey: rangeState.presetKey==="custom"?"custom":rangeState.presetKey, start: rangeState.start, end: rangeState.end, calCursor: new Date(rangeState.start.getFullYear(), rangeState.start.getMonth(),1)};
+    document.getElementById("rangePanel").hidden = false;
+    document.getElementById("rangeBtn").setAttribute("aria-expanded","true");
+    renderRangePanel();
+  } else if(which==="compare"){
+    comparePickerTemp = {presetKey: compareState.presetKey, start: compareState.start, end: compareState.end, calCursor: new Date()};
+    document.getElementById("comparePanel").hidden = false;
+    document.getElementById("compareBtn").setAttribute("aria-expanded","true");
+    renderComparePanel();
+  }
+}
+function closePanels(){
+  document.getElementById("rangePanel").hidden = true;
+  document.getElementById("comparePanel").hidden = true;
+  document.getElementById("rangeBtn").setAttribute("aria-expanded","false");
+  document.getElementById("compareBtn").setAttribute("aria-expanded","false");
+}
+
+function renderRangePanel(){
+  document.getElementById("rangePanel").innerHTML = buildPickerPanel({
+    presets: RANGE_PRESETS, presetKey: rangePickerTemp.presetKey,
+    tempStart: rangePickerTemp.start, tempEnd: rangePickerTemp.end, calCursor: rangePickerTemp.calCursor
+  });
+}
+function renderComparePanel(){
+  document.getElementById("comparePanel").innerHTML = buildPickerPanel({
+    presets: COMPARE_PRESETS, presetKey: comparePickerTemp.presetKey,
+    tempStart: comparePickerTemp.start, tempEnd: comparePickerTemp.end, calCursor: comparePickerTemp.calCursor
+  });
+}
+
+function handlePickerClick(e, which){
+  const presetBtn = e.target.closest("[data-preset]");
+  const navBtn = e.target.closest("[data-nav]");
+  const dayBtn = e.target.closest(".cal-cell:not(.empty)");
+  const actionBtn = e.target.closest("[data-action]");
+  const temp = which==="range"? rangePickerTemp : comparePickerTemp;
+  const presets = which==="range"? RANGE_PRESETS : COMPARE_PRESETS;
+  const rerender = which==="range"? renderRangePanel : renderComparePanel;
+
+  if(presetBtn){
+    const key = presetBtn.dataset.preset;
+    temp.presetKey = key;
+    const preset = presets.find(p=>p.key===key);
+    if(key !== "custom"){
+      let s=null, en=null;
+      if(preset.range){ [s,en] = preset.range(); }
+      temp.start = s; temp.end = en;
+      commitPicker(which, key, s, en, preset.label);
+      closePanels();
+      return;
+    }
+    temp.start = null; temp.end = null;
+    rerender();
+    return;
+  }
+  if(navBtn){
+    const dir = parseInt(navBtn.dataset.nav,10);
+    temp.calCursor = new Date(temp.calCursor.getFullYear(), temp.calCursor.getMonth()+dir, 1);
+    rerender();
+    return;
+  }
+  if(dayBtn){
+    const dt = new Date(dayBtn.dataset.date+"T00:00:00");
+    if(!temp.start || (temp.start && temp.end)){
+      temp.start = dt; temp.end = null;
+    } else if(dt < temp.start){
+      temp.end = temp.start; temp.start = dt;
+    } else {
+      temp.end = dt;
+    }
+    rerender();
+    return;
+  }
+  if(actionBtn){
+    if(actionBtn.dataset.action==="cancel"){ closePanels(); return; }
+    if(actionBtn.dataset.action==="apply" && temp.start && temp.end){
+      const label = fmtRangeLabel(temp.start, temp.end);
+      commitPicker(which, "custom", temp.start, temp.end, label);
+      closePanels();
+    }
+  }
+}
+
+function commitPicker(which, key, start, end, label){
+  if(which==="range"){
+    rangeState = {presetKey:key, start, end, label};
+    document.getElementById("rangeLabel").textContent = label;
+  } else {
+    compareState = {presetKey:key, start:key==="custom"?start:null, end:key==="custom"?end:null, label};
+    document.getElementById("compareLabel").textContent = label;
+  }
+  render();
+}
+
+document.getElementById("rangeBtn").addEventListener("click", (e)=>{
+  e.stopPropagation();
+  const panel = document.getElementById("rangePanel");
+  panel.hidden ? openPanel("range") : closePanels();
+});
+document.getElementById("compareBtn").addEventListener("click", (e)=>{
+  e.stopPropagation();
+  const panel = document.getElementById("comparePanel");
+  panel.hidden ? openPanel("compare") : closePanels();
+});
+document.getElementById("rangePanel").addEventListener("click", (e)=>{ e.stopPropagation(); handlePickerClick(e,"range"); });
+document.getElementById("comparePanel").addEventListener("click", (e)=>{ e.stopPropagation(); handlePickerClick(e,"compare"); });
+document.addEventListener("click", closePanels);
+document.addEventListener("keydown", (e)=>{ if(e.key==="Escape") closePanels(); });
+
+/* ============ live data connection ============
+   No key of any kind lives in this page. It calls a same-origin proxy,
+   /api/analytics (a Next.js route in the storefront app), sending the gate
+   password as x-gate-token. The proxy holds the real Medusa secret key
+   server-side and re-checks the password itself before using it — see
+   apps/storefront/src/app/api/analytics/route.ts. This only works when the
+   page is served by that storefront app (e.g. musenz.com/analytics.html, or
+   a local `pnpm --filter storefront dev` on :8000) — a bare static server
+   has no proxy to call, so ANALYTICS_PROXY_URL can be overridden below for
+   local testing against a storefront dev server on a different origin. */
+const ANALYTICS_PROXY_URL = "/api/analytics";
+
+const LIVE_TOGGLE_KEY = "muse_analytics_live_enabled";
+let liveEnabled = false;
+try{ liveEnabled = localStorage.getItem(LIVE_TOGGLE_KEY) === "1"; }catch(e){ liveEnabled = false; }
+
+function updateConnectLabel(){
+  document.getElementById("connectLabel").textContent = liveEnabled ? "Live data" : "Demo data";
+}
+updateConnectLabel();
+
+document.getElementById("connectBtn").addEventListener("click", ()=>{
+  liveEnabled = !liveEnabled;
+  try{ localStorage.setItem(LIVE_TOGGLE_KEY, liveEnabled ? "1" : "0"); }catch(e){}
+  updateConnectLabel();
+  render();
+});
+
+async function fetchLiveData(){
+  const params = new URLSearchParams({ from: toKey(rangeState.start), to: toKey(rangeState.end) });
+  const compareRange = computeCompareRange();
+  if(compareRange){ params.set("compareFrom", toKey(compareRange[0])); params.set("compareTo", toKey(compareRange[1])); }
+  else { params.set("compare","none"); }
+  const res = await fetch(ANALYTICS_PROXY_URL+"?"+params.toString(), {
+    headers:{ "x-gate-token": gateToken || "" }
+  });
+  if(!res.ok){
+    const body = await res.json().catch(()=>({}));
+    throw new Error(body.message || ("Analytics request failed (HTTP "+res.status+")"));
+  }
+  return res.json();
+}
+
+/* map a real /admin/muse-analytics response into the shape render() expects */
+/* Tolerant of both the enhanced route (gross_sales/net_sales/shipping/taxes/
+   refunds/time_series/new_customers/...) and the older deployed shape that
+   only has {revenue, orders, units_sold, aov, discounts}. */
+function normalizeSalesKpis(kpis){
+  const revenue = kpis.total_sales != null ? kpis.total_sales : kpis.revenue || 0;
+  const gross = kpis.gross_sales != null ? kpis.gross_sales : revenue;
+  const discounts = kpis.discounts || 0;
+  const refunds = kpis.refunds || 0;
+  const net = kpis.net_sales != null ? kpis.net_sales : gross - discounts - refunds;
+  return {
+    grossSum: gross, netSum: net, totalSum: revenue,
+    ordersSum: kpis.orders || 0,
+    aovAvg: kpis.aov || 0,
+    discounts, refunds,
+    shipping: kpis.shipping || 0, taxes: kpis.taxes || 0,
+    newCustomers: kpis.new_customers != null ? kpis.new_customers : null,
+    returningRate: kpis.returning_customer_rate != null ? kpis.returning_customer_rate*100 : 0,
+    refundRate: kpis.refund_rate != null ? kpis.refund_rate*100 : (revenue ? refunds/revenue*100 : 0),
+  };
+}
+
+function apiToCur(json){
+  const start = rangeState.start, end = rangeState.end;
+  const days = daysInRange(start,end);
+  const labels = labelsForRange(start,end);
+  const dateKeys = []; for(let i=0;i<days;i++) dateKeys.push(toKey(addDays(start,i)));
+  const s = json.sales;
+  const n = normalizeSalesKpis(s.kpis);
+  const hasTimeSeries = Array.isArray(s.time_series) && s.time_series.length > 0;
+  const tsMap = new Map((s.time_series||[]).map(r=>[r.date,r]));
+  const trafficDaily = new Map(((json.traffic||{}).daily||[]).map(r=>[r.date,r]));
+
+  const evenRevenue = n.totalSum / days, evenOrders = n.ordersSum / days;
+  const revenueArr = dateKeys.map(k=> hasTimeSeries ? ((tsMap.get(k)||{}).revenue||0) : evenRevenue);
+  const ordersArr = dateKeys.map(k=> hasTimeSeries ? ((tsMap.get(k)||{}).orders||0) : evenOrders);
+  const aovArr = ordersArr.map((o,i)=> o? revenueArr[i]/o : 0);
+  const sessionsArr = dateKeys.map(k=> (trafficDaily.get(k)||{}).sessions||0);
+  const addCartArr = dateKeys.map(k=> (trafficDaily.get(k)||{}).add_to_carts||0);
+  const checkoutArr = dateKeys.map(k=> (trafficDaily.get(k)||{}).checkouts||0);
+
+  const totalRevenue = sumArr(revenueArr) || 1;
+  const shareArr = revenueArr.map(v=> v/totalRevenue);
+  const discountsArr = shareArr.map(sh=> sh*n.discounts);
+  const shippingArr = shareArr.map(sh=> sh*n.shipping);
+  const taxesArr = shareArr.map(sh=> sh*n.taxes);
+  const returnsArr = shareArr.map(sh=> sh*n.refunds);
+  const grossArr = shareArr.map(sh=> sh*n.grossSum);
+  const netArr = grossArr.map((v,i)=> v-discountsArr[i]-returnsArr[i]);
+  const totalOrdersForSplit = n.ordersSum || 1;
+  const newCustomers = n.newCustomers != null
+    ? ordersArr.map(o=> Math.round(o*(n.newCustomers/totalOrdersForSplit)))
+    : ordersArr.map(()=> 0);
+  const returningCustomers = ordersArr.map((o,i)=> Math.max(0, o-newCustomers[i]));
+
+  const sessionsSum = sumArr(sessionsArr) || ((json.traffic||{}).kpis && json.traffic.kpis.visits) || 0;
+
+  return {
+    days, labels,
+    sessions: sessionsArr, orders: ordersArr, aov: aovArr,
+    gross: grossArr, discounts: discountsArr, returns: returnsArr, shipping: shippingArr, taxes: taxesArr,
+    net: netArr, total: revenueArr,
+    newCustomers, returningCustomers,
+    kpi:{
+      grossSum: n.grossSum, netSum: n.netSum, totalSum: n.totalSum,
+      ordersSum: n.ordersSum, sessionsSum,
+      aovAvg: n.aovAvg,
+      convRate: sessionsSum ? (n.ordersSum/sessionsSum*100) : 0,
+      returningRate: n.returningRate,
+      refundRate: n.refundRate,
+    },
+    _funnel: { addToCart: sumArr(addCartArr), checkout: sumArr(checkoutArr) },
+  };
+}
+
+function apiPrevKpi(json){
+  const sp = json.sales_previous;
+  if(!sp) return null;
+  const n = normalizeSalesKpis(sp.kpis);
+  const tp = json.traffic_previous;
+  const sessionsSum = (tp && tp.kpis && tp.kpis.visits) || 0;
+  return { kpi:{
+    grossSum: n.grossSum, netSum: n.netSum, totalSum: n.totalSum,
+    ordersSum: n.ordersSum, sessionsSum,
+    aovAvg: n.aovAvg,
+    convRate: sessionsSum ? (n.ordersSum/sessionsSum*100) : 0,
+    returningRate: n.returningRate,
+    refundRate: n.refundRate,
+  }};
+}
+
+function apiToSlices(json){
+  const s = json.sales, t = json.traffic || {};
+  const norm = normalizeSalesKpis(s.kpis);
+  const deviceColor = (name)=>{
+    const lower = (name||"").toLowerCase();
+    return lower.includes("mobile") ? "#c1440e" : lower.includes("tablet") ? "#c8d050" : "#231f20";
+  };
+  return {
+    channels: [{ name:"Online Store", value: norm.totalSum, color:"#c1440e" }],
+    products: (s.products||[]).slice(0,5).map(p=>({ name:p.label, revenue:p.revenue, units:p.quantity })),
+    traffic: t.configured && t.sources ? t.sources.map(x=>({ name:x.label, value:x.visits })) : [],
+    devices: t.configured && t.devices ? t.devices.map(x=>({ name:x.label, value:x.visits, color:deviceColor(x.label) })) : [],
+    locations: t.configured && t.geography ? t.geography.map(x=>({ name:x.label, value:x.visits })) : [],
+    searches: t.configured && t.searches ? t.searches.slice(0,5).map(x=>({ q:x.label, n:x.visits, results:"yes" })) : [],
+    ltv: norm.ordersSum ? (norm.totalSum/norm.ordersSum) : 0,
+    daysBetween: null,
+  };
+}
+
+/* ============ render ============ */
+async function render(){
+  let cur, prev, slices, liveError = null, gaConfigured = false;
+
+  const wantsLive = liveEnabled;
+  if(wantsLive){
+    try{
+      const json = await fetchLiveData();
+      cur = apiToCur(json);
+      prev = apiPrevKpi(json);
+      slices = apiToSlices(json);
+      gaConfigured = !!json.traffic.configured;
+      if(!json.traffic.configured){
+        liveError = "Connected to Medusa — sales data is real. Google Analytics traffic data is not configured on the backend yet, so sessions/traffic panels show zero.";
+      } else if(json.traffic.message){
+        liveError = "Google Analytics error: " + json.traffic.message;
+      }
+    } catch(err){
+      liveError = err.message || "Could not load live data — showing demo data instead.";
+    }
+  }
+
+  if(!cur){
+    cur = buildDataset(rangeState.start, rangeState.end, 0);
+    const compareRange = computeCompareRange();
+    prev = compareRange ? buildDataset(compareRange[0], compareRange[1], 401) : null;
+    slices = buildStaticSlices(cur.days);
+  }
+
+  document.getElementById("asOf").textContent = (wantsLive && !liveError ? "live · " : "as of ") + new Date().toLocaleString("en-NZ",{dateStyle:"medium",timeStyle:"short"});
+
+  destroyAll();
+
+  /* KPIs */
+  const kpiGrid = document.getElementById("kpiGrid");
+  const k = cur.kpi, pk = prev ? prev.kpi : null;
+  const kpis = [
+    {label:"Gross sales", value: fmtNZD(k.grossSum), prev: pk?pk.grossSum:null, cur:k.grossSum, spark:cur.gross, color:"#c1440e"},
+    {label:"Net sales", value: fmtNZD(k.netSum), prev: pk?pk.netSum:null, cur:k.netSum, spark:cur.net, color:"#231f20"},
+    {label:"Orders", value: fmtNum(k.ordersSum), prev: pk?pk.ordersSum:null, cur:k.ordersSum, spark:cur.orders, color:"#c1440e"},
+    {label:"Avg order value", value: fmtNZD(k.aovAvg), prev: pk?pk.aovAvg:null, cur:k.aovAvg, spark:cur.aov, color:"#231f20"},
+    {label:"Sessions", value: fmtNum(k.sessionsSum), prev: pk?pk.sessionsSum:null, cur:k.sessionsSum, spark:cur.sessions, color:"#c1440e"},
+    {label:"Conversion rate", value: k.convRate.toFixed(2)+"%", prev: pk?pk.convRate:null, cur:k.convRate, spark:cur.orders, color:"#231f20"},
+    {label:"Returning customer rate", value: k.returningRate.toFixed(0)+"%", prev: pk?pk.returningRate:null, cur:k.returningRate, spark:cur.returningCustomers, color:"#c8d050"},
+    {label:"Refund rate", value: k.refundRate.toFixed(1)+"%", prev: pk?pk.refundRate:null, cur:k.refundRate, spark:cur.returns, color:"#c62828"},
+  ];
+  kpiGrid.innerHTML = kpis.map((x,i)=>`
+    <div class="card kpi">
+      <div class="label">${x.label}</div>
+      <div class="value">${x.value}</div>
+      ${x.prev!=null? deltaSpan(deltaPct(x.cur,x.prev)) : '<span class="delta flat">no comparison</span>'}
+      <canvas id="spark${i}"></canvas>
+    </div>`).join("");
+  kpis.forEach((x,i)=> CHARTS["spark"+i]=sparkline(document.getElementById("spark"+i), x.spark, x.color));
+
+  /* Sales over time */
+  document.getElementById("salesTotal").textContent = fmtNZD(k.totalSum);
+  deltaBadge(document.getElementById("salesDelta"), pk?deltaPct(k.totalSum,pk.totalSum):0);
+  CHARTS.sales = lineChart(document.getElementById("salesChart"), cur.labels, cur.total, prev&&prev.total?prev.total.slice(-cur.total.length):null, "#c1440e");
+
+  document.getElementById("salesBreakdown").innerHTML = [
+    ["Gross sales", k.grossSum],["Discounts", -sumArr(cur.discounts)],["Returns", -sumArr(cur.returns)],
+    ["Net sales", k.netSum],["Shipping charges", sumArr(cur.shipping)],["Taxes", sumArr(cur.taxes)],["Total sales", k.totalSum]
+  ].map(([n,v])=>`<div class="item"><span>${n}</span><span>${v<0?"-":""}${fmtNZD(Math.abs(v))}</span></div>`).join("");
+
+  /* Channels */
+  CHARTS.channel = donutChart(document.getElementById("channelChart"), slices.channels);
+  document.getElementById("channelLegend").innerHTML = slices.channels.map(c=>`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span><span class="legend-dot" style="background:${c.color}"></span>${c.name}</span><span>${fmtNZD(c.value)}</span></div>`).join("");
+
+  /* AOV */
+  document.getElementById("aovTotal").textContent = fmtNZD(k.aovAvg);
+  deltaBadge(document.getElementById("aovDelta"), pk?deltaPct(k.aovAvg,pk.aovAvg):0);
+  CHARTS.aov = lineChart(document.getElementById("aovChart"), cur.labels, cur.aov, prev&&prev.aov?prev.aov.slice(-cur.aov.length):null, "#231f20");
+
+  /* Top products */
+  const maxRev = Math.max(...slices.products.map(p=>p.revenue));
+  document.getElementById("topProducts").innerHTML = slices.products.map(p=>`
+    <div class="bar-item">
+      <div class="top"><span class="name">${p.name} · ${p.units} units</span><span class="val">${fmtNZD(p.revenue)}</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${(p.revenue/maxRev*100).toFixed(0)}%"></div></div>
+    </div>`).join("");
+
+  /* Sessions */
+  document.getElementById("sessionsTotal").textContent = fmtNum(k.sessionsSum);
+  deltaBadge(document.getElementById("sessionsDelta"), pk?deltaPct(k.sessionsSum,pk.sessionsSum):0);
+  CHARTS.sessions = lineChart(document.getElementById("sessionsChart"), cur.labels, cur.sessions, prev&&prev.sessions?prev.sessions.slice(-cur.sessions.length):null, "#c1440e");
+
+  /* Funnel */
+  const addedToCart = cur._funnel ? cur._funnel.addToCart : Math.round(k.sessionsSum*0.092);
+  const reachedCheckout = cur._funnel ? cur._funnel.checkout : Math.round(addedToCart*0.42);
+  const completed = k.ordersSum;
+  const funnel=[
+    {lbl:"Sessions", n:k.sessionsSum, pct:100},
+    {lbl:"Added to cart", n:addedToCart, pct:k.sessionsSum?addedToCart/k.sessionsSum*100:0},
+    {lbl:"Reached checkout", n:reachedCheckout, pct:k.sessionsSum?reachedCheckout/k.sessionsSum*100:0},
+    {lbl:"Completed purchase", n:completed, pct:k.sessionsSum?completed/k.sessionsSum*100:0},
+  ];
+  document.getElementById("funnelRow").innerHTML = funnel.map(f=>`
+    <div class="funnel-step">
+      <div class="funnel-track"><div class="funnel-bar" style="height:${Math.max(6,f.pct*1.3)}px"></div></div>
+      <div class="pct">${f.pct.toFixed(1)}%</div>
+      <div class="lbl">${f.lbl}</div>
+      <div class="n">${fmtNum(f.n)}</div>
+    </div>`).join("");
+
+  /* Traffic sources */
+  const maxTraffic = Math.max(...slices.traffic.map(t=>t.value));
+  document.getElementById("trafficSources").innerHTML = slices.traffic.map(t=>`
+    <div class="bar-item">
+      <div class="top"><span class="name">${t.name}</span><span class="val">${fmtNum(t.value)}</span></div>
+      <div class="bar-track"><div class="bar-fill ink" style="width:${(t.value/maxTraffic*100).toFixed(0)}%"></div></div>
+    </div>`).join("");
+
+  /* Devices */
+  CHARTS.device = donutChart(document.getElementById("deviceChart"), slices.devices);
+  document.getElementById("deviceLegend").innerHTML = slices.devices.map(d=>`<div style="display:flex;justify-content:space-between;margin-bottom:6px;"><span><span class="legend-dot" style="background:${d.color}"></span>${d.name}</span><span>${fmtNum(d.value)}</span></div>`).join("");
+
+  /* Locations */
+  const maxLoc = Math.max(...slices.locations.map(l=>l.value));
+  document.getElementById("locationList").innerHTML = slices.locations.map(l=>`
+    <div class="bar-item">
+      <div class="top"><span class="name">${l.name}</span><span class="val">${fmtNum(l.value)}</span></div>
+      <div class="bar-track"><div class="bar-fill lime" style="width:${(l.value/maxLoc*100).toFixed(0)}%"></div></div>
+    </div>`).join("");
+
+  /* Customers */
+  CHARTS.customers = barsChart(document.getElementById("customersChart"), cur.labels, cur.newCustomers, cur.returningCustomers);
+  document.getElementById("chReturning").textContent = k.returningRate.toFixed(0)+"%";
+  document.getElementById("chLtv").textContent = fmtNZD(slices.ltv);
+  document.getElementById("chDays").textContent = slices.daysBetween!=null ? slices.daysBetween+" days" : "—";
+  document.getElementById("chRefund").textContent = k.refundRate.toFixed(1)+"%";
+
+  /* Search */
+  document.getElementById("searchTable").innerHTML = slices.searches.map(s=>`
+    <tr><td>${s.q}</td><td>${s.n}</td><td>${s.results==="yes"?'<span class="badge grey">has results</span>':'<span class="badge warn">no results</span>'}</td></tr>`).join("");
+
+  /* Top movers by units sold */
+  const maxUnits = Math.max(1, ...slices.products.map(p=>p.units));
+  document.getElementById("sellThrough").innerHTML = slices.products.map(p=>{
+    const pct = Math.round((p.units/maxUnits)*100);
+    return `<div class="bar-item">
+      <div class="top"><span class="name">${p.name}</span><span class="val">${p.units} units</span></div>
+      <div class="bar-track"><div class="bar-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join("");
+
+  document.getElementById("liveBanner").hidden = !liveError;
+  if(liveError) document.getElementById("liveBanner").textContent = liveError;
+
+  document.getElementById("topbarStatus").textContent = "MUSE · admin analytics · backend: Medusa (" + (wantsLive ? "live mode" : "mock mode") + ")";
+  document.getElementById("statusMedusa").innerHTML = wantsLive
+    ? '<span class="dot green"></span> Medusa Admin API — connected via secret key'
+    : '<span class="dot amber"></span> Medusa Admin API — not connected (mock data)';
+  document.getElementById("statusGA4").innerHTML = gaConfigured
+    ? '<span class="dot green"></span> GA4 Data API — connected, live sessions and traffic'
+    : '<span class="dot amber"></span> GA4 Data API — key present locally, not wired in';
+}
+
+function sumArr(a){return a.reduce((x,y)=>x+y,0);}
+
+async function exportCSV(){
+  let d;
+  if(liveEnabled){
+    try{ d = apiToCur(await fetchLiveData()); }
+    catch(e){ d = buildDataset(rangeState.start, rangeState.end, 0); }
+  } else {
+    d = buildDataset(rangeState.start, rangeState.end, 0);
+  }
+  let csv = "date,sessions,orders,gross_sales,net_sales,total_sales,aov\n";
+  d.labels.forEach((lbl,i)=>{
+    csv += [lbl, d.sessions[i], d.orders[i], d.gross[i], d.net[i], d.total[i], d.aov[i]].join(",") + "\n";
+  });
+  const blob = new Blob([csv], {type:"text/csv"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = "muse-analytics-export.csv"; a.click();
+  URL.revokeObjectURL(url);
+}
+
+document.getElementById("refreshBtn").addEventListener("click", render);
+document.getElementById("exportBtn").addEventListener("click", exportCSV);
+
+if(gateIsUnlocked()) unlockApp();
+</script>
+</div>
+</body>
+</html>
