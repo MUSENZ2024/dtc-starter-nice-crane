@@ -8,6 +8,11 @@ import { listRegions } from "@lib/data/regions"
 import { HttpTypes, StoreRegion } from "@medusajs/types"
 import StoreTemplateMuse from "@modules/store/templates/store-template-muse"
 
+// Category stock changes are catalogue operations, not build-time content.
+// Render this route on request so a newly assigned or updated product appears
+// in its category without waiting for the next storefront deployment.
+export const dynamic = "force-dynamic"
+
 type Props = {
   params: Promise<{ category: string[]; countryCode: string }>
   searchParams: Promise<Record<string, string | undefined>>
