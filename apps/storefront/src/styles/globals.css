@@ -1080,6 +1080,10 @@ body {
     @apply border-[#F0C4B5] bg-muse-orange-soft text-muse-orange;
   }
 
+  .muse-request-input {
+    @apply min-h-12 w-full border border-muse-border bg-white px-3 py-2 text-[16px] text-muse-black outline-none transition placeholder:text-muse-text-muted focus:border-muse-orange focus:ring-1 focus:ring-muse-orange;
+  }
+
   @media (max-width: 600px) {
     .muse-auth-card {
       @apply rounded-[20px] px-[23px] py-8;

@@ -20,9 +20,22 @@ import {
 } from "./admin/orders/tracking-validators"
 import { ImportMarketingSubscribersSchema } from "./admin/marketing/subscribers/validators"
 import { PostStoreTrackingLookupSchema } from "./store/tracking/validators"
+import { PostStoreItemRequestSchema } from "./store/item-requests/route"
+import { PostAdminItemRequestSchema } from "./admin/item-requests/[id]/route"
+import multer from "multer"
+
+const itemRequestUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024, files: 1 },
+  fileFilter: (_request, file, callback) => {
+    callback(null, ["image/jpeg", "image/png", "image/webp"].includes(file.mimetype))
+  },
+})
 
 export default defineMiddlewares({
   routes: [
+    { matcher: "/store/item-requests", method: ["POST"], middlewares: [itemRequestUpload.single("image"), validateAndTransformBody(PostStoreItemRequestSchema)] },
+    { matcher: "/admin/item-requests/:id", method: ["POST"], middlewares: [validateAndTransformBody(PostAdminItemRequestSchema)] },
     { matcher: "/store/tracking", method: ["POST"], middlewares: [validateAndTransformBody(PostStoreTrackingLookupSchema)] },
     { matcher: "/admin/marketing/campaigns", method: ["POST"], middlewares: [validateAndTransformBody(SaveCampaignSchema)] },
     { matcher: "/admin/marketing/campaigns/:id", method: ["POST"], middlewares: [validateAndTransformBody(SaveCampaignSchema)] },

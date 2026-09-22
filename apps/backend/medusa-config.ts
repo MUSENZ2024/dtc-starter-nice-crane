@@ -40,6 +40,9 @@ module.exports = defineConfig({
   ],
   modules: [
     {
+      resolve: "./src/modules/item-request",
+    },
+    {
       resolve: "./src/modules/marketing",
     },
     {

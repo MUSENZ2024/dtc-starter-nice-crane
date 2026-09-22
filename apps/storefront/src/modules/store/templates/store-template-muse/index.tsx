@@ -9,6 +9,8 @@ import ProductGridMuse from "@modules/store/components/product-grid-muse"
 import SkeletonProductGrid from "@modules/skeletons/templates/skeleton-product-grid"
 import { buildDynamicTagFilters } from "@modules/store/utils/dynamic-filter-options"
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
+import AccessoriesRequestSection from "@modules/item-requests/components/accessories-request-section"
+import { AccessoriesFaq, AccessoriesSourcingNotice } from "@modules/item-requests/components/accessories-info"
 
 const APPAREL_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "2XL"]
 
@@ -282,6 +284,7 @@ export default function StoreTemplateMuse({
   )
   const isClearance = pageVariant === "clearance"
   const isCategory = pageVariant === "category" && Boolean(category)
+  const isAccessoriesCategory = isCategory && /bag|accessor/i.test(`${category?.handle} ${category?.name}`)
   const childCategories = categories.filter(
     (category) =>
       category.parent_category_id || !category.category_children?.length
@@ -401,6 +404,7 @@ export default function StoreTemplateMuse({
 
   return (
     <div className="muse-listing-restyle min-h-screen bg-white font-inter text-muse-black">
+      {isAccessoriesCategory && <AccessoriesSourcingNotice />}
       <div className="mx-auto max-w-[1400px] px-[18px] pt-5 text-[12px] font-medium tracking-[0.03em] text-[#66615b] small:px-8">
         <LocalizedClientLink
           href="/"
@@ -419,7 +423,7 @@ export default function StoreTemplateMuse({
             searchParams={searchParams}
           />
         ) : isCategory && category ? (
-          <CategoryHero category={category} searchParams={searchParams} />
+          isAccessoriesCategory ? <AccessoriesHero category={category} searchParams={searchParams} /> : <CategoryHero category={category} searchParams={searchParams} />
         ) : (
           <>
             <h1 className="text-[clamp(36px,5vw,56px)] font-black leading-none tracking-[-0.04em]">
@@ -492,6 +496,8 @@ export default function StoreTemplateMuse({
       </div>
 
       {isClearance && <ClearanceConfidenceSection />}
+      {isAccessoriesCategory && <AccessoriesRequestSection />}
+      {isAccessoriesCategory && <AccessoriesFaq />}
 
       <FilterBarMobileMuse
         activeFilterCount={activeFilterCount}
@@ -506,6 +512,17 @@ export default function StoreTemplateMuse({
       />
     </div>
   )
+}
+
+function AccessoriesHero({ category, searchParams }: { category: HttpTypes.StoreProductCategory; searchParams: StoreSearchParams }) {
+  const shortcuts = [["Bags", "bag"], ["Watches", "watch"], ["Wallets", "wallet"], ["Accessories", "accessory"]]
+  const hrefFor = (term: string) => {
+    const params = new URLSearchParams()
+    Object.entries(searchParams).forEach(([key, value]) => { if (value && key !== "q" && key !== "page") params.set(key, value) })
+    params.set("q", term)
+    return `/categories/${category.handle}?${params.toString()}`
+  }
+  return <div className="border-y border-muse-border bg-muse-cream-warm"><div className="grid gap-8 px-5 py-8 small:grid-cols-[minmax(0,1fr)_340px] small:items-end small:px-10 small:py-12"><div><p className="text-[11px] font-bold uppercase tracking-[0.16em] text-muse-orange">Bags & accessories</p><h1 className="mt-3 max-w-[720px] font-condensed text-[clamp(38px,6vw,68px)] leading-[0.96] tracking-[-0.03em]">The finishing pieces.</h1><p className="mt-4 max-w-[620px] text-[15px] leading-7 text-muse-text-muted">Shop bags, watches, wallets and accessories, or send us a photo if you’re looking for something specific.</p><div className="mt-6 flex flex-wrap gap-2">{shortcuts.map(([label, term]) => <a key={label} href={hrefFor(term)} className="flex min-h-11 items-center border border-muse-black bg-white px-4 text-[13px] font-bold transition hover:bg-muse-black hover:text-white">{label}</a>)}</div></div><a href="#request-an-item" className="flex min-h-12 items-center justify-between bg-muse-black px-5 text-[14px] font-bold text-white transition hover:bg-muse-orange">Request an item <span aria-hidden="true">↓</span></a></div></div>
 }
 
 function CategoryHero({
