@@ -31,7 +31,7 @@ export const listProductTags = async (
           limit: String(pageLimit),
           offset: String(offset),
           ...(queryParams.value ? { value: queryParams.value } : {}),
-          fields: "id,name,value,products.id,products.status",
+          fields: "id,value,products.id,products.status",
         },
         next: { revalidate: 300 },
         cache: "force-cache",

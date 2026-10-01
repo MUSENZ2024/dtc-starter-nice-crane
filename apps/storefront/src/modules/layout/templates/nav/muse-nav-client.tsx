@@ -11,9 +11,11 @@ import {
   type TouchEvent,
 } from "react"
 import { createPortal } from "react-dom"
+import { InstantSearch, useHits, useInstantSearch, useSearchBox } from "react-instantsearch"
 
 import LocalizedClientLink from "@modules/common/components/localized-client-link"
 import { useParams, useRouter } from "next/navigation"
+import { PRODUCT_SEARCH_INDEX, searchClient } from "@lib/search-client"
 
 type Props = {
   categoryLinks: { label: string; href: string }[]
@@ -32,8 +34,6 @@ type SearchProductLink = {
   image?: string
   keywords: string
 }
-
-type LiveSearchProductLink = Omit<SearchProductLink, "keywords">
 
 type SuggestionLink = {
   title: string
@@ -157,12 +157,7 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchPanelTop, setSearchPanelTop] = useState(96)
   const [query, setQuery] = useState("")
-  const [liveProductLinks, setLiveProductLinks] = useState<
-    LiveSearchProductLink[]
-  >([])
-  const [isProductSearchLoading, setIsProductSearchLoading] = useState(false)
   const searchTouchStartY = useRef<number | null>(null)
-  const searchRequestId = useRef(0)
   const menuTriggerRef = useRef<HTMLButtonElement>(null)
   const mobileSearchTriggerRef = useRef<HTMLButtonElement>(null)
   const menuDialogRef = useRef<HTMLElement>(null)
@@ -171,10 +166,6 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
   const searchReturnFocusRef = useRef<HTMLElement | null>(null)
   const router = useRouter()
   const { countryCode } = useParams()
-  const country = Array.isArray(countryCode)
-    ? countryCode[0]
-    : countryCode ?? "nz"
-
   const collectionSuggestions = useMemo(
     () => [
       ...curatedCollections,
@@ -199,16 +190,8 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
       }
     }
 
-    const matchedProducts = liveProductLinks.length
-      ? liveProductLinks
-      : productLinks
-          .filter((product) =>
-            matchesTerms(`${product.title} ${product.keywords}`, terms)
-          )
-          .slice(0, 5)
-
     return {
-      products: matchedProducts,
+      products: [],
       collections: collectionSuggestions
         .filter((item) => matchesTerms(`${item.title} ${item.keywords}`, terms))
         .slice(0, 4),
@@ -216,19 +199,13 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
         .filter((item) => matchesTerms(`${item.title} ${item.keywords}`, terms))
         .slice(0, 3),
     }
-  }, [collectionSuggestions, liveProductLinks, productLinks, query])
+  }, [collectionSuggestions, productLinks, query])
 
   const hasExactResults =
-    searchResults.products.length +
-      searchResults.collections.length +
-      searchResults.help.length >
-      0 || isProductSearchLoading
-  const searchStatus = isProductSearchLoading
-    ? `Searching for ${query.trim()}`
-    : query.trim().length >= 2
-    ? `${searchResults.products.length} product ${
-        searchResults.products.length === 1 ? "result" : "results"
-      } found for ${query.trim()}`
+    searchResults.collections.length + searchResults.help.length > 0 ||
+    query.trim().length >= 2
+  const searchStatus = query.trim().length >= 2
+    ? `Searching products for ${query.trim()}`
     : "Search suggestions ready"
 
   const restoreFocus = useCallback((target: HTMLElement | null) => {
@@ -275,73 +252,6 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
     },
     [closeSearch, openSearch, searchOpen]
   )
-
-  useEffect(() => {
-    if (!searchOpen) {
-      return
-    }
-
-    const trimmedQuery = query.trim()
-
-    if (trimmedQuery.length < 2) {
-      searchRequestId.current += 1
-      setLiveProductLinks([])
-      setIsProductSearchLoading(false)
-      return
-    }
-
-    const controller = new AbortController()
-    const requestId = searchRequestId.current + 1
-    searchRequestId.current = requestId
-    setLiveProductLinks([])
-    setIsProductSearchLoading(true)
-
-    const timeout = window.setTimeout(async () => {
-      const params = new URLSearchParams({
-        countryCode: country,
-        q: trimmedQuery,
-      })
-
-      try {
-        const response = await fetch(`/api/search?${params.toString()}`, {
-          cache: "default",
-          signal: controller.signal,
-        })
-
-        if (!response.ok || requestId !== searchRequestId.current) {
-          setLiveProductLinks([])
-          return
-        }
-
-        const payload = (await response.json()) as {
-          products?: LiveSearchProductLink[]
-        }
-
-        if (requestId === searchRequestId.current) {
-          setLiveProductLinks(payload.products ?? [])
-        }
-      } catch (_error) {
-        if (
-          !controller.signal.aborted &&
-          requestId === searchRequestId.current
-        ) {
-          setLiveProductLinks([])
-        }
-      } finally {
-        if (
-          !controller.signal.aborted &&
-          requestId === searchRequestId.current
-        ) {
-          setIsProductSearchLoading(false)
-        }
-      }
-    }, 180)
-
-    return () => {
-      window.clearTimeout(timeout)
-      controller.abort()
-    }
-  }, [country, query, searchOpen])
 
   useEffect(() => {
     setMounted(true)
@@ -736,12 +646,6 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
                     className="h-12 min-w-0 flex-1 bg-transparent text-[16px] text-white outline-none placeholder:text-white/45 small:text-sm"
                     aria-label="Search products, collections and help"
                   />
-                  {isProductSearchLoading && (
-                    <span
-                      className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-white/25 border-t-[#C8D050]"
-                      aria-hidden="true"
-                    />
-                  )}
                   {query && (
                     <button
                       className="flex min-h-11 items-center px-2 text-[10px] font-black uppercase tracking-[0.1em] text-white/70 transition hover:text-white"
@@ -762,74 +666,51 @@ export default function MuseNavClient({ categoryLinks, productLinks }: Props) {
 
                 <div className="max-h-[calc(75vh-76px)] overflow-y-auto py-4 small:max-h-[336px]">
                   {hasExactResults ? (
-                    <div className="grid gap-5 large:grid-cols-[1.1fr_0.9fr_0.9fr]">
-                      <SuggestionGroup title="Products">
-                        {searchResults.products.length ? (
-                          searchResults.products.map((product) => (
-                            <a
-                              key={product.href}
-                              href={localizeHref(product.href, countryCode)}
-                              className="flex items-center gap-3 rounded-[10px] px-2 py-2 transition hover:bg-white/[0.06]"
-                              onClick={closeSearch}
-                            >
-                              <span className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-[8px] bg-white/[0.06]">
-                                {product.image ? (
-                                  <img
-                                    src={product.image}
-                                    alt={`${product.title} product result`}
-                                    loading="lazy"
-                                    decoding="async"
-                                    className="h-full w-full object-cover"
-                                  />
-                                ) : null}
-                              </span>
-                              <span className="min-w-0">
-                                <span className="block truncate text-[13px] font-bold">
-                                  {product.title}
-                                </span>
-                                <span className="mt-0.5 block text-[11px] text-white/70">
-                                  View product
-                                </span>
-                              </span>
-                            </a>
-                          ))
-                        ) : isProductSearchLoading ? (
-                          <EmptyGroupText text="Searching products..." />
-                        ) : (
-                          <EmptyGroupText text="No product title matched yet." />
-                        )}
-                      </SuggestionGroup>
+                    <InstantSearch
+                      indexName={PRODUCT_SEARCH_INDEX}
+                      searchClient={searchClient as never}
+                    >
+                      <div className="grid gap-5 large:grid-cols-[1.1fr_0.9fr_0.9fr]">
+                        <SuggestionGroup title="Products">
+                          <MedusaProductHits
+                            query={query}
+                            countryCode={countryCode}
+                            fallbackProducts={productLinks.slice(0, 4)}
+                            onClick={closeSearch}
+                          />
+                        </SuggestionGroup>
 
-                      <SuggestionGroup title="Collections / Drop Pages">
-                        {searchResults.collections.length ? (
-                          searchResults.collections.map((item) => (
-                            <SearchSuggestionLink
-                              key={item.href}
-                              item={item}
-                              countryCode={countryCode}
-                              onClick={closeSearch}
-                            />
-                          ))
-                        ) : (
-                          <EmptyGroupText text="Try NZ Stock, Clearance or a brand." />
-                        )}
-                      </SuggestionGroup>
+                        <SuggestionGroup title="Collections / Drop Pages">
+                          {searchResults.collections.length ? (
+                            searchResults.collections.map((item) => (
+                              <SearchSuggestionLink
+                                key={item.href}
+                                item={item}
+                                countryCode={countryCode}
+                                onClick={closeSearch}
+                              />
+                            ))
+                          ) : (
+                            <EmptyGroupText text="Try NZ Stock, Clearance or a brand." />
+                          )}
+                        </SuggestionGroup>
 
-                      <SuggestionGroup title="FAQ / Help Answers">
-                        {searchResults.help.length ? (
-                          searchResults.help.map((item) => (
-                            <SearchSuggestionLink
-                              key={item.href}
-                              item={item}
-                              countryCode={countryCode}
-                              onClick={closeSearch}
-                            />
-                          ))
-                        ) : (
-                          <EmptyGroupText text="Shipping and returns help lives here." />
-                        )}
-                      </SuggestionGroup>
-                    </div>
+                        <SuggestionGroup title="FAQ / Help Answers">
+                          {searchResults.help.length ? (
+                            searchResults.help.map((item) => (
+                              <SearchSuggestionLink
+                                key={item.href}
+                                item={item}
+                                countryCode={countryCode}
+                                onClick={closeSearch}
+                              />
+                            ))
+                          ) : (
+                            <EmptyGroupText text="Shipping and returns help lives here." />
+                          )}
+                        </SuggestionGroup>
+                      </div>
+                    </InstantSearch>
                   ) : (
                     <div className="rounded-[14px] border border-white/[0.08] bg-white/[0.04] p-5">
                       <p className="text-[20px] font-black">No exact match</p>
@@ -895,6 +776,88 @@ function SuggestionGroup({
       <div className="space-y-1">{children}</div>
     </section>
   )
+}
+
+function MedusaProductHits({
+  query,
+  countryCode,
+  fallbackProducts,
+  onClick,
+}: {
+  query: string
+  countryCode?: string | string[]
+  fallbackProducts: SearchProductLink[]
+  onClick: () => void
+}) {
+  const { refine } = useSearchBox()
+  const { hits } = useHits<{
+    objectID: string
+    id: string
+    title: string
+    handle: string
+    thumbnail?: string | null
+  }>()
+  const { status } = useInstantSearch({ catchError: true })
+  const [settledQuery, setSettledQuery] = useState("")
+  const trimmedQuery = query.trim()
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      const nextQuery = trimmedQuery.length >= 2 ? trimmedQuery : ""
+      setSettledQuery(nextQuery)
+      refine(nextQuery)
+    }, 250)
+
+    return () => window.clearTimeout(timeout)
+  }, [refine, trimmedQuery])
+
+  if (trimmedQuery.length < 2) {
+    return fallbackProducts.map((product) => (
+      <a
+        key={product.href}
+        href={localizeHref(product.href, countryCode)}
+        className="flex items-center gap-3 rounded-[10px] px-2 py-2 transition hover:bg-white/[0.06]"
+        onClick={onClick}
+      >
+        <span className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-[8px] bg-white/[0.06]">
+          {product.image ? <img src={product.image} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : null}
+        </span>
+        <span className="min-w-0">
+          <span className="block truncate text-[13px] font-bold">{product.title}</span>
+          <span className="mt-0.5 block text-[11px] text-white/70">View product</span>
+        </span>
+      </a>
+    ))
+  }
+
+  if (settledQuery !== trimmedQuery || status === "loading" || status === "stalled") {
+    return <EmptyGroupText text="Searching products..." />
+  }
+
+  if (status === "error") {
+    return <EmptyGroupText text="Product search is temporarily unavailable." />
+  }
+
+  if (!hits.length) {
+    return <EmptyGroupText text="No products found. Try another search." />
+  }
+
+  return hits.slice(0, 5).map((hit) => (
+    <a
+      key={hit.id || hit.objectID}
+      href={localizeHref(`/products/${hit.handle}`, countryCode)}
+      className="flex items-center gap-3 rounded-[10px] px-2 py-2 transition hover:bg-white/[0.06]"
+      onClick={onClick}
+    >
+      <span className="relative flex h-12 w-12 shrink-0 overflow-hidden rounded-[8px] bg-white/[0.06]">
+        {hit.thumbnail ? <img src={hit.thumbnail} alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" /> : null}
+      </span>
+      <span className="min-w-0">
+        <span className="block truncate text-[13px] font-bold">{hit.title}</span>
+        <span className="mt-0.5 block text-[11px] text-white/70">View product</span>
+      </span>
+    </a>
+  ))
 }
 
 function SearchSuggestionLink({

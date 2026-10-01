@@ -1,4 +1,4 @@
-import { defineMiddlewares, validateAndTransformBody, validateAndTransformQuery } from "@medusajs/framework/http"
+import { allowFields, configureStoreSearch, defineMiddlewares, validateAndTransformBody, validateAndTransformQuery } from "@medusajs/framework/http"
 import { PostStoreReviewSchema } from "./store/reviews/route"
 import { PostAdminReviewStatusSchema } from "./admin/reviews/[id]/status/route"
 import { PostStoreCustomerEmailSchema } from "./store/customers/me/email/route"
@@ -33,7 +33,17 @@ const itemRequestUpload = multer({
 })
 
 export default defineMiddlewares({
+  // These public Store API fields are used by the existing storefront but are
+  // outside Medusa's core allowlists. Keep each grant limited to its route.
   routes: [
+    {
+      matcher: "/store/search",
+      middlewares: [configureStoreSearch({ allowed_indexes: { product: true } })],
+    },
+    { matcher: "/store/products", middlewares: [allowFields("variants.metadata")] },
+    { matcher: "/store/product-categories", middlewares: [allowFields("products.id", "products.status")] },
+    { matcher: "/store/orders", middlewares: [allowFields("fulfillments.labels")] },
+    { matcher: "/store/orders/:id", middlewares: [allowFields("fulfillments.labels")] },
     { matcher: "/store/item-requests", method: ["POST"], middlewares: [itemRequestUpload.single("image"), validateAndTransformBody(PostStoreItemRequestSchema)] },
     { matcher: "/admin/item-requests/:id", method: ["POST"], middlewares: [validateAndTransformBody(PostAdminItemRequestSchema)] },
     { matcher: "/store/tracking", method: ["POST"], middlewares: [validateAndTransformBody(PostStoreTrackingLookupSchema)] },
