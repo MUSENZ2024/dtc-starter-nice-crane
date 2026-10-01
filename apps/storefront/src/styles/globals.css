@@ -1084,6 +1084,13 @@ body {
     @apply min-h-12 w-full border border-muse-border bg-white px-3 py-2 text-[16px] text-muse-black outline-none transition placeholder:text-muse-text-muted focus:border-muse-orange focus:ring-1 focus:ring-muse-orange;
   }
 
+  .muse-tnf-campaign-banner {
+    background-color: var(--muse-cream-warm);
+    background-image: radial-gradient(rgba(31, 122, 58, 0.075) 0.7px, transparent 0.7px);
+    background-size: 13px 13px;
+    box-shadow: 0 8px 24px rgba(10, 10, 10, 0.04);
+  }
+
   @media (max-width: 600px) {
     .muse-auth-card {
       @apply rounded-[20px] px-[23px] py-8;

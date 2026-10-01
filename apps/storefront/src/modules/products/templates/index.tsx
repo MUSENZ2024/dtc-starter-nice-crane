@@ -13,6 +13,8 @@ import CompleteTheFit from "@modules/products/components/complete-the-fit"
 import ReviewSubmission from "@modules/products/components/review-submission"
 import PhotoReviews from "@modules/products/components/photo-reviews"
 import ExpandableReviewText from "@modules/products/components/expandable-review-text"
+import ProductCardMuse, { ProductCardMuseProduct } from "@modules/products/components/product-card-muse"
+import Image from "next/image"
 import RealProofSection from "../../../app/[countryCode]/(main)/real-proof-section"
 import { getStoreReviewsWithin } from "@lib/data/reviews"
 import {
@@ -26,6 +28,7 @@ type ProductTemplateProps = {
   region: HttpTypes.StoreRegion
   countryCode: string
   images: HttpTypes.StoreProductImage[]
+  campaignProducts?: HttpTypes.StoreProduct[]
 }
 
 const photoReviews = [
@@ -469,11 +472,40 @@ const photoReviews = [
   },
 ]
 
+const PRIORITY_OUTERWEAR_PHOTO_FILES = [
+  "review-04.jpg", // Sophie L
+  "review-16.jpg", // Mason J
+  "review-23.jpg", // Zoe K
+  "review-28.jpg", // Josh N
+  "review-29.jpg", // Maddie F
+  "review-30.webp", // Kieran P
+  "review-53.webp", // Luke B
+]
+
+const prioritizeOuterwearPhotoReviews = <
+  T extends { id: string; image: string },
+>(reviews: T[]) => {
+  const prioritized = PRIORITY_OUTERWEAR_PHOTO_FILES.flatMap((filename) => {
+    const match = reviews.find(
+      (review) => review.image.split("?")[0].split("/").pop() === filename
+    )
+
+    return match ? [match] : []
+  })
+  const prioritizedIds = new Set(prioritized.map((review) => review.id))
+
+  return [
+    ...prioritized,
+    ...reviews.filter((review) => !prioritizedIds.has(review.id)),
+  ]
+}
+
 const ProductTemplate = async ({
   product,
   region,
   countryCode: _countryCode,
   images,
+  campaignProducts,
 }: ProductTemplateProps) => {
   if (!product || !product.id) {
     return notFound()
@@ -496,21 +528,48 @@ const ProductTemplate = async ({
     month: "short",
     year: "numeric",
   })
+  const photoReviewMatchesOuterwear = (text: string) =>
+    /\b(jacket|vest|puffer|nuptse|outerwear)\b/i.test(text)
   const allDisplayedPhotoReviews = storedPhotoReviews
-    ? storedPhotoReviews.map((review) => ({
+    ? prioritizeOuterwearPhotoReviews(
+        [
+        ...storedPhotoReviews.filter((review) =>
+          photoReviewMatchesOuterwear(review.content)
+        ),
+        ...storedPhotoReviews.filter(
+          (review) => !photoReviewMatchesOuterwear(review.content)
+        ),
+        ].map((review) => ({
         id: review.id,
         image: review.image_url!,
         name: review.reviewer_name,
         date: reviewDateFormatter.format(new Date(review.created_at)),
         text: review.content,
-      }))
-    : photoReviews.map((review) => ({
+        }))
+      )
+    : prioritizeOuterwearPhotoReviews([
+        ...allWrittenMuseReviews
+          .filter(
+            (review) =>
+              review.category === "apparel" &&
+              review.image &&
+              photoReviewMatchesOuterwear(review.text)
+          )
+          .map((review) => ({
+            id: review.id,
+            image: review.image!,
+            name: review.name,
+            date: review.date,
+            text: review.text,
+          })),
+        ...photoReviews.map((review) => ({
         id: `${review.name}-${review.date}`,
         image: review.image,
         name: review.name,
         date: review.date,
         text: review.text,
-      }))
+        })),
+      ])
   const reviewSummary = {
     reviews: storedReviews?.reviews ?? [],
     total: MUSE_REVIEW_SUMMARY.total,
@@ -525,7 +584,7 @@ const ProductTemplate = async ({
 
   return (
     <div
-      className="muse-product-restyle min-w-0 overflow-x-clip bg-white text-[#1A1A1A]"
+      className={`muse-product-restyle min-w-0 overflow-x-clip bg-white text-[#1A1A1A] ${campaignProducts ? "muse-tnf-campaign-pdp" : ""}`}
       data-testid="product-container"
     >
       <div className="mx-auto max-w-[1320px] px-[18px] pt-4 text-xs font-medium tracking-[0.03em] text-[#999] small:px-8 small:pt-5">
@@ -539,6 +598,32 @@ const ProductTemplate = async ({
         <span className="mx-2 opacity-60">&gt;</span>
         <span>{product.title}</span>
       </div>
+
+      {campaignProducts && (
+        <section className="muse-tnf-campaign-banner mx-auto mt-4 grid max-w-[1320px] overflow-hidden border border-muse-border small:mx-8 small:grid-cols-[minmax(0,1fr)_280px]">
+          <div className="flex flex-col items-start justify-center px-5 py-5 small:px-8">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muse-green">
+              The North Face · MUSE NZ
+            </p>
+            <h1 className="mt-2 text-[clamp(24px,4vw,38px)] font-black uppercase leading-none tracking-[-0.045em] text-muse-black">
+              End of season sale
+            </h1>
+            <p className="mt-2 text-sm font-extrabold uppercase text-muse-orange">
+              Jackets now {cheapestPrice?.calculated_price}
+            </p>
+          </div>
+          <div className="relative hidden min-h-[130px] bg-muse-cream small:block">
+            <Image
+              src="/campaigns/tnf-end-of-season/hero.jpg"
+              alt="Nuptse jackets and vest in the end of season sale"
+              fill
+              priority
+              sizes="280px"
+              className="object-cover object-center"
+            />
+          </div>
+        </section>
+      )}
 
       <section className="muse-product-layout mx-auto grid min-w-0 max-w-[1440px] gap-7 px-[18px] py-4 pb-20 small:grid-cols-[1.5fr_1fr] small:gap-10 small:px-8 small:py-6 small:pb-[72px]">
         <div className="min-w-0 small:sticky small:top-28 small:self-start">
@@ -554,8 +639,79 @@ const ProductTemplate = async ({
             }
           />
         </div>
-        <ProductActions product={product} region={region} />
+          <ProductActions
+            product={product}
+            region={region}
+            campaignWinterSeason={Boolean(campaignProducts)}
+          />
       </section>
+
+      {campaignProducts && campaignProducts.length > 0 && (
+        <section className="muse-tnf-campaign-items mx-auto max-w-[1320px] border-t border-muse-border px-[18px] py-10 small:px-8 small:py-14">
+          <div className="mb-6 flex flex-col items-start justify-between gap-3 small:flex-row small:items-end">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muse-green">
+                More colours &amp; styles online
+              </p>
+              <h2 className="mt-2 text-[clamp(26px,4vw,42px)] font-black uppercase leading-[0.96] tracking-[-0.045em] text-muse-black">
+                View other end of season items
+              </h2>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-2.5 small:grid-cols-3 small:gap-4">
+            {campaignProducts.map((item, index) => {
+              const itemPrice = getProductPrice({ product: item }).cheapestPrice
+              const itemFulfilment = getFulfilmentState(item)
+              const productCard: ProductCardMuseProduct = {
+                id: item.id,
+                title: item.title || "The North Face Nuptse",
+                handle: item.handle,
+                thumbnail: item.thumbnail,
+                images: item.images,
+                brand: "THE NORTH FACE",
+                price: itemPrice?.calculated_price,
+                compareAt:
+                  itemPrice?.price_type === "sale" &&
+                  itemPrice.original_price_number > itemPrice.calculated_price_number
+                    ? itemPrice.original_price
+                    : undefined,
+                fulfilment: {
+                  shortLabel: itemFulfilment.shortLabel,
+                  dotClassName: itemFulfilment.dotClassName,
+                  deliveryLabel: itemFulfilment.deliveryLabel,
+                },
+                options: item.options?.map((option) => ({
+                  id: option.id,
+                  title: option.title,
+                })),
+                variants: item.variants?.map((variant) => ({
+                  id: variant.id,
+                  inventory_quantity: variant.inventory_quantity,
+                  manage_inventory: variant.manage_inventory,
+                  allow_backorder: variant.allow_backorder,
+                  options: variant.options?.map((option) => ({
+                    option_id: option.option_id,
+                    value: option.value,
+                    option:
+                      "option" in option && option.option
+                        ? { title: option.option.title }
+                        : undefined,
+                  })),
+                })),
+              }
+
+              return (
+                <ProductCardMuse
+                  key={item.id}
+                  product={productCard}
+                  countryCode={_countryCode}
+                  position={index + 1}
+                />
+              )
+            })}
+          </div>
+        </section>
+      )}
 
       <section
         id="reviews"
@@ -797,6 +953,124 @@ const ProductTemplate = async ({
       </section>
 
       <RealProofSection />
+
+      {campaignProducts && (
+        <section
+          id="tnf-campaign-faq"
+          className="muse-tnf-campaign-faq mx-auto max-w-[1320px] border-t border-muse-border px-[18px] py-12 small:px-8 small:py-16"
+          aria-labelledby="tnf-campaign-faq-title"
+        >
+          <div className="mb-6 max-w-[760px]">
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-muse-green">
+              Before you order
+            </p>
+            <h2
+              id="tnf-campaign-faq-title"
+              className="mt-2 text-[clamp(28px,4vw,44px)] font-black uppercase leading-[0.96] tracking-[-0.045em] text-muse-black"
+            >
+              The North Face jacket FAQs
+            </h2>
+            <p className="mt-3 text-sm leading-6 text-muse-text-muted">
+              Clear answers about MUSE, UA products, delivery and returns.
+            </p>
+          </div>
+
+          <div className="divide-y divide-muse-border border-y border-muse-border">
+            <details className="muse-tnf-faq-item">
+              <summary>
+                <span>What is MUSE NZ?</span>
+                <span aria-hidden="true">+</span>
+              </summary>
+              <div className="muse-tnf-faq-answer">
+                <p>MUSE NZ is an Auckland-based online store for premium footwear and outerwear. We source products from overseas manufacturing partners and check each item at our Auckland workspace.</p>
+                <ul>
+                  <li>We ship across New Zealand with NZ Post.</li>
+                  <li>We price our products to reflect how they are made, without official brand authorisation or licensing.</li>
+                </ul>
+              </div>
+            </details>
+
+            <details className="muse-tnf-faq-item">
+              <summary>
+                <span>Are MUSE products authentic? What does UA mean?</span>
+                <span aria-hidden="true">+</span>
+              </summary>
+              <div className="muse-tnf-faq-answer">
+                <p>These items are listed as <strong>Unauthorized Authentic (UA)</strong>. They use the same materials and construction methods as official retail versions, and in many cases come from the same factories.</p>
+                <ul>
+                  <li>Manufacturers make them without the brand’s authorisation or licensing.</li>
+                  <li>The brands have not endorsed or licensed these products.</li>
+                  <li>We check every item before dispatch from Auckland. The price excludes the brand licensing and retail costs built into official retail pricing.</li>
+                </ul>
+                <p>Read more on our <LocalizedClientLink href="/faq" className="underline underline-offset-2">FAQ page</LocalizedClientLink>.</p>
+              </div>
+            </details>
+
+            <details className="muse-tnf-faq-item">
+              <summary>
+                <span>How can I check that MUSE NZ is a legitimate store?</span>
+                <span aria-hidden="true">+</span>
+              </summary>
+              <div className="muse-tnf-faq-answer">
+                <p>You can check our business, payment and delivery details before ordering:</p>
+                <ul>
+                  <li>MUSE is based in Auckland and operates under New Zealand law.</li>
+                  <li>Stripe processes payments. We do not store your card details.</li>
+                  <li>We send NZ Post tracking details when your order dispatches.</li>
+                  <li>Read customer reviews on our website and Instagram, and review our 30-day returns policy.</li>
+                </ul>
+                <p>Contact <a href="mailto:support@musenz.com">support@musenz.com</a> with any questions. We aim to reply within 12–24 hours, Monday to Friday.</p>
+              </div>
+            </details>
+
+            <details className="muse-tnf-faq-item">
+              <summary>
+                <span>How long will delivery take for my jacket?</span>
+                <span aria-hidden="true">+</span>
+              </summary>
+              <div className="muse-tnf-faq-answer">
+                <p>This jacket ships by Standard Delivery. Allow around 13–16 business days from your order to arrival in New Zealand.</p>
+                <ul>
+                  <li>Weekends and New Zealand public holidays do not count as business days.</li>
+                  <li>Your order is tracked throughout the journey. NZ Post delivers the final leg, and your tracking link shows the latest estimated delivery date.</li>
+                  <li>Delivery dates are estimates. Courier delays, customs and peak periods can affect arrival times.</li>
+                </ul>
+              </div>
+            </details>
+
+            <details className="muse-tnf-faq-item">
+              <summary>
+                <span>Can I exchange or return my jacket?</span>
+                <span aria-hidden="true">+</span>
+              </summary>
+              <div className="muse-tnf-faq-answer">
+                <p>Email <a href="mailto:support@musenz.com">support@musenz.com</a> within 7 business days of receiving your order. Include your order number and reason for the request.</p>
+                <ul>
+                  <li>Once we approve your request, return the item within 30 days of delivery.</li>
+                  <li>Keep the item unworn and in brand-new condition. Return it with the original box undamaged and all included accessories.</li>
+                  <li>We can exchange the size for the same item, subject to stock. We refund to your original payment method after we receive and check the item.</li>
+                  <li>We provide a prepaid return label for approved returns. Your rights under New Zealand consumer law still apply.</li>
+                </ul>
+                <p>Read the full <LocalizedClientLink href="/faq" className="underline underline-offset-2">returns information</LocalizedClientLink> before sending anything back.</p>
+              </div>
+            </details>
+
+            <details className="muse-tnf-faq-item">
+              <summary>
+                <span>How do I contact MUSE NZ?</span>
+                <span aria-hidden="true">+</span>
+              </summary>
+              <div className="muse-tnf-faq-answer">
+                <p>Email <a href="mailto:support@musenz.com">support@musenz.com</a> for order help. Include your order number so we can look it up.</p>
+                <ul>
+                  <li>We aim to reply within 12–24 hours, Monday to Friday. Weekend and public holiday replies may take longer.</li>
+                  <li>For general questions or product requests, message <a href="https://instagram.com/muse.nz" target="_blank" rel="noreferrer">@muse.nz on Instagram</a>.</li>
+                </ul>
+              </div>
+            </details>
+          </div>
+        </section>
+      )}
 
       <React.Suspense
         fallback={

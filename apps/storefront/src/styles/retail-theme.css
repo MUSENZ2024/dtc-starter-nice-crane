@@ -55,6 +55,17 @@
 .muse-listing-restyle aside { background:white; }
 @media(max-width:767px) { .muse-listing-restyle h1 { font-size:28px; } .muse-category-header { padding:24px 20px; } }
 .muse-product-restyle :is(button, input, select, textarea, summary, [role="button"]) { border-radius:0; }
+.muse-tnf-campaign-pdp button[aria-label^="Select "] > span { display:none; }
+.muse-tnf-campaign-pdp button[aria-label^="Select "][aria-pressed="true"] { box-shadow:inset 0 0 0 1px rgba(255,255,255,.7); }
+.muse-tnf-faq-item > summary { display:flex; min-height:58px; align-items:center; justify-content:space-between; gap:20px; cursor:pointer; list-style:none; padding:16px 0; font-size:14px; font-weight:700; }
+.muse-tnf-faq-item > summary::-webkit-details-marker { display:none; }
+.muse-tnf-faq-item > summary span:last-child { flex:none; font-size:22px; font-weight:400; transition:transform 150ms ease; }
+.muse-tnf-faq-item[open] > summary span:last-child { transform:rotate(45deg); }
+.muse-tnf-faq-answer { max-width:780px; padding:0 34px 20px 0; color:var(--muse-text-muted); font-size:13px; line-height:1.7; }
+.muse-tnf-faq-answer p { margin:0 0 8px; color:var(--muse-text); font-weight:600; }
+.muse-tnf-faq-answer ul { margin:0; padding-left:18px; list-style:disc; }
+.muse-tnf-faq-answer li { margin:4px 0; padding-left:2px; }
+.muse-tnf-faq-answer a { color:var(--muse-green); font-weight:700; text-decoration:underline; text-underline-offset:2px; }
 .muse-product-restyle :is(div, section, article, details, a, img)[class*="rounded-"] { border-radius:0; }
 .muse-product-restyle h1 { font-family:var(--font-roboto),Roboto,Arial,sans-serif; font-size:28px; line-height:1.3; font-weight:400; letter-spacing:0; }
 .muse-product-restyle h2 { font-weight:400; text-transform:uppercase; }

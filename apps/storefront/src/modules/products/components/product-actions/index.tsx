@@ -25,6 +25,7 @@ type ProductActionsProps = {
   product: HttpTypes.StoreProduct
   region: HttpTypes.StoreRegion
   disabled?: boolean
+  campaignWinterSeason?: boolean
 }
 
 const colourMap: Record<string, string> = {
@@ -631,6 +632,7 @@ export default function ProductActions({
   product,
   region,
   disabled,
+  campaignWinterSeason,
 }: ProductActionsProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -1156,7 +1158,13 @@ export default function ProductActions({
           {MUSE_REVIEW_SUMMARY.total} verified reviews
         </a>
         <span className="opacity-40">·</span>
-        <span>{useWatchSizing ? "73 sold this season" : "247 sold this season"}</span>
+        <span>
+          {useWatchSizing
+            ? "73 sold this season"
+            : campaignWinterSeason
+              ? "653 sold 2026 winter season"
+              : "247 sold this season"}
+        </span>
       </div>
 
       <div className="mb-2 flex flex-wrap items-baseline gap-3">
@@ -1225,6 +1233,7 @@ export default function ProductActions({
                   key={value.id}
                   type="button"
                   aria-label={`Select ${colour}`}
+                  aria-pressed={selected}
                   title={colour}
                   disabled={disabled || isAdding}
                   onClick={() => setOptionValue(colourOption.id, colour)}
