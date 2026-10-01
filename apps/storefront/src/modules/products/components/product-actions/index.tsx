@@ -105,6 +105,22 @@ const isBagProduct = (product: HttpTypes.StoreProduct) => {
   return /\b(bag|bags|handbag|shoulder bag|tote)\b/.test(searchable)
 }
 
+const isWatchProduct = (product: HttpTypes.StoreProduct) => {
+  const searchable = [
+    product.title,
+    product.handle,
+    product.subtitle,
+    product.description,
+    typeof product.metadata?.product_kind === "string" ? product.metadata.product_kind : null,
+    typeof product.metadata?.brand === "string" ? product.metadata.brand : null,
+    ...(product.tags?.map((tag) => tag.value) ?? []),
+    ...(product.categories?.map((category) => category.name) ?? []),
+    typeof product.type?.value === "string" ? product.type.value : null,
+  ].filter(Boolean).join(" ").toLowerCase()
+
+  return /\b(watch|watches|timepiece|panth[eè]re)\b/.test(searchable)
+}
+
 const getProductColourFromTitle = (title: string) => {
   const parts = title.split(" - ")
   return parts[parts.length - 1]?.trim()
@@ -533,24 +549,28 @@ const adidasShoeSizeRows = [
   ["11", "12.5", "45", "29", "10.5"],
 ]
 
-// VEJA's official Campo chart. Product buttons stay in EU sizing, while the
-// drawer gives shoppers the corresponding US, UK, JP, and foot-length values.
-const vejaShoeSizeRows = [
-  ["35", "W4", "2", "21.5", "22"],
-  ["36", "W5", "3", "22", "22.6"],
-  ["37", "W6", "4", "23", "23.3"],
-  ["37.5", "W6.5", "4.5", "23.5", "23.7"],
-  ["38", "W7", "5", "24", "24"],
-  ["38.5", "W7.5", "5.5", "24.5", "24.3"],
-  ["39", "W8 / M6", "W6 / M5.5", "25", "24.6"],
-  ["40", "W9 / M7", "W7 / M6", "25.5", "25.3"],
-  ["41", "W10 / M8", "W8 / M7", "W26.5 / M26", "26"],
-  ["42", "W11 / M9", "W8.5 / M8", "W27.5 / M27", "26.6"],
-  ["42.5", "W11.5 / M9.5", "W9 / M8.5", "W28 / M27.5", "27"],
-  ["43", "M10", "9", "28", "27.3"],
-  ["43.5", "M10.5", "9.5", "28.2", "27.7"],
-  ["44", "M11", "10", "28.5", "28"],
-  ["45", "M11.5", "11", "29", "28.6"],
+// Merchant-supplied VEJA conversion chart. Keep men's and women's rows
+// separate so shared EU sizes don't collapse two different US/UK conversions.
+const vejaMensSizeRows = [
+  ["7", "6", "40", "25.5", "9.96"],
+  ["8", "7", "41", "26.5", "10.24"],
+  ["9", "8", "42", "27.5", "10.47"],
+  ["10", "9", "43", "28", "10.75"],
+  ["11", "10", "44", "28.5", "11.02"],
+  ["11.5", "11", "45", "29", "11.26"],
+  ["12", "12", "46", "30", "11.54"],
+  ["12.5", "13", "47", "30.5", "11.81"],
+]
+
+const vejaWomensSizeRows = [
+  ["4", "2", "35", "21.5", "8.66"],
+  ["5", "3", "36", "22", "8.9"],
+  ["6", "4", "37", "23", "9.17"],
+  ["7", "5", "38", "24", "9.45"],
+  ["8", "6", "39", "25", "9.69"],
+  ["9", "7", "40", "25.5", "9.96"],
+  ["10", "8", "41", "26.5", "10.24"],
+  ["11", "8.5", "42", "27.5", "10.47"],
 ]
 
 // Dr Martens products are listed in EU sizing. The US, CM, and UK conversions
@@ -780,6 +800,7 @@ export default function ProductActions({
   const useHokaSizing = isHokaProduct(product)
   const usePumaSizing = isPumaFootwear(product)
   const useBagDimensions = isBagProduct(product)
+  const useWatchSizing = isWatchProduct(product)
   const sizeValues =
     sizeOption?.values?.filter((value) =>
       useBirkenstockSizing ? isBirkenstockAdultSize(value.value) : true,
@@ -790,7 +811,7 @@ export default function ProductActions({
       Number(b.value?.match(/\d+(?:\.\d+)?/)?.[0] ?? 0),
     )
   }
-  const fitSummary = usePumaSizing ? "True to size — 91%" : useNorthFacePufferSizing
+  const fitSummary = useWatchSizing ? "Choose your usual case size" : usePumaSizing ? "True to size — 91%" : useNorthFacePufferSizing
     ? "Men's/unisex fit — true to size. Women size down"
     : useBirkenstockSizing
       ? "True to size — 92% got their usual Birkenstock/EU size"
@@ -811,7 +832,7 @@ export default function ProductActions({
                     : useAdidasSizing
                       ? "True to size — 88% got their usual adidas size"
                       : "Fits true to size — get your usual"
-  const betweenSizesAdvice = usePumaSizing ? "Use the Puma chart to compare your usual US, EU, UK or CM size. If between sizes, choose the larger size." : useNorthFacePufferSizing
+  const betweenSizesAdvice = useWatchSizing ? "Compare the case dimensions with a watch you already wear. If you are between the two case sizes, choose the one that best matches your preferred proportions." : usePumaSizing ? "Use the Puma chart to compare your usual US, EU, UK or CM size. If between sizes, choose the larger size." : useNorthFacePufferSizing
     ? "Women's sizing: size down from the men's/unisex size listed. Men's/unisex: choose your usual unless layering."
     : useBirkenstockSizing
       ? "Choose your usual EU size. If you are between sizes or prefer a roomier clog fit, size up."
@@ -822,7 +843,7 @@ export default function ProductActions({
           : useSalomonSizing
             ? "Salomon sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
             : useVejaSizing
-              ? "VEJA sizes are shown in EU sizing. Use the chart to compare US, UK, JP, and foot-length conversions."
+              ? "VEJA sizes are shown in EU sizing. Use the separate men's and women's charts to compare US, UK, CM, and inch conversions."
               : useTimberlandSizing
                 ? "Timberland sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
                 : useHokaSizing
@@ -907,7 +928,7 @@ export default function ProductActions({
           useTimberlandSizing ||
           useHokaSizing
         ? useVejaSizing
-          ? ["EU", "US", "UK", "JP", "Foot length (CM)"]
+          ? ["US", "UK", "EU/IT", "CM", "Inches"]
           : ["Men's", "Women's", "EU", "CM", "UK"]
         : ["Size", "Chest (cm)", "Length (cm)", "Sleeve (cm)"]
   const sizeGuideRows = usePumaSizing ? pumaSizeRows : useNorthFacePufferSizing
@@ -925,7 +946,7 @@ export default function ProductActions({
               : useSalomonSizing
                 ? salomonShoeSizeRows
                 : useVejaSizing
-                  ? vejaShoeSizeRows
+                  ? vejaWomensSizeRows
                   : useTimberlandSizing
                     ? timberlandShoeSizeRows
                     : useHokaSizing
@@ -937,6 +958,8 @@ export default function ProductActions({
     useDrMartensSizing ||
     useVejaSizing
       ? "EU sizing · Size guide"
+      : useWatchSizing
+        ? "Case dimensions · Size guide"
       : "US sizing · Size guide"
 
   useEffect(() => {
@@ -1133,7 +1156,7 @@ export default function ProductActions({
           {MUSE_REVIEW_SUMMARY.total} verified reviews
         </a>
         <span className="opacity-40">·</span>
-        <span>247 sold this season</span>
+        <span>{useWatchSizing ? "73 sold this season" : "247 sold this season"}</span>
       </div>
 
       <div className="mb-2 flex flex-wrap items-baseline gap-3">
@@ -1233,7 +1256,7 @@ export default function ProductActions({
             <span className="text-xs font-bold uppercase tracking-[0.12em]">
               {useBagDimensions ? "Dimensions" : "Size"}
             </span>
-            {!useBagDimensions && (
+            {!useBagDimensions && !useWatchSizing && (
               <button
                 type="button"
                 onClick={(event) => openSizeGuide(event.currentTarget)}
@@ -1338,13 +1361,15 @@ export default function ProductActions({
                 {fitSummary}
               </strong>
             </span>
-            <button
-              type="button"
-              onClick={(event) => openSizeGuide(event.currentTarget)}
-              className="min-h-11 px-2 font-semibold text-[#C1440E]"
-            >
-              View chart →
-            </button>
+            {!useWatchSizing && (
+              <button
+                type="button"
+                onClick={(event) => openSizeGuide(event.currentTarget)}
+                className="min-h-11 px-2 font-semibold text-[#C1440E]"
+              >
+                View chart →
+              </button>
+            )}
           </div>
           <p className="mt-2 rounded-[12px] bg-white px-3.5 py-2.5 text-[12.5px] font-medium leading-5 text-[#666] ring-1 ring-[#E8E6E0]">
             {useBirkenstockSizing ? (
@@ -1364,7 +1389,7 @@ export default function ProductActions({
             )}
           </p>
 
-          <div className="mt-3 rounded-[14px] bg-[#F8F7F4] p-4">
+          {!useWatchSizing && <div className="mt-3 rounded-[14px] bg-[#F8F7F4] p-4">
             <div className="mb-2.5 text-[11px] font-bold uppercase tracking-[0.1em] text-[#666]">
               {usePumaSizing ? "Fit guide" : <>What {MUSE_REVIEW_SUMMARY.total} buyers say about fit</>}
             </div>
@@ -1387,7 +1412,7 @@ export default function ProductActions({
               <span>{fitTrueToSize} true to size</span>
               <span>{fitSizedUp} sized up</span>
             </div>
-          </div>
+          </div>}
           </>}
         </div>
       )}
@@ -1486,7 +1511,12 @@ export default function ProductActions({
           </p>
         </AccordionItem>
         {!useBagDimensions && <AccordionItem title="Sizing & fit">
-          {useNorthFacePufferSizing ? (
+          {useWatchSizing ? (
+            <>
+              <p>Watch sizes are shown as case dimensions in millimetres. Choose the case size that best matches the proportions of the watch you already wear.</p>
+              <p className="mt-2"><strong className="font-bold text-[#0A0A0A]">Case dimensions:</strong> Compare the listed length and width with a watch that fits comfortably on your wrist.</p>
+            </>
+          ) : useNorthFacePufferSizing ? (
             <>
               <p>
                 Sizes are shown in U.S. Men's sizing. The jacket has a unisex
@@ -1510,7 +1540,7 @@ export default function ProductActions({
           ) : (
             <>
               <p>
-                {usePumaSizing ? pumaSizeNote : useBirkenstockSizing
+                {useWatchSizing ? "Case dimensions are shown in millimetres for each watch size." : usePumaSizing ? pumaSizeNote : useBirkenstockSizing
                   ? "Birkenstock footwear is made in European sizes. Use the adult conversion chart in the size guide for U.S. sizing."
                   : useAsicsSizing
                     ? "ASICS footwear is listed in EU sizing on our site. Use the size guide to compare men's, women's, CM, and UK conversions."
@@ -1532,7 +1562,7 @@ export default function ProductActions({
               </p>
               <p className="mt-2">
                 <strong className="font-bold text-[#0A0A0A]">
-                  {usePumaSizing ? "Puma fit guide." : useBirkenstockSizing
+                  {useWatchSizing ? "Choose your usual watch proportions." : usePumaSizing ? "Puma fit guide." : useBirkenstockSizing
                     ? "This Birkenstock style fits true to size."
                     : useAsicsSizing
                       ? "This ASICS style fits true to size."
@@ -1698,7 +1728,7 @@ export default function ProductActions({
                                       ? "adidas footwear fits true to size for most buyers."
                                       : "This style fits true to size."}
                 </strong>{" "}
-                {usePumaSizing ? pumaFitCopy : useVejaSizing
+                {useWatchSizing ? "Compare the case dimensions with a watch you already own before choosing a size." : usePumaSizing ? pumaFitCopy : useVejaSizing
                   ? "Based on fit feedback, 0% sized down, 92% got their usual size, and 8% sized up."
                   : useNikeJordanSizing || useAdidasSizing || useSalomonSizing
                     ? "Based on fit feedback, 1% sized down, 88% got their usual size, and 11% sized up."
@@ -1752,8 +1782,37 @@ export default function ProductActions({
                   true size
                 </p>
               </div>
-              <div className="-mx-2 overflow-x-auto px-2">
-                <table className="w-full min-w-[520px] border-collapse text-[12.5px]">
+              <div className={useVejaSizing ? "grid gap-6 lg:grid-cols-2" : "-mx-2 overflow-x-auto px-2"}>
+                {useVejaSizing && (
+                  <div className="overflow-x-auto">
+                    <h3 className="mb-2 text-sm font-black">Men's</h3>
+                    <table className="w-full min-w-[410px] border-collapse text-[12.5px]">
+                      <thead>
+                        <tr>
+                          {sizeGuideColumns.map((head) => (
+                            <th key={head} className="border-b-2 border-[#0A0A0A] px-2 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.05em] text-[#666]">
+                              {head}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {vejaMensSizeRows.map((row) => (
+                          <tr key={row[2]}>
+                            {row.map((cell, index) => (
+                              <td key={`${index}-${cell}`} className="border-b border-[#E8E6E0] px-2 py-3">
+                                {index === 2 ? <strong>{cell}</strong> : cell}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+                <div className="overflow-x-auto">
+                  {useVejaSizing && <h3 className="mb-2 text-sm font-black">Women's</h3>}
+                  <table className={`${useVejaSizing ? "min-w-[410px]" : "min-w-[520px]"} w-full border-collapse text-[12.5px]`}>
                   <thead>
                     <tr>
                       {sizeGuideColumns.map((head) => (
@@ -1774,13 +1833,20 @@ export default function ProductActions({
                             key={`${index}-${cell}`}
                             className="border-b border-[#E8E6E0] px-2 py-3"
                           >
-                            {index === 0 ? <strong>{cell}</strong> : cell}
+                            {useVejaSizing
+                              ? index === 2
+                                ? <strong>{cell}</strong>
+                                : cell
+                              : index === 0
+                                ? <strong>{cell}</strong>
+                                : cell}
                           </td>
                         ))}
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                  </table>
+                </div>
               </div>
               {useNorthFacePufferSizing && (
                 <div className="mt-5 space-y-3 rounded-[10px] bg-white px-3.5 py-4 text-[12.5px] leading-6 text-[#666]">
@@ -1882,9 +1948,9 @@ export default function ProductActions({
                     <strong className="font-bold text-[#0A0A0A]">
                       Size Note:
                     </strong>{" "}
-                    VEJA products on MUSE use EU sizing. The chart above uses
-                    VEJA&apos;s official Campo conversions for US, UK, JP, and
-                    foot length.
+                    VEJA products on MUSE use EU sizing. The merchant-supplied
+                    chart above keeps men&apos;s and women&apos;s US and UK
+                    conversions separate and includes CM and inches.
                   </p>
                   <p>
                     Most buyers stay true to size. If you are between two EU
