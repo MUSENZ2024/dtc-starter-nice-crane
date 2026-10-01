@@ -36,10 +36,10 @@ const getVisibleCategoryLinks = (
 
   return [...source]
     .sort(byRankThenName)
-    .filter((category) => category.handle)
+    .filter((category) => category.handle && category.handle !== "watches")
     .slice(0, 4)
     .map<NavLink>((category) => ({
-      label: category.name,
+      label: category.handle === "bags" ? "Bags & accessories" : category.name,
       href: `/categories/${category.handle}`,
     }))
 }
