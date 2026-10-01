@@ -66,14 +66,14 @@ const textStyle = {
 
 const cardStyle = {
   backgroundColor: colors.white,
-  borderRadius: "20px",
+  borderRadius: 0,
   padding: "30px 26px",
   marginBottom: "16px",
 }
 
 const softCardStyle = {
   backgroundColor: colors.creamDeep,
-  borderRadius: "16px",
+  borderRadius: 0,
   padding: "16px",
 }
 
@@ -121,7 +121,7 @@ function Timeline({ type }: { type: FulfillmentType }) {
                     style={{
                       width: "26px",
                       height: "26px",
-                      borderRadius: "50%",
+                      borderRadius: 0,
                       backgroundColor: dotColor,
                       textAlign: "center",
                       verticalAlign: "middle",
@@ -199,7 +199,7 @@ function IconSquare({ src, alt }: { src: string; alt: string }) {
   return (
     <table cellPadding="0" cellSpacing="0" role="presentation" bgcolor={colors.black}>
       <tr>
-        <td {...bgcolor(colors.black)} style={{ width: "40px", height: "40px", borderRadius: "11px", backgroundColor: colors.black, textAlign: "center", verticalAlign: "middle" }}>
+          <td {...bgcolor(colors.black)} style={{ width: "40px", height: "40px", borderRadius: 0, backgroundColor: colors.black, textAlign: "center", verticalAlign: "middle" }}>
           <Img src={src} alt={alt} width="18" height="18" style={{ margin: "0 auto" }} />
         </td>
       </tr>
@@ -212,7 +212,7 @@ function SocialIcon({ href, src, alt }: { href: string; src: string; alt: string
     <a href={href} style={{ textDecoration: "none" }}>
       <table cellPadding="0" cellSpacing="0" role="presentation" style={{ display: "inline-table", marginRight: "12px" }}>
         <tr>
-          <td style={{ width: "40px", height: "40px", borderRadius: "50%", backgroundColor: "rgba(255,255,255,0.08)", textAlign: "center", verticalAlign: "middle" }}>
+          <td style={{ width: "40px", height: "40px", borderRadius: 0, backgroundColor: "rgba(255,255,255,0.08)", textAlign: "center", verticalAlign: "middle" }}>
             <Img src={src} alt={alt} width="18" height="18" style={{ margin: "0 auto" }} />
           </td>
         </tr>
@@ -287,7 +287,7 @@ export function OrderConfirmationTemplate({
                   {...bgcolor(colors.black)}
                   style={{
                     backgroundColor: colors.black,
-                    borderRadius: "999px",
+                    borderRadius: 0,
                     padding: "10px 22px",
                     fontFamily: FONT_STACK,
                     fontSize: "16px",
@@ -315,10 +315,10 @@ export function OrderConfirmationTemplate({
                 <Row>
                   <Column style={{ width: "80px", verticalAlign: "middle" }}>
                     {item.thumbnail ? (
-                      <Img src={item.thumbnail} alt={item.title} width="72" height="72" style={{ borderRadius: "12px", objectFit: "cover" }} />
+                      <Img src={item.thumbnail} alt={item.title} width="72" height="72" style={{ borderRadius: 0, objectFit: "cover" }} />
                     ) : (
                       <table cellPadding="0" cellSpacing="0" role="presentation">
-                        <tr><td {...bgcolor(colors.white)} style={{ width: "72px", height: "72px", borderRadius: "12px", backgroundColor: colors.white }} /></tr>
+                        <tr><td {...bgcolor(colors.white)} style={{ width: "72px", height: "72px", borderRadius: 0, backgroundColor: colors.white }} /></tr>
                       </table>
                     )}
                   </Column>
@@ -338,7 +338,7 @@ export function OrderConfirmationTemplate({
                             letterSpacing: "0.04em",
                             color: colors.blue,
                             backgroundColor: colors.blueSoft,
-                            borderRadius: "999px",
+                            borderRadius: 0,
                             padding: "4px 11px",
                             whiteSpace: "nowrap",
                           }}
@@ -388,7 +388,7 @@ export function OrderConfirmationTemplate({
                     borderTop: index ? `1px solid ${colors.border}` : "none",
                     padding: "14px 0",
                     backgroundColor: index === 3 ? colors.greenSoft : "transparent",
-                    borderRadius: index === 3 ? "10px" : 0,
+                    borderRadius: 0,
                     paddingLeft: index === 3 ? "12px" : 0,
                     paddingRight: index === 3 ? "12px" : 0,
                   }}
@@ -407,7 +407,7 @@ export function OrderConfirmationTemplate({
                   </Column>
                 </Row>
               ))}
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginTop: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: 0, marginTop: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.card} alt="Card" />
                 </Column>
@@ -422,7 +422,7 @@ export function OrderConfirmationTemplate({
 
           {/* ============== MUSE PAY: WHEN DOES THIS SHIP + HOW IT WORKS ============== */}
           {musePay ? (
-            <Section style={{ backgroundColor: colors.blueSoft, borderRadius: "16px", padding: "22px 24px", marginBottom: "16px" }} bgcolor={colors.blueSoft}>
+            <Section style={{ backgroundColor: colors.blueSoft, borderRadius: 0, padding: "22px 24px", marginBottom: "16px" }} bgcolor={colors.blueSoft}>
               <Text style={{ ...textStyle, fontSize: "14px", fontWeight: "bold", color: colors.blue, margin: "0 0 7px" }}>When does this ship?</Text>
               <Text style={{ ...textStyle, color: colors.text, fontSize: "13.5px", lineHeight: "1.65", margin: 0 }}>
                 Your order ships once your final payment (Payment 4 of 4) is received — we'll send a separate shipping confirmation at that point. Nothing ships before then.
@@ -470,7 +470,7 @@ export function OrderConfirmationTemplate({
                   key={`${shipment.type}-${index}`}
                   style={{
                     backgroundColor: colors.creamDeep,
-                    borderRadius: "12px",
+                    borderRadius: 0,
                     padding: "16px",
                     marginTop: index ? "10px" : 0,
                   }}
@@ -514,7 +514,7 @@ export function OrderConfirmationTemplate({
 
             {!musePay ? (
               <a href={trackingUrl} style={{ textDecoration: "none" }}>
-                <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "10px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
+                <Row style={{ backgroundColor: colors.creamDeep, borderRadius: 0, marginBottom: "10px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                   <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                     <IconSquare src={icons.track} alt="Track order" />
                   </Column>
@@ -526,7 +526,7 @@ export function OrderConfirmationTemplate({
               </a>
             ) : null}
             <a href="mailto:support@musenz.com" style={{ textDecoration: "none" }}>
-              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", marginBottom: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
+              <Row style={{ backgroundColor: colors.creamDeep, borderRadius: 0, marginBottom: "16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
                 <Column style={{ width: "58px", padding: "13px 0 13px 14px", verticalAlign: "middle" }}>
                   <IconSquare src={icons.chat} alt="Contact support" />
                 </Column>
@@ -537,7 +537,7 @@ export function OrderConfirmationTemplate({
               </Row>
             </a>
 
-            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: "12px", padding: "14px 16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
+            <Section style={{ backgroundColor: colors.creamDeep, borderRadius: 0, padding: "14px 16px" }} bgcolor={colors.creamDeep} className="em-bg-soft">
               <Text style={{ ...textStyle, color: colors.muted, fontSize: "12.5px", lineHeight: "1.65", margin: 0 }}>
                 <strong style={{ color: colors.black }}>30-day returns.</strong>{" "}
                 {musePay
@@ -579,27 +579,28 @@ export function OrderConfirmationTemplate({
         </Container>
 
         {/* ============== FOOTER ============== */}
-        <Section style={{ backgroundColor: colors.black, padding: "40px 18px 30px", marginTop: "22px" }} bgcolor={colors.black} className="em-bg-dark">
+        <Section style={{ backgroundColor: "#212121", padding: "40px 32px 28px", marginTop: "22px", textAlign: "center" }} bgcolor="#212121" className="em-bg-dark">
           <Container style={{ maxWidth: "480px", margin: "0 auto" }}>
             <Section style={{ textAlign: "center", marginBottom: "20px" }}>
-              <Img src={logoUrl} width="120" alt="MUSE NZ" style={{ margin: "0 auto" }} />
+              <Img src={logoUrl} width="140" alt="MUSE" style={{ margin: "0 auto 18px", maxWidth: "140px", width: "100%" }} />
             </Section>
-            <Text style={{ ...textStyle, fontSize: "12.5px", color: "#999999", lineHeight: "1.65", textAlign: "center", margin: "0 auto 24px", maxWidth: "320px" }}>
+            <Text style={{ ...textStyle, fontSize: "14px", color: "#A9A89C", lineHeight: "1.5", textAlign: "center", margin: "0 auto 20px", maxWidth: "420px" }}>
               An online store for footwear, apparel, and everyday essentials. Shop current products with tracked delivery, and local support.
             </Text>
 
-            <Section style={{ textAlign: "center", marginBottom: "24px" }}>
-              <SocialIcon href="https://instagram.com/muse.nz" src={icons.instagram} alt="Instagram" />
-              <SocialIcon href="https://facebook.com/muse.nz" src={icons.facebook} alt="Facebook" />
+            <Section style={{ textAlign: "center", marginBottom: "20px" }}>
+              <SocialIcon href="https://instagram.com/muse.nz" src="https://musenz.com/email-icons/social-instagram-transparent.png" alt="MUSE on Instagram" />
+              <SocialIcon href="https://facebook.com/muse.nz.2025" src="https://musenz.com/email-icons/social-facebook-transparent.png" alt="MUSE on Facebook" />
             </Section>
 
-            <Text style={{ textAlign: "center", fontSize: "11.5px", color: "#999999", margin: "0 0 20px" }}>
-              <a href="https://musenz.com/faq" style={{ color: "#999999", marginRight: "16px" }}>FAQ</a>
-              <a href={trackingUrl} style={{ color: "#999999", marginRight: "16px" }}>Track Order</a>
-              <a href="https://musenz.com/returns" style={{ color: "#999999", marginRight: "16px" }}>Returns</a>
-              <a href="mailto:support@musenz.com" style={{ color: "#999999" }}>Contact Us</a>
+            <Text style={{ fontSize: "14px", lineHeight: "1.9", textAlign: "center", margin: "0 0 16px" }}>
+              <a href="https://musenz.com/faq" style={{ color: "#F7F6EC", fontSize: "12px", fontWeight: 600, textDecoration: "underline" }}>FAQ</a><span style={{ color: "#A9A89C" }}> · </span>
+              <a href={trackingUrl} style={{ color: "#F7F6EC", fontSize: "12px", fontWeight: 600, textDecoration: "underline" }}>TRACK ORDER</a><span style={{ color: "#A9A89C" }}> · </span>
+              <a href="mailto:support@musenz.com" style={{ color: "#F7F6EC", fontSize: "12px", fontWeight: 600, textDecoration: "underline" }}>CONTACT US</a><span style={{ color: "#A9A89C" }}> · </span>
+              <a href="https://musenz.com/store?utm_source=muse_email&utm_medium=email&utm_campaign=order_confirmation" style={{ color: "#F7F6EC", fontSize: "12px", fontWeight: 600, textDecoration: "underline" }}>SHOP ALL</a>
             </Text>
-            <Text style={{ textAlign: "center", fontSize: "11px", color: "#555555", margin: 0 }}>
+            <Text style={{ fontSize: "11px", lineHeight: "24px", color: "#A9A89C", margin: "0 0 6px" }}>Auckland, New Zealand</Text>
+            <Text style={{ fontSize: "11px", lineHeight: "24px", color: "#A9A89C", margin: "0 0 6px" }}>
               © {new Date(createdAt).getFullYear()} MUSE NZ. All rights reserved.
             </Text>
           </Container>
