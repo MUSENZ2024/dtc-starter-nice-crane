@@ -472,7 +472,45 @@ const photoReviews = [
   },
 ]
 
-const PRIORITY_OUTERWEAR_PHOTO_FILES = [
+const PRIORITY_SITEWIDE_PHOTO_REVIEWERS = [
+  "Sophie L",
+  "Zach T",
+  "Jay M",
+  "Olivia G",
+  "Talia F",
+  "Chloe B",
+  "Talia V",
+  "Priya S",
+  "Luke B",
+  "Zoe K",
+  "Ryan D",
+  "Bella T",
+  "Anahera S",
+  "Ella M",
+]
+
+const normalizeReviewerName = (name: string) =>
+  name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+
+const prioritizeSitewidePhotoReviewers = <
+  T extends { name: string },
+>(reviews: T[]) => {
+  const prioritized = PRIORITY_SITEWIDE_PHOTO_REVIEWERS.flatMap((name) => {
+    const match = reviews.find(
+      (review) => normalizeReviewerName(review.name) === normalizeReviewerName(name)
+    )
+
+    return match ? [match] : []
+  })
+  const prioritizedIds = new Set(prioritized)
+
+  return [
+    ...prioritized,
+    ...reviews.filter((review) => !prioritizedIds.has(review)),
+  ]
+}
+
+const PRIORITY_TNF_OUTERWEAR_PHOTO_FILES = [
   "review-04.jpg", // Sophie L
   "review-16.jpg", // Mason J
   "review-23.jpg", // Zoe K
@@ -482,10 +520,10 @@ const PRIORITY_OUTERWEAR_PHOTO_FILES = [
   "review-53.webp", // Luke B
 ]
 
-const prioritizeOuterwearPhotoReviews = <
+const prioritizeTnfOuterwearPhotoReviews = <
   T extends { id: string; image: string },
 >(reviews: T[]) => {
-  const prioritized = PRIORITY_OUTERWEAR_PHOTO_FILES.flatMap((filename) => {
+  const prioritized = PRIORITY_TNF_OUTERWEAR_PHOTO_FILES.flatMap((filename) => {
     const match = reviews.find(
       (review) => review.image.split("?")[0].split("/").pop() === filename
     )
@@ -530,24 +568,15 @@ const ProductTemplate = async ({
   })
   const photoReviewMatchesOuterwear = (text: string) =>
     /\b(jacket|vest|puffer|nuptse|outerwear)\b/i.test(text)
-  const allDisplayedPhotoReviews = storedPhotoReviews
-    ? prioritizeOuterwearPhotoReviews(
-        [
-        ...storedPhotoReviews.filter((review) =>
-          photoReviewMatchesOuterwear(review.content)
-        ),
-        ...storedPhotoReviews.filter(
-          (review) => !photoReviewMatchesOuterwear(review.content)
-        ),
-        ].map((review) => ({
+  const photoReviewItems = storedPhotoReviews
+    ? storedPhotoReviews.map((review) => ({
         id: review.id,
         image: review.image_url!,
         name: review.reviewer_name,
         date: reviewDateFormatter.format(new Date(review.created_at)),
         text: review.content,
-        }))
-      )
-    : prioritizeOuterwearPhotoReviews([
+      }))
+    : [
         ...allWrittenMuseReviews
           .filter(
             (review) =>
@@ -563,13 +592,29 @@ const ProductTemplate = async ({
             text: review.text,
           })),
         ...photoReviews.map((review) => ({
-        id: `${review.name}-${review.date}`,
-        image: review.image,
-        name: review.name,
-        date: review.date,
-        text: review.text,
+          id: `${review.name}-${review.date}`,
+          image: review.image,
+          name: review.name,
+          date: review.date,
+          text: review.text,
         })),
-      ])
+      ]
+
+  const allDisplayedPhotoReviews = campaignProducts
+    ? prioritizeTnfOuterwearPhotoReviews(
+        [
+        ...photoReviewItems.filter((review) =>
+          photoReviewMatchesOuterwear(review.text)
+        ),
+        ...photoReviewItems.filter(
+          (review) => !photoReviewMatchesOuterwear(review.text)
+        ),
+        ].map((review) => ({
+          ...review,
+          content: review.text,
+        }))
+      )
+    : prioritizeSitewidePhotoReviewers(photoReviewItems)
   const reviewSummary = {
     reviews: storedReviews?.reviews ?? [],
     total: MUSE_REVIEW_SUMMARY.total,
