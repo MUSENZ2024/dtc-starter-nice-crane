@@ -1,5 +1,6 @@
 "use client"
 
+import { trackGaBeginCheckout } from "@lib/ga4"
 import { trackMetaEvent } from "@lib/meta-pixel"
 import { HttpTypes } from "@medusajs/types"
 import { useEffect, useRef } from "react"
@@ -53,6 +54,17 @@ export default function MetaCheckoutTracker({ cart }: Props) {
       },
       `checkout_${cart.id}`
     )
+
+    trackGaBeginCheckout({
+      currency: cart.currency_code || "nzd",
+      value: cart.total ?? 0,
+      items: contents.map((item) => ({
+        id: item.id,
+        name: items.find((i) => (i.product_id ?? i.variant_id ?? i.variant?.id ?? i.id) === item.id)?.product_title ?? "MUSE item",
+        price: item.item_price,
+        quantity: item.quantity,
+      })),
+    })
 
     try {
       window.sessionStorage.setItem(storageKey, "1")

@@ -1,3 +1,5 @@
+import { trackGaAddToCart } from "./ga4"
+
 export const META_PIXEL_ID = "26034408302830626"
 
 export type MetaPixelParameters = Record<string, unknown>
@@ -74,4 +76,6 @@ export function trackMetaAddToCart({
     currency: currency.toUpperCase(),
     value: value * quantity,
   })
+
+  trackGaAddToCart({ id: contentId, name: contentName, price: value, quantity, currency })
 }

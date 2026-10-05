@@ -1,5 +1,6 @@
 "use client"
 
+import { trackGaEvent } from "@lib/ga4"
 import { trackMetaEvent } from "@lib/meta-pixel"
 import { useEffect, useRef } from "react"
 
@@ -53,6 +54,17 @@ export default function MetaPurchaseTracker({
       },
       `purchase_${orderId}`
     )
+
+    trackGaEvent("purchase", {
+      transaction_id: orderId,
+      currency: currency.toUpperCase(),
+      value,
+      items: contents.map((item) => ({
+        item_id: item.id,
+        price: item.item_price,
+        quantity: item.quantity,
+      })),
+    })
 
     try {
       window.localStorage.setItem(storageKey, "1")
