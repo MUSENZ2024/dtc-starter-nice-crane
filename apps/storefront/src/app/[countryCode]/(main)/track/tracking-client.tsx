@@ -36,6 +36,15 @@ type TrackingData = {
   showDelivered: boolean
   events: EventItem[]
   estimateNote?: string
+  collectionPoint?: CollectionPoint | null
+}
+
+type CollectionPoint = {
+  name: string
+  address: string
+  phone?: string
+  location_url: string
+  hours: Array<{ day: number; open: string; close: string }>
 }
 
 type TrackingPrediction = {
@@ -51,7 +60,12 @@ type TrackingPrediction = {
 type TrackingLookupResponse =
   | { status: "registered" }
   | { status: "not_found" }
-  | { status: "ok"; track_info: TrackInfo; prediction: TrackingPrediction }
+  | {
+      status: "ok"
+      track_info: TrackInfo
+      prediction: TrackingPrediction
+      collection_point: CollectionPoint | null
+    }
 
 type TrackInfo = {
   latest_status?: {
@@ -319,6 +333,52 @@ function formatEventTime(isoOrUtc?: string) {
   })
 }
 
+function normaliseEventDescription(description: string, state: StateKey) {
+  if (/arriving outside of the country/i.test(description)) {
+    return state === "pickup"
+      ? "Ready to collect from your NZ Post collection point"
+      : "Tracking update received"
+  }
+
+  if (
+    /attempted\s*\/\s*failed delivery\s*\(notify the customer\)/i.test(
+      description,
+    )
+  ) {
+    return "Delivery attempted — collection or redelivery is required"
+  }
+
+  return description.replace(/\s*\(notify the customer\)\s*/gi, "").trim()
+}
+
+function todaysCollectionHours(collectionPoint: CollectionPoint) {
+  const weekday = new Intl.DateTimeFormat("en-NZ", {
+    weekday: "long",
+    timeZone: "Pacific/Auckland",
+  }).format(new Date())
+  const dayIndex = [
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday",
+    "Sunday",
+  ].indexOf(weekday)
+  const hours = collectionPoint.hours.find((entry) => entry.day === dayIndex)
+  if (!hours) return null
+
+  const displayTime = (value: string) => {
+    const [hour, minute] = value.split(":").map(Number)
+    return new Date(2026, 0, 1, hour, minute).toLocaleTimeString("en-NZ", {
+      hour: "numeric",
+      minute: minute ? "2-digit" : undefined,
+    })
+  }
+
+  return `${displayTime(hours.open)}–${displayTime(hours.close)}`
+}
+
 function estimateDelivery(state: StateKey, latestDesc: string) {
   const latest = latestDesc.toLowerCase()
   let days = 7
@@ -445,9 +505,10 @@ function deriveState(
 function buildTrackingData(
   track: TrackInfo,
   prediction?: TrackingPrediction,
+  collectionPoint?: CollectionPoint | null,
 ): TrackingData {
   const providers = track?.tracking?.providers || []
-  const events: EventItem[] = []
+  const allEvents: EventItem[] = []
 
   providers.forEach((provider) => {
     const carrier = sanitiseCarrier(provider.provider?.name || "Carrier")
@@ -455,7 +516,7 @@ function buildTrackingData(
     ;(provider.events || []).forEach((event) => {
       const rawTime = event.time_iso || event.time_utc
 
-      events.push({
+      allEvents.push({
         rawTime,
         time: formatEventTime(rawTime),
         desc: event.description || "",
@@ -465,12 +526,21 @@ function buildTrackingData(
     })
   })
 
-  events.sort(
+  allEvents.sort(
     (a, b) =>
       new Date(b.rawTime || "").getTime() - new Date(a.rawTime || "").getTime(),
   )
 
-  const stateKey = prediction?.stage || deriveState(track, events)
+  const stateKey = prediction?.stage || deriveState(track, allEvents)
+  const hasNzPostEvents = allEvents.some((event) => event.carrier === "NZ Post")
+  const preferredEvents =
+    stateKey === "pickup" && hasNzPostEvents
+      ? allEvents.filter((event) => event.carrier === "NZ Post")
+      : allEvents
+  const events = preferredEvents.map((event) => ({
+    ...event,
+    desc: normaliseEventDescription(event.desc, stateKey),
+  }))
   const eta = estimateDelivery(stateKey, events[0]?.desc || "")
   const flags = STATE_FLAGS[stateKey]
   const copy = BANNER_COPY[stateKey]
@@ -489,22 +559,29 @@ function buildTrackingData(
       stateKey === "delivered"
         ? events[0]?.time?.split(",")[0] || ""
         : stateKey === "pickup"
-          ? "Available now"
+          ? collectionPoint?.name || "Available now"
           : stateKey === "exception"
             ? "Check NZ Post now"
             : prediction
               ? formatPrediction(prediction)
               : formatETA(eta.date, eta.days),
     ...copy,
+    detail:
+      stateKey === "pickup" && collectionPoint
+        ? `Your parcel is waiting at ${collectionPoint.name}. Collect it from the address shown above during opening hours.`
+        : copy.detail,
     activeStep: STATE_TO_STEP[stateKey],
     ...flags,
     events,
+    collectionPoint,
     estimateNote:
-      prediction && !["delivered", "pickup", "exception"].includes(stateKey)
-        ? prediction.source === "muse-history"
-          ? `Updated from ${prediction.sample_count} comparable MUSE deliveries (${prediction.confidence} confidence).`
-          : "Live carrier stage estimate; this improves as more MUSE parcels are delivered."
-        : undefined,
+      stateKey === "pickup" && collectionPoint
+        ? collectionPoint.address
+        : prediction && !["delivered", "pickup", "exception"].includes(stateKey)
+          ? prediction.source === "muse-history"
+            ? `Updated from ${prediction.sample_count} comparable MUSE deliveries (${prediction.confidence} confidence).`
+            : "Live carrier stage estimate; this improves as more MUSE parcels are delivered."
+          : undefined,
   }
 }
 
@@ -537,6 +614,7 @@ export default function TrackingClient() {
       const nextData = buildTrackingData(
         response.track_info,
         response.prediction,
+        response.collection_point,
       )
       if (nextData.events.length) setData(nextData)
     }
@@ -595,6 +673,7 @@ export default function TrackingClient() {
       const nextData = buildTrackingData(
         response.track_info,
         response.prediction,
+        response.collection_point,
       )
 
       if (!nextData.events.length) {
@@ -686,6 +765,23 @@ export default function TrackingClient() {
                       <div className="eta-date">{data.date}</div>
                       {data.estimateNote && (
                         <div className="eta-note">{data.estimateNote}</div>
+                      )}
+                      {data.collectionPoint && (
+                        <div className="pickup-meta">
+                          {todaysCollectionHours(data.collectionPoint) && (
+                            <span>
+                              Open today{" "}
+                              {todaysCollectionHours(data.collectionPoint)}
+                            </span>
+                          )}
+                          <a
+                            href={data.collectionPoint.location_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            View depot details
+                          </a>
+                        </div>
                       )}
                     </div>
                   </div>
@@ -1231,6 +1327,35 @@ const trackingStyles = `
   color: #B8B8B8;
   font-size: 13px;
   line-height: 1.45;
+}
+.pickup-meta {
+  margin-top: 18px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 18px;
+  color: var(--cream);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.pickup-meta span {
+  font-weight: 600;
+}
+.pickup-meta a {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,.55);
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.pickup-meta a:hover,
+.pickup-meta a:focus-visible {
+  border-color: var(--yellow);
+  color: var(--yellow);
 }
 .lookup-loading-card { min-height: 144px; }
 .status-banner {

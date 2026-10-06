@@ -6,6 +6,10 @@ import {
   percentile,
   type CarrierEvent,
 } from "../tracking-intelligence";
+import {
+  findCollectionClientId,
+  selectCollectionPoint,
+} from "../nzpost-collection";
 
 describe("tracking intelligence", () => {
   it("prioritises 17TRACK's pickup status over a misleading latest event", () => {
@@ -80,5 +84,34 @@ describe("tracking intelligence", () => {
       nextPollDelayMinutes.intransit,
     );
     expect(nextPollDelayMinutes.delivered).toBe(0);
+  });
+
+  it("uses NZ Post's ready-to-collect event to find the collection point", () => {
+    expect(
+      findCollectionClientId({
+        results: [
+          {
+            tracking_events: [
+              { status: "At local/regional depot", pbu: "083038" },
+              { status: "Ready to collect", pbu: "024745" },
+            ],
+          },
+        ],
+      }),
+    ).toBe("024745");
+  });
+
+  it("prefers the customer-facing NZ Post counter from locator results", () => {
+    expect(
+      selectCollectionPoint([
+        { id: 1, name: "Depot", type: "Depot" },
+        {
+          id: 2,
+          name: "NZ Post New Plymouth",
+          type: "Third Party Partner",
+          partner: "postcentre",
+        },
+      ])?.name,
+    ).toBe("NZ Post New Plymouth");
   });
 });

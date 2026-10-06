@@ -13,6 +13,10 @@ import {
   percentile,
   trackingHash,
 } from "../../lib/tracking-intelligence";
+import {
+  NzPostCollectionPoint,
+  fetchNzPostCollectionPoint,
+} from "../../lib/nzpost-collection";
 import { TRACKING_INTELLIGENCE_MODULE } from "../../modules/tracking-intelligence";
 import TrackingIntelligenceModuleService from "../../modules/tracking-intelligence/service";
 
@@ -37,6 +41,7 @@ export type LookupTrackingResult =
         confidence: "low" | "medium" | "high";
         source: "muse-history" | "stage-baseline";
       };
+      collection_point: NzPostCollectionPoint | null;
     };
 
 type WorkerResponse = {
@@ -217,6 +222,10 @@ export const lookupTrackingStep = createStep<
       ? percentile(learnedHours, 0.8)
       : expectedHours * 1.35;
   const now = Date.now();
+  const collectionPoint =
+    stage === "pickup"
+      ? await fetchNzPostCollectionPoint(tracking_number)
+      : null;
   await saveActiveTracking(
     track.latest_status?.status || "unknown",
     stage,
@@ -240,5 +249,6 @@ export const lookupTrackingStep = createStep<
             : "low",
       source: learnedHours.length >= 5 ? "muse-history" : "stage-baseline",
     },
+    collection_point: collectionPoint,
   });
 });
