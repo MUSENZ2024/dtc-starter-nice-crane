@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/clearance",
   },
+  robots: { index: true, follow: true },
 }
 
 type Params = {

@@ -58,9 +58,16 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     notFound()
   }
 
+  const collectionDescription =
+    typeof collection.metadata?.seo_description === "string"
+      ? collection.metadata.seo_description.trim()
+      : ""
   const metadata = {
-    title: collection.title,
-    description: `Shop the ${collection.title} collection at MUSE NZ. Discover affordable sneakers, shoes, outerwear and streetwear with tracked New Zealand delivery.`,
+    title: { absolute: `${collection.title} | MUSE NZ` },
+    description:
+      collectionDescription ||
+      `Shop the ${collection.title} collection at MUSE NZ. Discover affordable sneakers, shoes, outerwear and streetwear with tracked New Zealand delivery.`,
+    robots: { index: true, follow: true },
     alternates: {
       canonical: `/collections/${params.handle}`,
     },

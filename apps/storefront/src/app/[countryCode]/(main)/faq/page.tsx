@@ -9,6 +9,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/faq",
   },
+  robots: { index: true, follow: true },
 }
 
 const faqSchema = {

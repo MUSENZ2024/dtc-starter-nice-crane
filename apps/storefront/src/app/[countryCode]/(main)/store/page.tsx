@@ -12,6 +12,7 @@ export const metadata: Metadata = {
   alternates: {
     canonical: "/store",
   },
+  robots: { index: true, follow: true },
 }
 
 type Params = {

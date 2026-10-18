@@ -106,6 +106,17 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   return {
     title: seoTitle ? { absolute: seoTitle } : product.title,
     description,
+    robots: {
+      index: true,
+      follow: true,
+      googleBot: {
+        index: true,
+        follow: true,
+        "max-image-preview": "large",
+        "max-snippet": -1,
+        "max-video-preview": -1,
+      },
+    },
     alternates: {
       canonical: `/products/${handle}`,
     },

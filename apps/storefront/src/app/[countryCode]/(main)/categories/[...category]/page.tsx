@@ -52,7 +52,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
   try {
     const productCategory = await getCategoryByHandle(params.category)
 
-    const title = productCategory.name
+    const title = { absolute: `${productCategory.name} | MUSE NZ` }
 
     const description =
       productCategory.description?.trim() ||
@@ -61,6 +61,7 @@ export async function generateMetadata(props: Props): Promise<Metadata> {
     return {
       title,
       description,
+      robots: { index: true, follow: true },
       alternates: {
         canonical: `/categories/${params.category.join("/")}`,
       },
