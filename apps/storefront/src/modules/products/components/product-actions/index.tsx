@@ -1393,7 +1393,7 @@ export default function ProductActions({
                 <strong className="font-bold text-[#0A0A0A]">
                   Wrong size?
                 </strong>{" "}
-                30-day exchange or money back. Return label support included.
+                30-day returns on eligible items. Change-of-mind return postage is at your cost.
               </>
             )}
           </p>

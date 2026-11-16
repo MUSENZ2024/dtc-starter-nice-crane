@@ -238,7 +238,7 @@ export default async function SpringRotationPage({
               <div className="muse-spring-answer-grid">
                 <div className="muse-spring-answer-fact">
                   <strong>Send it back</strong>
-                  <span>After approval, return it within 30 days of delivery. We provide a prepaid NZ Post label.</span>
+                  <span>After approval, return it within 30 days of delivery. You pay return postage for change-of-mind returns and size exchanges.</span>
                 </div>
                 <div className="muse-spring-answer-fact">
                   <strong>Keep it new</strong>

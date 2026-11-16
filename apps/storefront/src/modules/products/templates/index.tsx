@@ -1094,7 +1094,7 @@ const ProductTemplate = async ({
                   <li>Once we approve your request, return the item within 30 days of delivery.</li>
                   <li>Keep the item unworn and in brand-new condition. Return it with the original box undamaged and all included accessories.</li>
                   <li>We can exchange the size for the same item, subject to stock. We refund to your original payment method after we receive and check the item.</li>
-                  <li>We provide a prepaid return label for approved returns. Your rights under New Zealand consumer law still apply.</li>
+                  <li>You pay return postage for change-of-mind returns and size exchanges. We cover reasonable return costs for faulty or incorrect items. Your rights under New Zealand consumer law still apply.</li>
                 </ul>
                 <p>Read the full <LocalizedClientLink href="/faq" className="underline underline-offset-2">returns information</LocalizedClientLink> before sending anything back.</p>
               </div>

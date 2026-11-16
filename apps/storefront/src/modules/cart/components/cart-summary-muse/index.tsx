@@ -156,7 +156,7 @@ export default function CartSummaryMuse({ cart }: Props) {
 
       <div className="flex flex-col gap-[9px] border-t border-muse-border bg-muse-cream px-6 py-[18px]">
         <TrustItem icon="shield">
-          30-day money back — full refund + return shipping
+          30-day returns. Change-of-mind return postage is at your cost.
         </TrustItem>
         <TrustItem icon="pin">Inspected before dispatch from Auckland</TrustItem>
         <TrustItem icon="lock">Stripe SSL · PCI DSS secured</TrustItem>

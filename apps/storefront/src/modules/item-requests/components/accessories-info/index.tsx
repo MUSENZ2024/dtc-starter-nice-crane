@@ -37,7 +37,7 @@ const questions = [
   },
   {
     question: "What happens if my item arrives damaged or differs from what we agreed?",
-    answer: "MUSE offers 30-day returns. Email support@musenz.com about the issue and we’ll provide a free return label so you can send the item back.",
+    answer: "MUSE offers 30-day returns on eligible items. Email support@musenz.com before returning anything. You pay change-of-mind return postage. We cover reasonable return costs for faulty or incorrect items.",
   },
 ]
 

@@ -91,9 +91,15 @@ export default function RootLayout(props: { children: React.ReactNode }) {
       <body className="muse-retail-theme bg-muse-cream font-sans text-muse-black antialiased">
         <aside
           aria-label="Christmas delivery cutoff"
-          className="flex min-h-10 items-center justify-center bg-[#C1440E] px-4 py-2 text-center text-[12px] font-medium tracking-[0.06em] text-white"
+          className="flex flex-col items-center justify-center gap-1 bg-[#C1440E] px-4 py-3 text-center text-[12px] leading-relaxed text-white sm:text-[13px]"
         >
-          CHRISTMAS DELIVERY CUTOFF: ORDER BY 16 NOVEMBER
+          <strong className="font-bold">
+            Christmas delivery cutoff has passed (16 Nov)
+          </strong>
+          <p className="max-w-3xl">
+            You can still shop as usual. We’ll continue processing orders, but we
+            can no longer guarantee delivery before Christmas.
+          </p>
         </aside>
         <main className="relative">{props.children}</main>
         <Script
