@@ -1,7 +1,8 @@
 "use client"
 
 import { Elements, PaymentMethodMessagingElement } from "@stripe/react-stripe-js"
-import { loadStripe, type Stripe } from "@stripe/stripe-js"
+import { loadStripe } from "@stripe/stripe-js/pure"
+import type { Stripe } from "@stripe/stripe-js"
 import type { StripeElementsOptions } from "@stripe/stripe-js"
 import { useEffect, useMemo, useRef, useState } from "react"
 

@@ -26,6 +26,10 @@ type ProductActionsProps = {
   region: HttpTypes.StoreRegion
   disabled?: boolean
   campaignWinterSeason?: boolean
+  colourSelector?: ReactNode
+  purchaseConfigurator?: ReactNode
+  offerPrice?: number
+  productDetailsDefaultOpen?: boolean
 }
 
 const colourMap: Record<string, string> = {
@@ -633,6 +637,10 @@ export default function ProductActions({
   region,
   disabled,
   campaignWinterSeason,
+  colourSelector,
+  purchaseConfigurator,
+  offerPrice,
+  productDetailsDefaultOpen = true,
 }: ProductActionsProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -1084,9 +1092,9 @@ export default function ProductActions({
     }
   }
 
-  const priceLabel = selectedPrice?.calculated_price ?? "NZ$180.00"
-  const numericPrice = selectedPrice?.calculated_price_number ?? 180
-  const showSalePrice =
+  const priceLabel = offerPrice !== undefined ? `NZ$${offerPrice.toFixed(2)}` : selectedPrice?.calculated_price ?? "NZ$180.00"
+  const numericPrice = offerPrice ?? selectedPrice?.calculated_price_number ?? 180
+  const showSalePrice = offerPrice === undefined &&
     selectedPrice?.price_type === "sale" &&
     selectedPrice.original_price_number > selectedPrice.calculated_price_number
   const saveAmount = showSalePrice
@@ -1206,6 +1214,9 @@ export default function ProductActions({
         iconClassName="h-4 w-4"
         showText
       />
+
+      {purchaseConfigurator ?? <>
+      {colourSelector}
 
       {colourOption && (
         <div id="size-guide" className="mb-5 scroll-mt-28">
@@ -1482,6 +1493,8 @@ export default function ProductActions({
         </button>
       </div>
 
+      </>}
+
       <div className="mb-6">
         <PaymentBadges className="justify-start" />
       </div>
@@ -1513,7 +1526,7 @@ export default function ProductActions({
       </div>
 
       <div className="border-t border-[#E8E6E0]">
-        <AccordionItem title="Product details" defaultOpen>
+        <AccordionItem title="Product details" defaultOpen={productDetailsDefaultOpen}>
           <p className="whitespace-pre-line">
             {product.description ||
               "Product details are being updated. Message @muse.nz if you want extra photos or measurements before ordering."}
@@ -1635,7 +1648,7 @@ export default function ProductActions({
         </AccordionItem>
       </div>
 
-      <div className="muse-mobile-cart-bar fixed inset-x-0 bottom-0 z-50 flex items-center gap-3 border-t border-[#E8E6E0] bg-white px-[18px] pt-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] small:hidden">
+      {!purchaseConfigurator && <div className="muse-mobile-cart-bar fixed inset-x-0 bottom-0 z-50 flex items-center gap-3 border-t border-[#E8E6E0] bg-white px-[18px] pt-3 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] small:hidden">
         <div className="shrink-0">
           <div className="text-lg font-black tracking-[-0.02em]">
             {priceLabel}
@@ -1679,6 +1692,8 @@ export default function ProductActions({
                     : "Add to bag →"}
         </button>
       </div>
+
+      }
 
       {sizeGuideOpen && !useBagDimensions && (
         <>

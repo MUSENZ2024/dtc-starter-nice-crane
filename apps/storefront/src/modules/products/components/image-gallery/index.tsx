@@ -11,6 +11,7 @@ type ImageGalleryProps = {
   fulfilment: FulfilmentState
   productTitle: string
   outOfStock: boolean
+  optimizedImages?: Record<string, { small: string; large: string; thumb: string }>
   colourImageMap?: Record<string, string>
 }
 
@@ -20,6 +21,7 @@ const ImageGallery = ({
   productTitle,
   outOfStock,
   colourImageMap,
+  optimizedImages,
 }: ImageGalleryProps) => {
   const galleryImages = useMemo(
     () =>
@@ -55,6 +57,21 @@ const ImageGallery = ({
       )
   }, [colourImageMap, galleryImages])
   const activeImage = galleryImages[activeIndex] ?? galleryImages[0]
+  // Warm the adjacent photos after paint, so the gallery arrows do not wait
+  // for a new image request. Other product galleries retain their default path.
+  useEffect(() => {
+    if (!optimizedImages || galleryImages.length < 2) return
+    const frame = requestAnimationFrame(() => {
+      for (const index of [(activeIndex + 1) % galleryImages.length, (activeIndex + galleryImages.length - 1) % galleryImages.length]) {
+        const source = optimizedImages[galleryImages[index].url]
+        if (!source) continue
+        const image = new window.Image()
+        image.src = window.innerWidth <= 640 ? source.small : source.large
+      }
+    })
+    return () => cancelAnimationFrame(frame)
+  }, [activeIndex, galleryImages, optimizedImages])
+  const optimizedActive = optimizedImages?.[activeImage?.url]
   const thumbSlots = galleryImages.slice(0, 5)
   const hasMultipleImages = galleryImages.length > 1
   const showPrevious = () =>
@@ -70,7 +87,19 @@ const ImageGallery = ({
     <div className="muse-product-gallery">
       <div className="relative mb-3 flex aspect-square items-center justify-center overflow-hidden rounded-none bg-[#F4F5F7]">
         {activeImage?.url ? (
-          <Image
+          optimizedActive ? (
+            <img
+              src={optimizedActive.large}
+              srcSet={`${optimizedActive.small} 640w, ${optimizedActive.large} 1200w`}
+              sizes="(max-width: 900px) 100vw, 720px"
+              alt={`${productTitle}, photo ${activeIndex + 1} of ${galleryImages.length}`}
+              fetchPriority="high"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover"
+              width={1200}
+              height={1200}
+            />
+          ) : <Image
             src={activeImage.url}
             priority
             fetchPriority="high"
@@ -143,7 +172,15 @@ const ImageGallery = ({
             }`}
           >
             {image.url ? (
-              <Image
+              optimizedImages?.[image.url] ? <img
+                src={optimizedImages[image.url].thumb}
+                alt=""
+                width={160}
+                height={160}
+                loading="lazy"
+                decoding="async"
+                className="absolute inset-0 h-full w-full object-cover"
+              /> : <Image
                 src={image.url}
                 alt=""
                 fill

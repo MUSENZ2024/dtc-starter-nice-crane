@@ -1,3 +1,4 @@
+import { getBostonColours, isStandardBoston } from "@lib/data/boston"
 import { Metadata } from "next"
 import { notFound } from "next/navigation"
 import { cache } from "react"
@@ -153,6 +154,12 @@ export default async function ProductPage(props: Props) {
     notFound()
   }
 
+  // Match the actual Standard Delivery handles; NZ Stock keeps its own PDP.
+  const bostonColours = isStandardBoston(pricedProduct)
+    ? await getBostonColours(params.countryCode)
+    : undefined
+  const displayProduct = bostonColours?.find(colour => colour.product?.id === pricedProduct.id)?.product ?? pricedProduct
+
   const images = getImagesForVariant(pricedProduct, selectedVariantId)
   const galleryImages = images?.length
     ? images
@@ -262,7 +269,8 @@ export default async function ProductPage(props: Props) {
         value={cheapestPrice?.calculated_price_number ?? 0}
       />
       <ProductTemplate
-        product={pricedProduct}
+        product={displayProduct}
+        bostonColours={bostonColours}
         region={region}
         countryCode={params.countryCode}
         images={galleryImages}

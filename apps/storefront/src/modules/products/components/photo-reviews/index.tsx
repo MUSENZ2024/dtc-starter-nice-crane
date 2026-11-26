@@ -14,13 +14,14 @@ type PhotoReview = {
 
 type PhotoReviewsProps = {
   reviews: PhotoReview[]
+  initialCount?: number
 }
 
 const INITIAL_REVIEW_COUNT = 12
 const REVIEWS_PER_PAGE = 12
 
-const PhotoReviews = ({ reviews }: PhotoReviewsProps) => {
-  const [visibleCount, setVisibleCount] = useState(INITIAL_REVIEW_COUNT)
+const PhotoReviews = ({ reviews, initialCount = INITIAL_REVIEW_COUNT }: PhotoReviewsProps) => {
+  const [visibleCount, setVisibleCount] = useState(initialCount)
   const visibleReviews = reviews.slice(0, visibleCount)
   const remainingCount = reviews.length - visibleReviews.length
 

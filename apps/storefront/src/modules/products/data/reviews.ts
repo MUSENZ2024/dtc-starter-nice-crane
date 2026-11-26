@@ -38,17 +38,17 @@ export const allWrittenMuseReviews: MuseReview[] = [
   { id: "legacy-boston-taupe-molly", productHandles: ["birkenstock-boston-soft-footbed-suede-taupe-nz-stock"], productTitles: ["boston soft footbed suede taupe"], category: "footwear", rating: 5, name: "Molly Moananu", date: "25 Feb 2026", text: "Love love love. Looks and feels like the real deal. Would suggest going up a size though. Team was absolutely amazing with communication!", verified: true },
 ]
 
-// 73 photo reviews plus the 16 verified legacy review records shown in the
-// dashboard (four of those records did not contain written feedback).
+// Store-wide review summary supplied by MUSE on 26 November 2026.
+// These aggregate totals are independent of the review excerpts available here.
 export const MUSE_REVIEW_SUMMARY = {
-  total: 89,
+  total: 346,
   average: 4.4,
   distribution: [
-    { rating: 5, count: 56 },
-    { rating: 4, count: 23 },
-    { rating: 3, count: 3 },
-    { rating: 2, count: 6 },
-    { rating: 1, count: 1 },
+    { rating: 5, count: 218 },
+    { rating: 4, count: 89 },
+    { rating: 3, count: 12 },
+    { rating: 2, count: 23 },
+    { rating: 1, count: 4 },
   ],
 } as const
 
