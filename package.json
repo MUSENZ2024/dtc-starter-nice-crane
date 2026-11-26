@@ -20,7 +20,8 @@
   "pnpm": {
     "overrides": {
       "@types/react": "19.0.5",
-      "@types/react-dom": "19.0.5"
+      "@types/react-dom": "19.0.5",
+      "proxy-addr": "2.0.8"
     },
     "patchedDependencies": {
       "@agilo/medusa-analytics-plugin@1.4.0": "patches/@agilo__medusa-analytics-plugin@1.4.0.patch"
