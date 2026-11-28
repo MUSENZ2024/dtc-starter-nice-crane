@@ -530,8 +530,46 @@ const salomonShoeSizeRows = [
 // brands on MUSE, so it is kept brand-specific rather than changed globally.
 const SALOMON_WOMENS_OFFSET = 1
 
-// Timberland uses the same paired U.S. Men's / U.S. Women's drawer format.
-const timberlandShoeSizeRows = nikeJordanShoeSizeRows
+// Official Timberland footwear charts (CM), checked 28 November 2026.
+// Keep genders separate: their EU, UK and foot-length conversions differ.
+// https://www.timberland.com/en-us/customer-care/size-chart
+const timberlandMensSizeRows = [
+  ["4", "3.5", "36", "22.5"],
+  ["4.5", "4", "37", "23"],
+  ["5", "4.5", "37.5", "23.5"],
+  ["5.5", "5", "38", "23.8"],
+  ["6", "5.5", "39", "24.2"],
+  ["6.5", "6", "39.5", "24.5"],
+  ["7", "6.5", "40", "25"],
+  ["7.5", "7", "41", "25.5"],
+  ["8", "7.5", "41.5", "26"],
+  ["8.5", "8", "42", "26.5"],
+  ["9", "8.5", "43", "27"],
+  ["9.5", "9", "43.5", "27.5"],
+  ["10", "9.5", "44", "28"],
+  ["10.5", "10", "44.5", "28.5"],
+  ["11", "10.5", "45", "29"],
+  ["11.5", "11", "45.5", "29.5"],
+  ["12", "11.5", "46", "30"],
+  ["13", "12.5", "47.5", "31"],
+  ["14", "13.5", "49", "32"],
+  ["15", "14.5", "50", "33"],
+]
+
+const timberlandWomensSizeRows = [
+  ["5", "3", "35.5", "22"],
+  ["5.5", "3.5", "36", "22.5"],
+  ["6", "4", "37", "23"],
+  ["6.5", "4.5", "37.5", "23.5"],
+  ["7", "5", "38", "24"],
+  ["7.5", "5.5", "38.5", "24.5"],
+  ["8", "6", "39", "25"],
+  ["8.5", "6.5", "39.5", "25.5"],
+  ["9", "7", "40", "26"],
+  ["9.5", "7.5", "41", "26.5"],
+  ["10", "8", "41.5", "27"],
+  ["11", "9", "42", "28"],
+]
 
 // Hoka uses the same paired U.S. Men's / U.S. Women's drawer format.
 const hokaShoeSizeRows = nikeJordanShoeSizeRows
@@ -855,7 +893,7 @@ export default function ProductActions({
             : useVejaSizing
               ? "VEJA sizes are shown in EU sizing. Use the separate men's and women's charts to compare US, UK, CM, and inch conversions."
               : useTimberlandSizing
-                ? "Timberland sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
+                ? "Use Timberland’s separate men’s and women’s charts to compare US, UK, EU and foot length in CM."
                 : useHokaSizing
                   ? "Hoka sizes are shown as U.S. Men's / U.S. Women's. Use the chart to compare men's, women's, EU, CM, and UK conversions."
                   : useNikeJordanSizing
@@ -937,7 +975,9 @@ export default function ProductActions({
           useVejaSizing ||
           useTimberlandSizing ||
           useHokaSizing
-        ? useVejaSizing
+        ? useTimberlandSizing
+          ? ["US", "UK", "EU", "CM"]
+          : useVejaSizing
           ? ["US", "UK", "EU/IT", "CM", "Inches"]
           : ["Men's", "Women's", "EU", "CM", "UK"]
         : ["Size", "Chest (cm)", "Length (cm)", "Sleeve (cm)"]
@@ -958,7 +998,7 @@ export default function ProductActions({
                 : useVejaSizing
                   ? vejaWomensSizeRows
                   : useTimberlandSizing
-                    ? timberlandShoeSizeRows
+                    ? timberlandWomensSizeRows
                     : useHokaSizing
                       ? hokaShoeSizeRows
                       : defaultSizeRows
@@ -1573,7 +1613,7 @@ export default function ProductActions({
                         : useVejaSizing
                           ? "VEJA footwear is listed in EU sizing on MUSE. Use the size guide to compare US, UK, JP, and foot-length conversions."
                           : useTimberlandSizing
-                            ? "Timberland sizes are shown as U.S. Men's / U.S. Women's on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
+                            ? "Use the separate official Timberland men’s and women’s size charts to compare US, UK, EU and CM."
                             : useHokaSizing
                               ? "Hoka sizes are shown as U.S. Men's / U.S. Women's on MUSE. Use the size guide to compare men's, women's, EU, CM, and UK conversions."
                               : useNikeJordanSizing
@@ -1806,8 +1846,8 @@ export default function ProductActions({
                   true size
                 </p>
               </div>
-              <div className={useVejaSizing ? "grid gap-6 lg:grid-cols-2" : "-mx-2 overflow-x-auto px-2"}>
-                {useVejaSizing && (
+              <div className={useVejaSizing || useTimberlandSizing ? "grid gap-6 lg:grid-cols-2" : "-mx-2 overflow-x-auto px-2"}>
+                {(useVejaSizing || useTimberlandSizing) && (
                   <div className="overflow-x-auto">
                     <h3 className="mb-2 text-sm font-black">Men's</h3>
                     <table className="w-full min-w-[410px] border-collapse text-[12.5px]">
@@ -1821,7 +1861,7 @@ export default function ProductActions({
                         </tr>
                       </thead>
                       <tbody>
-                        {vejaMensSizeRows.map((row) => (
+                        {(useTimberlandSizing ? timberlandMensSizeRows : vejaMensSizeRows).map((row) => (
                           <tr key={row[2]}>
                             {row.map((cell, index) => (
                               <td key={`${index}-${cell}`} className="border-b border-[#E8E6E0] px-2 py-3">
@@ -1835,8 +1875,8 @@ export default function ProductActions({
                   </div>
                 )}
                 <div className="overflow-x-auto">
-                  {useVejaSizing && <h3 className="mb-2 text-sm font-black">Women's</h3>}
-                  <table className={`${useVejaSizing ? "min-w-[410px]" : "min-w-[520px]"} w-full border-collapse text-[12.5px]`}>
+                  {(useVejaSizing || useTimberlandSizing) && <h3 className="mb-2 text-sm font-black">Women's</h3>}
+                  <table className={`${useVejaSizing || useTimberlandSizing ? "min-w-[410px]" : "min-w-[520px]"} w-full border-collapse text-[12.5px]`}>
                   <thead>
                     <tr>
                       {sizeGuideColumns.map((head) => (
@@ -1988,14 +2028,14 @@ export default function ProductActions({
                     <strong className="font-bold text-[#0A0A0A]">
                       Size Note:
                     </strong>{" "}
-                    Timberland sizes on MUSE are shown as U.S. Men's / U.S.
-                    Women's. The chart above combines men's, women's, EU, CM,
-                    and UK conversions so you can compare against the size you
-                    already wear.
+                    These are Timberland’s official men’s and women’s footwear
+                    charts. CM is foot length. Use the chart for the footwear’s
+                    gender; the conversions differ between the two charts.
                   </p>
                   <p>
-                    Most buyers stay true to size. If you are between sizes or
-                    prefer extra toe room, choose the larger size.
+                    Measure both feet from heel to longest toe and compare
+                    your measurements with the appropriate chart.{" "}
+                    <a className="underline" href="https://www.timberland.com/en-us/customer-care/size-chart?category=women&product=footwear" target="_blank" rel="noopener noreferrer">Official Timberland size charts</a>.
                   </p>
                 </div>
               )}
